@@ -16,9 +16,16 @@
 
 package udentric.mysql.classic;
 
-import io.netty.channel.CombinedChannelDuplexHandler;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandlerContext;
 
-public class ClientCodec extends CombinedChannelDuplexHandler<
-	ResponseDecoder, RequestEncoder
-> {
+public class ClientCodec extends ChannelDuplexHandler {
+	public ClientCodec() {
+	}
+
+	@Override
+	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+		System.out.format("message in %s\n", msg);
+		ctx.fireChannelRead(msg);
+	}
 }

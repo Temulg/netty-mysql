@@ -14,18 +14,18 @@
  * under the License.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.message.server;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.MessageToByteEncoder;
-import udentric.mysql.classic.message.client.Any;
-
-public class RequestEncoder extends MessageToByteEncoder<Any> {
-	@Override
-	protected void encode(
-		ChannelHandlerContext ctx, Any in, ByteBuf out
-	) throws Exception {
-		System.out.format("sending message %s\n", in);
+public class Handshake extends Any {
+	public Handshake() {
+		super(ACCESSOR);
 	}
+
+	public enum Field implements Any.Field {
+
+	}
+
+	private static final FieldAccess<
+                Field
+        > ACCESSOR = new FieldAccess<>(Field.class);
 }

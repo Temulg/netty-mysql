@@ -20,3 +20,18 @@ eclipse {
 		downloadJavadoc = true
 	}
 }
+
+task run(type: JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
+	main = 'udentric.mysql.classic.Test'
+	//args 'appArg1'
+}
+
+task debug(type: JavaExec) {
+	main = 'udentric.mysql.classic.Test'
+	classpath = sourceSets.test.runtimeClasspath
+	standardInput = System.in
+	//workingDir = project.assetsDir
+	ignoreExitValue = true
+	debug = true
+}

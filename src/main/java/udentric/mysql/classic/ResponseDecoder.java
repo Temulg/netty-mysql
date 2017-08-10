@@ -27,5 +27,6 @@ public class ResponseDecoder extends ByteToMessageDecoder {
 	protected void decode(
 		ChannelHandlerContext ctx, ByteBuf in, List<Object> out
 	) throws Exception {
+		System.out.format("message received: %s\n", in);
 	}
 }
