@@ -14,18 +14,13 @@
  * under the License.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.message;
 
-import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelHandlerContext;
+import io.netty.buffer.ByteBuf;
 
-public class ClientCodec extends ChannelDuplexHandler {
-	public ClientCodec() {
-	}
-
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		System.out.format("message in %s\n", msg);
-		ctx.fireChannelRead(msg);
-	}
+public class CompressedPacket {
+	public int length;
+	public int seqNum;
+	public int rawLength;
+	public ByteBuf body;
 }

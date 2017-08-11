@@ -32,7 +32,9 @@ public class Test {
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
 			ch.pipeline().addLast(
-				"mysql", new ClientCodec()
+				"mysql.packet.in", new PacketDecoder()
+			).addLast(
+				"mysql.protocol", new Protocol()
 			).addLast(new Session());
 		}
 	}
