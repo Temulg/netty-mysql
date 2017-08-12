@@ -14,12 +14,13 @@
  * under the License.
  */
 
-package udentric.mysql.classic.message;
+package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
 
-public class Packet {
+public class CompressedPacket {
 	public int length;
 	public int seqNum;
+	public int rawLength;
 	public ByteBuf body;
 }

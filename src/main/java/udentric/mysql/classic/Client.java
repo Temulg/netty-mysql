@@ -16,29 +16,26 @@
 
 package udentric.mysql.classic;
 
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.classic.message.Packet;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.util.AttributeKey;
 
-public class Protocol extends ChannelDuplexHandler {
-	public Protocol() {
-	}
-
+public class Client extends ChannelInitializer<SocketChannel> {
 	@Override
-	public void channelRead(
-		ChannelHandlerContext ctx, Object msg_
-	) throws Exception {
-		if (!(msg_ instanceof Packet)) {
-			ctx.fireChannelRead(msg_);
-			return;
-		}
-		System.out.format("message in %s\n", msg_);
-		ctx.fireChannelRead(msg_);
+	protected void initChannel(SocketChannel ch) throws Exception {
+		Session session = new Session();
+
+		ch.attr(SESSION).set(session);
+
+		ch.pipeline().addLast(
+			"mysql.packet", new PacketCodec()
+		).addLast(
+			"mysql.protocol", new ProtocolHandler(session)
+		);
 	}
 
-	enum State {
-		CONNECTED;
-	}
-
-	private State state = State.CONNECTED;
+	public static final AttributeKey<Session> SESSION
+	= AttributeKey.newInstance("mysql.session");
 }

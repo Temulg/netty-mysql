@@ -17,43 +17,19 @@
 package udentric.mysql.classic;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
 import io.netty.util.concurrent.Future;
 
 public class Test {
-	static class InitHandler extends ChannelInitializer<SocketChannel> {
-		@Override
-		protected void initChannel(SocketChannel ch) throws Exception {
-			ch.pipeline().addLast(
-				"mysql.packet.in", new PacketDecoder()
-			).addLast(
-				"mysql.protocol", new Protocol()
-			).addLast(new Session());
-		}
-	}
-
-	static class Session extends SimpleChannelInboundHandler<Object> {
-		@Override
-		protected void channelRead0(
-			ChannelHandlerContext ctx, Object msg
-		) throws Exception {
-			System.out.format(
-				"msg in %s, class %s\n", msg, msg.getClass()
-			);
-			
-		}		
-	}
-
-	static void onConnected(Future<?> f) {
+	void onConnected(Future<?> f) {
 		if (f.isSuccess()) {
 			System.out.println("connected!");
+			
 		} else {
 			f.cause().printStackTrace();
 		}
@@ -64,10 +40,17 @@ public class Test {
 
 		NioEventLoopGroup grp = new NioEventLoopGroup();
 		
-		(new Bootstrap()).group(grp).channel(
+		Test t = new Test((new Bootstrap()).group(grp).channel(
 			NioSocketChannel.class
 		).handler(
-			new InitHandler()
-		).connect("10.112.0.132", 3306).addListener(Test::onConnected);
+			new Client()
+		).connect("10.20.0.10", 3306));
 	}
+
+	Test(ChannelFuture chf) {
+		ch = chf.channel();
+		chf.addListener(this::onConnected);
+	}
+
+	Channel ch;
 }

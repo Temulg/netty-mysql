@@ -14,13 +14,10 @@
  * under the License.
  */
 
-package udentric.mysql.classic.message;
+package udentric.mysql.util;
 
-import io.netty.buffer.ByteBuf;
+public interface BitsetEnum<BitsetType> {
+	public boolean get(BitsetType caps);
 
-public class CompressedPacket {
-	public int length;
-	public int seqNum;
-	public int rawLength;
-	public ByteBuf body;
+	public BitsetType mask();
 }

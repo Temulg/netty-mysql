@@ -17,15 +17,48 @@
 package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.ByteToMessageDecoder.Cumulator;
 import io.netty.handler.codec.DecoderException;
-import udentric.mysql.classic.message.Packet;
+import io.netty.handler.codec.EncoderException;
 
-public class PacketDecoder extends ChannelInboundHandlerAdapter {
+class PacketCodec extends ChannelDuplexHandler {
+	PacketCodec() {
+	}
+
+	@Override
+	public void write(
+		ChannelHandlerContext ctx, Object msg_,
+		ChannelPromise promise
+	) throws Exception {
+		if (!(msg_ instanceof Packet)) {
+			ctx.write(msg_, promise);
+			return;
+		}
+
+		Packet msg = (Packet)msg_;
+		try {
+			ByteBuf header = ctx.alloc().buffer(4, 4);
+			header.writeIntLE(
+				(msg.length & 0xffffff) | (msg.seqNum << 24)
+			);
+			CompositeByteBuf out = ctx.alloc().compositeBuffer(
+				2
+			).addComponents(
+				header, msg.body
+			);
+
+			ctx.write(out, promise);
+		} catch (Throwable e) {
+			throw new EncoderException(e);
+		}
+	}
+
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
 		ByteBuf acc = accumulator;
