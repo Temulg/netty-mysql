@@ -17,46 +17,14 @@
 package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.CompositeByteBuf;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.ByteToMessageDecoder.Cumulator;
 import io.netty.handler.codec.DecoderException;
-import io.netty.handler.codec.EncoderException;
 
-class PacketCodec extends ChannelDuplexHandler {
-	PacketCodec() {
-	}
-
-	@Override
-	public void write(
-		ChannelHandlerContext ctx, Object msg_,
-		ChannelPromise promise
-	) throws Exception {
-		if (!(msg_ instanceof Packet)) {
-			ctx.write(msg_, promise);
-			return;
-		}
-
-		Packet msg = (Packet)msg_;
-		try {
-			ByteBuf header = ctx.alloc().buffer(4, 4);
-			header.writeIntLE(
-				(msg.length & 0xffffff) | (msg.seqNum << 24)
-			);
-			CompositeByteBuf out = ctx.alloc().compositeBuffer(
-				2
-			).addComponents(
-				header, msg.body
-			);
-
-			ctx.write(out, promise);
-		} catch (Throwable e) {
-			throw new EncoderException(e);
-		}
+class InboundPacketFramer extends ChannelInboundHandlerAdapter {
+	InboundPacketFramer() {
 	}
 
 	@Override
@@ -89,7 +57,7 @@ class PacketCodec extends ChannelDuplexHandler {
 			if (accumulator == null) {
 				accumulator = msg;
 			} else {
-				accumulator = cumulator.cumulate(
+				accumulator = selectCumulator().cumulate(
 					ctx.alloc(), accumulator, msg
 				);
 			}
@@ -105,28 +73,37 @@ class PacketCodec extends ChannelDuplexHandler {
 		}
 	}
 
-	protected boolean extractPackets(ChannelHandlerContext ctx, ByteBuf in) {
+	private ByteToMessageDecoder.Cumulator selectCumulator() {
+		if (accumulator.readableBytes() < CUMULATOR_THRESHOLD)
+			return ByteToMessageDecoder.MERGE_CUMULATOR;
+		else
+			return ByteToMessageDecoder.COMPOSITE_CUMULATOR;
+	}
+
+	protected boolean extractPackets(
+		ChannelHandlerContext ctx, ByteBuf in
+	) {
 		boolean rv = false;
 
 		while (in.isReadable()) {
 			int available = in.readableBytes();
-			if (available < 4)
+			if (available < Packet.HEADER_SIZE)
 				break;
 
-			int header = in.getIntLE(in.readerIndex());
-			int pSize = header & 0xffffff;
-			if (available < (pSize + 4))
+			int pSize = in.getMediumLE(
+				in.readerIndex()
+			) + Packet.HEADER_SIZE;
+
+			if (available < pSize)
 				break;
 
-			Packet out = new Packet();
-			out.length = pSize;
-			out.seqNum = header >> 24;
-			in.skipBytes(4);
-			out.body = in.retainedSlice(in.readerIndex(), pSize);
+			ByteBuf out = in.retainedSlice(
+				in.readerIndex(), pSize
+			);
 			in.skipBytes(pSize);
 			ctx.fireChannelRead(out);
 			rv = true;
-			
+
 			if (ctx.isRemoved())
 				break;
 		}
@@ -144,7 +121,9 @@ class PacketCodec extends ChannelDuplexHandler {
 	}
 
 	@Override
-	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+	public void channelInactive(
+		ChannelHandlerContext ctx
+	) throws Exception {
 		try {
 			channelInputClosed(ctx);
 		} finally {
@@ -173,6 +152,6 @@ class PacketCodec extends ChannelDuplexHandler {
 		}		
 	}
 
+	private static final int CUMULATOR_THRESHOLD = 1 << 16;
 	ByteBuf accumulator;
-	private Cumulator cumulator = ByteToMessageDecoder.MERGE_CUMULATOR;
 }

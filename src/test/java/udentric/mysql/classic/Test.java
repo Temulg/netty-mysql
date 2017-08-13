@@ -24,6 +24,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
 import io.netty.util.concurrent.Future;
+import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
 
 public class Test {
 	void onConnected(Future<?> f) {
@@ -43,7 +44,9 @@ public class Test {
 		Test t = new Test((new Bootstrap()).group(grp).channel(
 			NioSocketChannel.class
 		).handler(
-			new Client()
+			Client.builder().withCredentials(
+				new NativePasswordCredentialsProvider()
+			).build()
 		).connect("10.20.0.10", 3306));
 	}
 

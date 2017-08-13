@@ -14,12 +14,18 @@
  * under the License.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.handler;
 
-public abstract class AuthHandler extends MessageHandler {
-	protected AuthHandler(Session session_) {
-		super(session_);
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.MessageHandler;
+import udentric.mysql.classic.ProtocolHandler;
+
+public class AuthResponse implements MessageHandler {
+	private AuthResponse() {}
+
+	@Override
+	public void process(ProtocolHandler ph, ByteBuf msg) {
 	}
 
-	public abstract void setInitialSecret(byte[] secret);
+	public static final AuthResponse INSTANCE = new AuthResponse();
 }

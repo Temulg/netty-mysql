@@ -17,40 +17,22 @@
 package udentric.mysql.classic.handler;
 
 import java.util.Arrays;
-import java.util.function.Function;
-
-import com.google.common.collect.ImmutableMap;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.MessageHandler;
-import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.AuthHandler;
+import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.ServerStatus;
-import udentric.mysql.classic.Session;
 
-public class Handshake extends MessageHandler {
-	public Handshake(Session session) {
-		super(session);
-	}
+public class Handshake implements MessageHandler {
+	private Handshake() {}
 
 	@Override
-	public MessageHandler activate(
-		ChannelHandlerContext ctx, int nextSeqNum
-	) {
-		return this;
-	}
-
-	@Override
-	public MessageHandler accept(ChannelHandlerContext ctx, Packet p) {
-		ByteBuf in = p.body;
-
-		int protoVers = Fields.readInt1(in);
+	public void process(ProtocolHandler ph, ByteBuf msg) {
+		int protoVers = Fields.readInt1(msg);
 		if (PROTOCOL_VERSION != protoVers) {
-			in.release();
 			throw new DecoderException(
 				"unsupported protocol version "
 				+ Integer.toString(protoVers)
@@ -59,105 +41,76 @@ public class Handshake extends MessageHandler {
 
 		String authPluginName = "mysql_native_password";
 
-		session.setServerIdentity(
-			Fields.readStringNT(in), in.readIntLE()
+		ph.updateServerIdentity(
+			Fields.readStringNT(msg), msg.readIntLE()
 		);
 
-		byte[] scramble = Fields.readBytes(in, 8);
-		in.skipBytes(1);
+		byte[] scramble = Fields.readBytes(msg, 8);
+		msg.skipBytes(1);
 
 		long srvCaps = 0;
 
-		if (!in.isReadable()) {
-			checkAndReleaseBuffer(in);
-			return advance(
-				ctx, authPluginName, scramble, p.seqNum + 1
-			);
+		if (!msg.isReadable()) {
+			reply(ph, authPluginName, scramble);
+			return;
 		}
 
-		srvCaps = Fields.readLong2(in);
+		srvCaps = Fields.readLong2(msg);
 
-		if (!in.isReadable()) {
-			checkAndReleaseBuffer(in);
-			return advance(
-				ctx, authPluginName, scramble, p.seqNum + 1
-			);
+		if (!msg.isReadable()) {
+			ph.updateServerCapabilities(srvCaps);
+			reply(ph, authPluginName, scramble);
+			return;
 		}
 
-		session.setServerCharsetId(Fields.readInt1(in));
+		ph.updateServerCharsetId(Fields.readInt1(msg));
 
-		short statusFlags = in.readShortLE();
+		short statusFlags = msg.readShortLE();
 
-		session.logger.debug(ServerStatus.describe(statusFlags));
+		ph.logger.debug(ServerStatus.describe(statusFlags));
 
-		srvCaps |= Fields.readLong2(in) << 16;
+		srvCaps |= Fields.readLong2(msg) << 16;
 
-		int s2Len = Fields.readInt1(in);
+		int s2Len = Fields.readInt1(msg);
 
-		session.setServerCapabilities(srvCaps);
+		ph.updateServerCapabilities(srvCaps);
 
-		in.skipBytes(10);
+		msg.skipBytes(10);
 
 		if (ClientCapability.PLUGIN_AUTH.get(srvCaps)) {
 			int oldLen = scramble.length;
 			scramble = Arrays.copyOf(scramble, s2Len - 1);
-			in.readBytes(scramble, oldLen, s2Len - oldLen - 1);
-			in.skipBytes(1);
-			authPluginName = Fields.readStringNT(in).toString();
+			msg.readBytes(scramble, oldLen, s2Len - oldLen - 1);
+			msg.skipBytes(1);
+			authPluginName = Fields.readStringNT(msg).toString();
 		} else {
-			s2Len = Math.max(12, in.readableBytes());
+			s2Len = Math.max(12, msg.readableBytes());
 			int oldLen = scramble.length;
 			scramble = Arrays.copyOf(scramble, oldLen + s2Len);
-			in.readBytes(scramble, oldLen, s2Len);
+			msg.readBytes(scramble, oldLen, s2Len);
 		}
 
-		session.logger.debug("plugin name {}", authPluginName);
-		session.logger.debug("scramble {}", Arrays.toString(scramble));
-		checkAndReleaseBuffer(in);
-		return advance(
-			ctx, authPluginName, scramble, p.seqNum + 1
-		);
+		ph.logger.debug("plugin name {}", authPluginName);
+		ph.logger.debug("scramble {}", Arrays.toString(scramble));
+
+		reply(ph, authPluginName, scramble);
 	}
 
-	private void checkAndReleaseBuffer(ByteBuf in) {
-		int remaining = in.readableBytes();
-
-		if (remaining > 0) {
-			session.logger.warn(
-				"{} bytes left in packet", remaining
-			);
-		}
-		in.release();
-	}
-
-	private MessageHandler advance(
-		ChannelHandlerContext ctx, String authPluginName,
-		byte[] scramble, int nextSeqNum
+	private void reply(
+		ProtocolHandler ph, String authPluginName, byte[] scramble
 	) {
-		AuthHandler ah = AUTH_PLUGINS.getOrDefault(
-			authPluginName, s -> {
-				return null;
-		}).apply(session);
-
-		if (ah == null) {
-			throw new DecoderException(
-				"unsupported authentication plugin "
-				+ authPluginName
-			);
-		}
-
-		ah.setInitialSecret(scramble);
-
-		return ah.activate(ctx, nextSeqNum);
+		ByteBuf replyMsg = ph.allocReplyMsg();
+		replyMsg.writeIntLE(
+			(int)(ph.getClientCapabilities() & 0xffffffff)
+		);
+		replyMsg.writeIntLE(0xffffff); // 24MB
+		replyMsg.writeByte(224); // utf8mb4
+		replyMsg.writeZero(23);
+		ph.updateAuthReply(authPluginName, scramble);
+		ph.sendReply();
 	}
 
-	public static final int PROTOCOL_VERSION = 10;
+	public static final Handshake INSTANCE = new Handshake();
 
-	public static final ImmutableMap<
-		String, Function<Session, AuthHandler>
-	> AUTH_PLUGINS = ImmutableMap.<
-		String, Function<Session, AuthHandler>
-	>builder().put(
-		"mysql_native_password", NativePasswordAuth::new
-	).build();
+	public final int PROTOCOL_VERSION = 10;
 }

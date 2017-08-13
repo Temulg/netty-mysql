@@ -14,20 +14,15 @@
  * under the License.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.auth;
 
 import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.ProtocolHandler;
 
-public class Packet {
-	private Packet() {}
-
-	public static int getLength(ByteBuf in) {
-		return in.getMediumLE(in.readerIndex());
-	}
-
-	public static int getSeqNum(ByteBuf in) {
-		return 0xff & in.getByte(in.readerIndex() + 3);
-	}
-
-	public static final int HEADER_SIZE = 4;
+public interface CredentialsProvider {
+	public void updateAuthMessage(
+		ProtocolHandler ph, ByteBuf msg, String authPluginName,
+		byte[] scramble
+	);
 }
+

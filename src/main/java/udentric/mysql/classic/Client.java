@@ -16,26 +16,40 @@
 
 package udentric.mysql.classic;
 
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.util.AttributeKey;
+import udentric.mysql.classic.auth.CredentialsProvider;
 
 public class Client extends ChannelInitializer<SocketChannel> {
+	public static class Builder {
+		public Builder withCredentials(CredentialsProvider creds_) {
+			creds = creds_;
+			return this;
+		}
+
+		public Client build() {
+			return new Client(this);
+		}
+
+		private CredentialsProvider creds;
+	}
+
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	private Client(Builder bld) {
+		creds = bld.creds;
+	}
+
 	@Override
 	protected void initChannel(SocketChannel ch) throws Exception {
-		Session session = new Session();
-
-		ch.attr(SESSION).set(session);
-
 		ch.pipeline().addLast(
-			"mysql.packet", new PacketCodec()
+			"mysql.packet.in", new InboundPacketFramer()
 		).addLast(
-			"mysql.protocol", new ProtocolHandler(session)
+			"mysql.protocol", new ProtocolHandler(this)
 		);
 	}
 
-	public static final AttributeKey<Session> SESSION
-	= AttributeKey.newInstance("mysql.session");
+	final CredentialsProvider creds;
 }

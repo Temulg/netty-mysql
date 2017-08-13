@@ -16,20 +16,8 @@
 
 package udentric.mysql.classic;
 
-import io.netty.channel.ChannelHandlerContext;
+import io.netty.buffer.ByteBuf;
 
-public abstract class MessageHandler {
-	public MessageHandler(Session session_) {
-		session = session_;
-	}
-
-	public abstract MessageHandler accept(
-		ChannelHandlerContext ctx, Packet p
-	);
-
-	public abstract MessageHandler activate(
-		ChannelHandlerContext ctx, int nextSeqNum
-	);
-
-	protected final Session session;
+public interface MessageHandler {
+	public void process(ProtocolHandler ph, ByteBuf msg);
 }
