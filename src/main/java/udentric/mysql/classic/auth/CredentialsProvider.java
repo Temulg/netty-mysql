@@ -18,11 +18,14 @@ package udentric.mysql.classic.auth;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.ProtocolHandler;
+import udentric.mysql.util.ByteString;
 
 public interface CredentialsProvider {
 	public void updateAuthMessage(
-		ProtocolHandler ph, ByteBuf msg, String authPluginName,
-		byte[] scramble
+		ProtocolHandler ph, ByteBuf msg, ByteString authPluginName,
+		byte[] secret
 	);
+
+	public boolean isSecure();
 }
 

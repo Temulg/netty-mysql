@@ -25,6 +25,8 @@ import udentric.mysql.classic.MessageHandler;
 import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.ServerStatus;
+import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
+import udentric.mysql.util.ByteString;
 
 public class Handshake implements MessageHandler {
 	private Handshake() {}
@@ -39,19 +41,20 @@ public class Handshake implements MessageHandler {
 			);
 		}
 
-		String authPluginName = "mysql_native_password";
+		ByteString authPluginName
+		= NativePasswordCredentialsProvider.AUTH_PLUGIN_NAME;
 
 		ph.updateServerIdentity(
 			Fields.readStringNT(msg), msg.readIntLE()
 		);
 
-		byte[] scramble = Fields.readBytes(msg, 8);
+		byte[] secret = Fields.readBytes(msg, 8);
 		msg.skipBytes(1);
 
 		long srvCaps = 0;
 
 		if (!msg.isReadable()) {
-			reply(ph, authPluginName, scramble);
+			reply(ph, authPluginName, secret);
 			return;
 		}
 
@@ -59,7 +62,7 @@ public class Handshake implements MessageHandler {
 
 		if (!msg.isReadable()) {
 			ph.updateServerCapabilities(srvCaps);
-			reply(ph, authPluginName, scramble);
+			reply(ph, authPluginName, secret);
 			return;
 		}
 
@@ -78,35 +81,32 @@ public class Handshake implements MessageHandler {
 		msg.skipBytes(10);
 
 		if (ClientCapability.PLUGIN_AUTH.get(srvCaps)) {
-			int oldLen = scramble.length;
-			scramble = Arrays.copyOf(scramble, s2Len - 1);
-			msg.readBytes(scramble, oldLen, s2Len - oldLen - 1);
+			int oldLen = secret.length;
+			secret = Arrays.copyOf(secret, s2Len - 1);
+			msg.readBytes(secret, oldLen, s2Len - oldLen - 1);
 			msg.skipBytes(1);
-			authPluginName = Fields.readStringNT(msg).toString();
+			authPluginName = Fields.readStringNT(msg);
 		} else {
 			s2Len = Math.max(12, msg.readableBytes());
-			int oldLen = scramble.length;
-			scramble = Arrays.copyOf(scramble, oldLen + s2Len);
-			msg.readBytes(scramble, oldLen, s2Len);
+			int oldLen = secret.length;
+			secret = Arrays.copyOf(secret, oldLen + s2Len);
+			msg.readBytes(secret, oldLen, s2Len);
 		}
 
-		ph.logger.debug("plugin name {}", authPluginName);
-		ph.logger.debug("scramble {}", Arrays.toString(scramble));
-
-		reply(ph, authPluginName, scramble);
+		reply(ph, authPluginName, secret);
 	}
 
 	private void reply(
-		ProtocolHandler ph, String authPluginName, byte[] scramble
+		ProtocolHandler ph, ByteString authPluginName, byte[] secret
 	) {
 		ByteBuf replyMsg = ph.allocReplyMsg();
 		replyMsg.writeIntLE(
 			(int)(ph.getClientCapabilities() & 0xffffffff)
 		);
-		replyMsg.writeIntLE(0xffffff); // 24MB
-		replyMsg.writeByte(224); // utf8mb4
+		replyMsg.writeIntLE(0xffffff); // max packet size 16MB
+		replyMsg.writeByte(224); // charset utf8mb4 / 33 utf8
 		replyMsg.writeZero(23);
-		ph.updateAuthReply(authPluginName, scramble);
+		ph.updateAuthReply(authPluginName, secret);
 		ph.sendReply();
 	}
 

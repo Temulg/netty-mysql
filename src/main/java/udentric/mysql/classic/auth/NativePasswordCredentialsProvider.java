@@ -22,6 +22,8 @@ import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.handler.AuthResponse;
+import udentric.mysql.util.ByteString;
+import udentric.mysql.util.Scramble411;
 
 public class NativePasswordCredentialsProvider implements CredentialsProvider {
 	public NativePasswordCredentialsProvider() {
@@ -48,8 +50,8 @@ public class NativePasswordCredentialsProvider implements CredentialsProvider {
 
 	@Override
 	public void updateAuthMessage(
-		ProtocolHandler ph, ByteBuf msg, String authPluginName,
-		byte[] scramble
+		ProtocolHandler ph, ByteBuf msg, ByteString authPluginName,
+		byte[] secret
 	) {
 		if (!AUTH_PLUGIN_NAME.equals(authPluginName)) {
 			throw new IllegalStateException(
@@ -57,22 +59,34 @@ public class NativePasswordCredentialsProvider implements CredentialsProvider {
 			);
 		}
 
-		long caps = ph.getServerCapabilities();
+		long caps = ph.getClientCapabilities();
 
 		msg.writeBytes(username);
 		msg.writeByte(0);
 
-		if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(caps)) {
-
-		} else if (ClientCapability.SECURE_CONNECTION.get(caps)) {
-
+		if (
+			ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
+				caps
+			) || ClientCapability.SECURE_CONNECTION.get(caps)
+		) {
+			msg.writeByte(20);
+			Scramble411.encode(msg, password, secret);
 		} else
 			msg.writeByte(0);
 
+		msg.writeBytes(authPluginName.getBytes());
+		msg.writeByte(0);
 		ph.setMessageHandler(AuthResponse.INSTANCE);
 	}
 
-	public static String AUTH_PLUGIN_NAME = "mysql_native_password";
+	@Override
+	public boolean isSecure() {
+		return password.length > 0;
+	}
+
+	public static ByteString AUTH_PLUGIN_NAME = new ByteString(
+		"mysql_native_password"
+	);
 
 	private final byte[] username;
 	private final byte[] password;

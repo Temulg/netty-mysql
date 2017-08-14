@@ -16,6 +16,8 @@
 
 package udentric.mysql.classic;
 
+import java.util.LinkedHashMap;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,12 +25,35 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.classic.handler.Handshake;
+import udentric.mysql.util.ByteString;
 
 public class ProtocolHandler extends ChannelDuplexHandler {
 	ProtocolHandler(Client cl_) {
 		logger = LogManager.getLogger(ProtocolHandler.class);
 		handler = Handshake.INSTANCE;
 		cl = cl_;
+		addCommonAttributes();
+	}
+
+	private void addCommonAttributes() {
+		connAttributes.put(
+			new ByteString("_os"),
+			new ByteString(System.getProperty("os.name"))
+		);
+		connAttributes.put(
+			new ByteString("_platform"),
+			new ByteString(System.getProperty("os.arch"))
+		);
+		connAttributes.put(
+			new ByteString("_client_name"),
+			new ByteString("netty_mysql")
+		);
+		connAttributes.put(
+			new ByteString("_client_version"),
+			new ByteString("1.0")
+		);
+		//_pid
+		//program_name
 	}
 
 	@Override
@@ -66,7 +91,7 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	}
 
 	public void updateServerIdentity(
-		CharSequence srvName_, int srvConnId_
+		ByteString srvName_, int srvConnId_
 	) {
 		srvName = srvName_.toString();
 		srvConnId = srvConnId_;
@@ -82,22 +107,27 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		logger.debug(ClientCapability.describe(caps));
 		serverCaps = caps;
 
-		clientCaps = ClientCapability.PLUGIN_AUTH.mask()
-			| ClientCapability.LONG_PASSWORD.mask()
+		clientCaps = ClientCapability.LONG_PASSWORD.mask()
+			| ClientCapability.LONG_FLAG.mask()
 			| ClientCapability.PROTOCOL_41.mask()
 			| ClientCapability.TRANSACTIONS.mask()
+			| ClientCapability.MULTI_STATEMENTS.mask()
 			| ClientCapability.MULTI_RESULTS.mask()
-			| ClientCapability.SECURE_CONNECTION.mask()
-			| ClientCapability.MULTI_STATEMENTS.mask();
+			| ClientCapability.PS_MULTI_RESULTS.mask()
+			| ClientCapability.PLUGIN_AUTH.mask();
 
-		if (ClientCapability.CAN_HANDLE_EXPIRED_PASSWORDS.get(serverCaps))
-			clientCaps |= ClientCapability.CAN_HANDLE_EXPIRED_PASSWORDS.mask();
+		if (ClientCapability.CONNECT_ATTRS.get(serverCaps))
+			clientCaps |= ClientCapability.CONNECT_ATTRS.mask();
 
-		if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(serverCaps))
-			clientCaps |= ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.mask();
+		if (cl.creds.isSecure()) {
+			clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
+			if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(serverCaps))
+				clientCaps |= ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.mask();
+		}
 	}
 
 	public long getClientCapabilities() {
+
 		return clientCaps;
 	}
 
@@ -111,9 +141,11 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		return replyMsg;
 	}
 
-	public void updateAuthReply(String authPluginName, byte[] scramble) {
+	public void updateAuthReply(
+		ByteString authPluginName, byte[] secret
+	) {
 		cl.creds.updateAuthMessage(
-			this, replyMsg, authPluginName, scramble
+			this, replyMsg, authPluginName, secret
 		);
 	}
 
@@ -124,6 +156,13 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	public void sendReply() {
 		ByteBuf msg = replyMsg;
 		replyMsg = null;
+
+		if (ClientCapability.CONNECT_ATTRS.get(clientCaps)) {
+			ByteBuf attrs = encodeAttrs();
+			Fields.writeIntLenenc(msg, attrs.readableBytes());
+			msg.writeBytes(attrs);
+			attrs.release();
+		}
 
 		int wPos = msg.writerIndex();
 		msg.setMediumLE(0, wPos - Packet.HEADER_SIZE);
@@ -138,8 +177,21 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		});
 	}
 
+	private ByteBuf encodeAttrs() {
+		ByteBuf rv = channelCtx.alloc().buffer();
+		connAttributes.forEach((k, v) -> {
+			Fields.writeIntLenenc(rv, k.size());
+			rv.writeBytes(k.getBytes());
+			Fields.writeIntLenenc(rv, v.size());
+			rv.writeBytes(v.getBytes());
+		});
+		return rv;
+	}
+
 	public final Logger logger;
 	private final Client cl;
+	private final LinkedHashMap<ByteString, ByteString> connAttributes
+	= new LinkedHashMap<>();
 	private ChannelHandlerContext channelCtx;
 	private MessageHandler handler;
 	private ByteBuf replyMsg;

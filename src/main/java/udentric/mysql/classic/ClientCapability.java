@@ -16,8 +16,6 @@
 
 package udentric.mysql.classic;
 
-import org.apache.logging.log4j.Logger;
-
 import udentric.mysql.util.BitsetEnum;
 
 public enum ClientCapability implements BitsetEnum<Long> {
