@@ -48,6 +48,26 @@ public class Fields {
 		return (long)v & 0xffffffffL;
 	}
 
+	public static long readLongLenenc(ByteBuf in) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			return len;
+		}
+
+		switch (len) {
+		case 0xfb:
+			return 0;
+		case 0xfc:
+			return readLong2(in);
+		case 0xfd:
+			return in.readMediumLE();
+		case 0xfe:
+			return in.readLongLE();
+		default:
+			throw new DecoderException("malformed packet");
+		}
+	}
+
 	public static ByteString readStringNT(ByteBuf in) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
@@ -60,21 +80,46 @@ public class Fields {
 
 	public static byte[] readBytes(ByteBuf in, int len) {
 		byte[] rv = new byte[len];
-		in.readBytes(rv);
+		if (len > 0)
+			in.readBytes(rv);
+
 		return rv;
 	}
 
 	public static byte[] readBytesNT(ByteBuf in) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			throw new DecoderException(
-				"malformed server handshake message"
-			);
+			throw new DecoderException("malformed packet");
 
 		byte[] rv = new byte[len];
 		in.readBytes(rv);
 		in.skipBytes(1);
 		return rv;
+	}
+
+	public static ByteString readStringLenenc(ByteBuf in) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			return new ByteString(in, len);
+		}
+
+		switch (len) {
+		case 0xfb:
+			return null;
+		case 0xfc:
+			len = readInt2(in);
+			break;
+		case 0xfd:
+			len = in.readMediumLE();
+			break;
+		case 0xfe:
+			len = Math.toIntExact(in.readLongLE());
+			break;
+		default:
+			throw new DecoderException("malformed packet");
+		}
+
+		return new ByteString(in, len);
 	}
 
 	public static int writeIntLenenc(ByteBuf out, int val) {

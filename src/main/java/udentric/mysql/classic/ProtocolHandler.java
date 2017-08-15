@@ -151,6 +151,8 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 
 	public void setMessageHandler(MessageHandler handler_) {
 		handler = handler_;
+		if (handler == null)
+			seqNum = 0;
 	}
 
 	public void sendReply() {
