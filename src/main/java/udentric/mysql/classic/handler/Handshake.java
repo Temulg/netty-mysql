@@ -24,7 +24,6 @@ import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.MessageHandler;
 import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.ClientCapability;
-import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
 import udentric.mysql.util.ByteString;
 
@@ -35,10 +34,11 @@ public class Handshake implements MessageHandler {
 	public void process(ProtocolHandler ph, ByteBuf msg) {
 		int protoVers = Fields.readInt1(msg);
 		if (PROTOCOL_VERSION != protoVers) {
-			throw new DecoderException(
+			ph.setChannelFailure(new DecoderException(
 				"unsupported protocol version "
 				+ Integer.toString(protoVers)
-			);
+			));
+			return;
 		}
 
 		ByteString authPluginName
@@ -69,8 +69,6 @@ public class Handshake implements MessageHandler {
 		ph.updateServerCharsetId(Fields.readInt1(msg));
 
 		short statusFlags = msg.readShortLE();
-
-		ph.logger.debug(ServerStatus.describe(statusFlags));
 
 		srvCaps |= Fields.readLong2(msg) << 16;
 

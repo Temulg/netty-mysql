@@ -16,16 +16,46 @@
 
 package udentric.mysql.classic;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.MessageToByteEncoder;
-import udentric.mysql.classic.message.client.Any;
+public enum ColumnType {
+	DECIMAL,
+	TINY,
+	SHORT,
+	LONG,
+	FLOAT,
+	DOUBLE,
+	NULL,
+	TIMESTAMP,
+	LONGLONG,
+	INT24,
+	DATE,
+	TIME,
+	DATETIME,
+	YEAR,
+	NEWDATE,
+	VARCHAR,
+	BIT,
+	TIMESTAMP2,
+	DATETIME2,
+	TIME2,
+	JSON(245),
+	NEWDECIMAL(246),
+	ENUM(247),
+	SET(248),
+	TINY_BLOB(249),
+	MEDIUM_BLOB(250),
+	LONG_BLOB(251),
+	BLOB(252),
+	VAR_STRING(253),
+	STRING(254),
+	GEOMETRY(255);
 
-public class RequestEncoder extends MessageToByteEncoder<Any> {
-	@Override
-	protected void encode(
-		ChannelHandlerContext ctx, Any in, ByteBuf out
-	) throws Exception {
-		System.out.format("sending message %s\n", in);
+	private ColumnType() {
+		id = ordinal();
 	}
+
+	private ColumnType(int id_) {
+		id = id_;
+	}
+
+	private final int id;
 }

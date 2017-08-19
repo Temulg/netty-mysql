@@ -14,7 +14,11 @@
  * under the License.
  */
 
-package udentric.mysql.classic.message.client;
+package udentric.mysql.classic.command;
+
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.ProtocolHandler;
 
 public abstract class Any {
+	public abstract void encode(ByteBuf dst, ProtocolHandler ph);
 }

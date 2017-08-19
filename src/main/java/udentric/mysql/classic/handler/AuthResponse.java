@@ -44,34 +44,21 @@ public class AuthResponse implements MessageHandler {
 			authSwitch(ph, msg);
 			break;
 		case ResponseType.ERR:
-			throw MySQLException.fromErrPacket(msg);
+			ph.setChannelFailure(MySQLException.fromErrPacket(msg));
+			return;
 		default:
-			throw new DecoderException(
+			ph.setChannelFailure(new DecoderException(
 				"unsupported packet type "
 				+ Integer.toString(type)
-			);
+			));
+			return;
 		}
-
-		/*
-		int<1> 0x00 : OK_Packet header or (0xFE if CLIENT_DEPRECATE_EOF is set)
-int<lenenc> affected rows
-int<lenenc> last insert id
-int<2> server status
-int<2> warning count
-if session_tracking_supported (see CLIENT_SESSION_TRACK)
-
-    string<lenenc> info
-    if (status flags & SERVER_SESSION_STATE_CHANGED)
-        string<lenenc> session state info
-        string<lenenc> value of variable 
-
-else
-
-    string<EOF> info
-    */
 	}
 
+	@SuppressWarnings("unused")
 	private void okReceived(ProtocolHandler ph, ByteBuf msg) {
+		ph.setMessageHandler(null);
+
 		long rows = Fields.readLongLenenc(msg);
 		long insertId = Fields.readLongLenenc(msg);
 		short srvStatus = msg.readShortLE();
@@ -85,34 +72,35 @@ else
 			if (ServerStatus.SESSION_STATE_CHANGED.get(
 				srvStatus
 			)) {
-				throw new DecoderException(
+				ph.setChannelFailure(new DecoderException(
 					"session state info not decoded"
-				);
+				));
+				return;
 			}
 		} else {
 			info = new ByteString(msg, msg.readableBytes());
 		}
 
 		ph.logger.debug(
-			"successfully connected to MySQL server (%s)", info
+			"successfully connected to MySQL server ({})", info
 		);
-
-		ph.setMessageHandler(null);
+		ph.setChannelSuccess();
 	}
 
 	private void authSwitch(ProtocolHandler ph, ByteBuf msg) {
 		if (!msg.isReadable()) {
-			throw new DecoderException(
+			ph.setChannelFailure(new DecoderException(
 				"mysql_old_password auth method not supported"
-			);
+			));
+			return;
 		}
 
 		ByteString authPluginName = Fields.readStringNT(msg);
 		byte[] pluginData = Fields.readBytes(msg, msg.readableBytes());
-		throw new DecoderException(String.format(
+		ph.setChannelFailure(new DecoderException(String.format(
 			"%s auth method not supported (data: %s)",
 			authPluginName, Arrays.toString(pluginData)
-		));
+		)));
 	}
 
 	public static final AuthResponse INSTANCE = new AuthResponse();

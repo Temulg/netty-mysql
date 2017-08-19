@@ -26,14 +26,34 @@ import io.netty.util.ResourceLeakDetector.Level;
 import io.netty.util.concurrent.Future;
 import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
 
-public class Test {
+public class Test implements QueryResultConsumer {
 	void onConnected(Future<?> f) {
 		if (f.isSuccess()) {
 			System.out.println("connected!");
-			
+			ch.writeAndFlush(Commands.quit()).addListener(
+				this::onQuit
+			);
+			System.out.println("quit sent");
 		} else {
 			f.cause().printStackTrace();
+			ch.close();
 		}
+	}
+
+	void query() {
+		ch.writeAndFlush(
+			Commands.query(
+				"select * from mysql.user;"
+			).withResultConsumer(this)
+		);
+	}
+
+	void onResult(Future<?> f) {
+
+	}
+
+	void onQuit(Future<?> f) {
+		ch.close();
 	}
 
 	public static void main(String... args) {

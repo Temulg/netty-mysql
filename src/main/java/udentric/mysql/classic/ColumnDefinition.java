@@ -14,18 +14,21 @@
  * under the License.
  */
 
-package udentric.mysql.classic.message.server;
+package udentric.mysql.classic;
 
-public class Handshake extends Any {
-	public Handshake() {
-		super(ACCESSOR);
-	}
+import udentric.mysql.util.ByteString;
 
-	public enum Field implements Any.Field {
-
-	}
-
-	private static final FieldAccess<
-                Field
-        > ACCESSOR = new FieldAccess<>(Field.class);
+public class ColumnDefinition {
+	public final ByteString catalog;
+	public final ByteString schema;
+	public final ByteString tableAlias;
+	public final ByteString table;
+	public final ByteString columnAlias;
+	public final ByteString column;
+	public final int fixedColumnSize;
+	public final CharsetInfo.Entry charset;
+	public final int maxColumnSize;
+	public final ColumnType type;
+	public final short flags;
+	public final int decimals;
 }

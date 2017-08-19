@@ -16,6 +16,7 @@
 
 package udentric.mysql.classic;
 
+import java.net.SocketAddress;
 import java.util.LinkedHashMap;
 
 import org.apache.logging.log4j.LogManager;
@@ -24,7 +25,9 @@ import org.apache.logging.log4j.Logger;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.handler.Handshake;
+import udentric.mysql.classic.command.Any;
 import udentric.mysql.util.ByteString;
 
 public class ProtocolHandler extends ChannelDuplexHandler {
@@ -33,6 +36,25 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		handler = Handshake.INSTANCE;
 		cl = cl_;
 		addCommonAttributes();
+	}
+
+	@Override
+	public void connect(
+		ChannelHandlerContext ctx, SocketAddress remoteAddress,
+		SocketAddress localAddress, ChannelPromise promise
+	) throws Exception {
+		ChannelPromise nextPromise = ctx.channel().newPromise();
+		clientPromise = promise;
+
+		nextPromise.addListener(chf -> {
+			if (!chf.isSuccess()) {
+				ChannelPromise cp = clientPromise;
+				clientPromise = null;
+				cp.setFailure(chf.cause());
+			}
+		});
+
+		ctx.connect(remoteAddress, localAddress, nextPromise);
 	}
 
 	private void addCommonAttributes() {
@@ -61,7 +83,7 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		ChannelHandlerContext ctx, Object msg_
 	) throws Exception {
 		if (!(msg_ instanceof ByteBuf)) {
-			ctx.fireChannelRead(msg_);
+			super.channelRead(ctx, msg_);
 			return;
 		}
 
@@ -90,6 +112,59 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		}
 	}
 
+	@Override
+	public void write(
+		ChannelHandlerContext ctx, Object msg_, ChannelPromise promise
+	) throws Exception {
+		if (!(msg_ instanceof Any)) {
+			super.write(ctx, msg_, promise);
+			return;
+		}
+
+		Any msg = (Any)msg_;
+
+		channelCtx = ctx;
+		try {
+			ByteBuf dst = ctx.alloc().buffer();
+			int wpos = dst.writerIndex();
+			dst.writeZero(Packet.HEADER_SIZE);
+			msg.encode(dst, this);
+			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
+			dst.setMediumLE(wpos, len);
+			dst.setByte(wpos + 3, seqNum);
+			super.write(ctx, dst, promise);
+		} catch (Throwable t) {
+			promise.setFailure(t);
+		} finally {
+			channelCtx = null;
+		}
+	}
+
+	public void setChannelSuccess() {
+		if (clientPromise != null) {
+			ChannelPromise cp = clientPromise;
+			clientPromise = null;
+			cp.setSuccess();
+		}
+	}
+
+	public void setChannelFailure(Throwable t) {
+		if (clientPromise != null) {
+			ChannelPromise cp = clientPromise;
+			clientPromise = null;
+			cp.setFailure(t);
+		} else {
+			throwAny(t);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T extends Throwable> void throwAny(
+		Throwable t
+	) throws T {
+		throw (T)t;
+	}
+
 	public void updateServerIdentity(
 		ByteString srvName_, int srvConnId_
 	) {
@@ -104,7 +179,6 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	}
 
 	public void updateServerCapabilities(long caps) {
-		logger.debug(ClientCapability.describe(caps));
 		serverCaps = caps;
 
 		clientCaps = ClientCapability.LONG_PASSWORD.mask()
@@ -194,6 +268,7 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	private final Client cl;
 	private final LinkedHashMap<ByteString, ByteString> connAttributes
 	= new LinkedHashMap<>();
+	private ChannelPromise clientPromise;
 	private ChannelHandlerContext channelCtx;
 	private MessageHandler handler;
 	private ByteBuf replyMsg;
