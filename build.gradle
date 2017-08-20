@@ -13,6 +13,7 @@ dependencies {
 	compile 'com.google.guava:guava:22.0'
 	compile 'io.netty:netty-codec:4.1.13.Final'
 	compile 'org.apache.logging.log4j:log4j-core:2.8.2'
+	testCompile 'org.testng:testng:6.11'
 }
 
 eclipse {
@@ -20,6 +21,10 @@ eclipse {
 		downloadSources = true
 		downloadJavadoc = true
 	}
+}
+
+test {
+	useTestNG()
 }
 
 task run(type: JavaExec) {

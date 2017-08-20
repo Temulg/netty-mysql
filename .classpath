@@ -3,6 +3,7 @@
 	<classpathentry path="bin" kind="output"/>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="src" path="src/test/java"/>
+	<classpathentry kind="src" path="src/test/resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8/"/>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.8.2/4693b08b8d9abe152417b9564bb7a68d82630180/log4j-core-2.8.2-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.8.2/979fc0cf8460302e4ffbfe38c1b66a99450b0bb7/log4j-core-2.8.2.jar">
 		<attributes>
@@ -58,6 +59,21 @@
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.13.Final/62f262d3491ef40628e14f29aed47e112b7b62b2/netty-common-4.1.13.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.13.Final/f640e8cd8866527150784f8986152d3bba45b712/netty-common-4.1.13.Final.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.13.Final/fcda601c9c2d1c28f68a9dbaa03c9a5c685dd375/netty-common-4.1.13.Final-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.11/77da7afb24d57b640d9803593a6222c7de12dd4e/testng-6.11-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.11/1fdd5e22f50b14f6d846163456e8c9a7657626fb/testng-6.11.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.11/a1371c6c7e01903025c3773a0a09681ead18565a/testng-6.11-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.64/1b16adc28aca77f62a61f31380f84961c9c3570d/jcommander-1.64-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.64/456a985ac9b12d34820e4d5de063b2c2fc43ed5a/jcommander-1.64.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.64/ffd0b056339e996252026e26802017f36a035248/jcommander-1.64-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.yaml/snakeyaml/1.17/63577e87886c76228db9f8a2c50ea43cde5072eb/snakeyaml-1.17-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.yaml/snakeyaml/1.17/7a27ea250c5130b2922b86dea63cbb1cc10a660c/snakeyaml-1.17.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.yaml/snakeyaml/1.17/7d487d4d4284b8621c310a3865776dc46befc90c/snakeyaml-1.17-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
 </classpath>
