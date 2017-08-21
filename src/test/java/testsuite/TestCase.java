@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
  *
- * This file is made available under the Apache License, version 2.0
- * (the "License"); you may not use this file except in compliance
+ * This file is made available under the GNU General Public License
+ * version 2 (the "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at:
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -14,7 +14,7 @@
  * under the License.
  */
 /*
- * Adapted from MySQL Connector/J testsuite
+ * May contain portions of MySQL Connector/J testsuite
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
  *
@@ -48,6 +48,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
+import org.testng.Reporter;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
@@ -79,9 +80,10 @@ public abstract class TestCase {
 					Client.builder().withCredentials(
 						new NativePasswordCredentialsProvider()
 					).build()
-				).connect("10.20.0.10", 3306)
+				).connect(System.getProperty(
+					"udentric.mysql.host"
+				), 3306)
 			);
-			serverVersion = c.getServerVersion();
 			closeableObjects.offerFirst(c);
 			return c;
 		});
@@ -231,6 +233,5 @@ public abstract class TestCase {
 		AutoCloseable
 	> closeableObjects = new ArrayDeque<>();
 	protected final Logger logger;
-	protected ServerVersion serverVersion;
 	protected NioEventLoopGroup grp;
 }

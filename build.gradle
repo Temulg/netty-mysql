@@ -27,17 +27,27 @@ test {
 	useTestNG()
 }
 
+tasks.withType(Test) {task ->
+	project.properties.each{k, v ->
+		if (k.startsWith("udentric.")) {
+			task.systemProperty(k, v)
+		}
+	}
+}
+
 task run(type: JavaExec) {
+	main = project.properties.getOrDefault('mainClass', '')
+	args project.properties.getOrDefault('cmdLineArgs', '')
+	jvmArgs project.properties.getOrDefault('jvmLineArgs', '')
 	classpath = sourceSets.test.runtimeClasspath
-	main = 'udentric.mysql.classic.Test'
-	//args 'appArg1'
 }
 
 task debug(type: JavaExec) {
-	main = 'udentric.mysql.classic.Test'
+	main = project.properties.getOrDefault('mainClass', '')
+	args project.properties.getOrDefault('cmdLineArgs', '')
+	jvmArgs project.properties.getOrDefault('jvmLineArgs', '')
 	classpath = sourceSets.test.runtimeClasspath
 	standardInput = System.in
-	//workingDir = project.assetsDir
 	ignoreExitValue = true
 	debug = true
 }

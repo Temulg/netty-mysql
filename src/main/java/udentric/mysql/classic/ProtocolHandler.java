@@ -26,6 +26,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.handler.Handshake;
 import udentric.mysql.classic.command.Any;
 import udentric.mysql.util.ByteString;
@@ -165,10 +166,14 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		throw (T)t;
 	}
 
+	public ServerVersion getServerVersion() {
+		return serverVersion;
+	}
+
 	public void updateServerIdentity(
-		ByteString srvName_, int srvConnId_
+		ByteString srvName, int srvConnId_
 	) {
-		srvName = srvName_.toString();
+		serverVersion = new ServerVersion(srvName.toString());
 		srvConnId = srvConnId_;
 		logger.debug(
 			"server identity set: {} ({})", srvConnId, srvName
@@ -272,7 +277,7 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	private ChannelHandlerContext channelCtx;
 	private MessageHandler handler;
 	private ByteBuf replyMsg;
-	private String srvName;
+	private ServerVersion serverVersion;
 	private long serverCaps;
 	private long clientCaps;
 	private int srvConnId;

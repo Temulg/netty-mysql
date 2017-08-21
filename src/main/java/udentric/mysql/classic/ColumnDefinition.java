@@ -19,6 +19,7 @@ package udentric.mysql.classic;
 import udentric.mysql.util.ByteString;
 
 public class ColumnDefinition {
+/*
 	public final ByteString catalog;
 	public final ByteString schema;
 	public final ByteString tableAlias;
@@ -31,4 +32,5 @@ public class ColumnDefinition {
 	public final ColumnType type;
 	public final short flags;
 	public final int decimals;
+*/
 }

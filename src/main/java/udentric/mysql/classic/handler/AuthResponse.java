@@ -64,7 +64,7 @@ public class AuthResponse implements MessageHandler {
 		short srvStatus = msg.readShortLE();
 		int warnCount = Fields.readInt2(msg);
 		ByteString info;
-
+/*
 		if (ClientCapability.SESSION_TRACK.get(
 			ph.getServerCapabilities()
 		)) {
@@ -77,9 +77,9 @@ public class AuthResponse implements MessageHandler {
 				));
 				return;
 			}
-		} else {
-			info = new ByteString(msg, msg.readableBytes());
-		}
+		} else
+*/
+		info = new ByteString(msg, msg.readableBytes());
 
 		ph.logger.debug(
 			"successfully connected to MySQL server ({})", info

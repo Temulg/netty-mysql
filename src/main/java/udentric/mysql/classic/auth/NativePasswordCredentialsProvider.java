@@ -27,7 +27,22 @@ import udentric.mysql.util.Scramble411;
 
 public class NativePasswordCredentialsProvider implements CredentialsProvider {
 	public NativePasswordCredentialsProvider() {
-		this(System.getenv("USER"), System.getenv("MYSQL_PWD"));
+		String user = System.getProperty("udentric.mysql.user");
+		if (user == null) {
+			user = System.getenv("USER");
+		}
+
+		String pwd = System.getProperty("udentric.mysql.password");
+		if (pwd == null) {
+			pwd = System.getenv("MYSQL_PWD");
+		}
+
+		username = user != null
+			? user.getBytes(StandardCharsets.UTF_8)
+			: new byte[0];
+		password = pwd != null
+			? pwd.getBytes(StandardCharsets.UTF_8)
+			: new byte[0];
 	}
 
 	public NativePasswordCredentialsProvider(
@@ -35,17 +50,6 @@ public class NativePasswordCredentialsProvider implements CredentialsProvider {
 	) {
 		username = username_;
 		password = password_;
-	}
-
-	private NativePasswordCredentialsProvider(
-		String username_, String password_
-	) {
-		username = username_ != null
-			? username_.getBytes(StandardCharsets.UTF_8)
-			: new byte[0];
-		password = password_ != null
-			? password_.getBytes(StandardCharsets.UTF_8)
-			: new byte[0];
 	}
 
 	@Override

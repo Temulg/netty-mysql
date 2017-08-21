@@ -13,17 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
- * Adapted from MySQL Connector/J testsuite
- *
- * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
- *
- * The MySQL Connector/J is licensed under the terms of the GPLv2
- * <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most MySQL
- * Connectors. There are special exceptions to the terms and conditions of
- * the GPLv2 as it is applied to this software, see the FOSS License Exception
- * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
- */
 
 package udentric.mysql.util;
 
@@ -31,9 +20,9 @@ import java.util.TimeZone;
 
 import com.google.common.collect.ImmutableMap;
 
-public class EscapeProcessor {
-	private EscapeProcessor() {}
-
+public class QueryNormalizer {
+	private QueryNormalizer() {}
+/*
 	public static final Object escapeSQL(
 		String sql, TimeZone defaultTimeZone,
 		boolean serverSupportsFractionalSecond,
@@ -220,7 +209,7 @@ public class EscapeProcessor {
 
 		return epr;
 	}
-
+*/
 	private static final ImmutableMap<
 		String, String
 	> JDBC_CONVERT_TO_MYSQL_TYPE_MAP = ImmutableMap.<

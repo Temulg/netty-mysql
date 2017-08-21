@@ -41,13 +41,18 @@ import udentric.mysql.classic.ProtocolHandler;
 
 public class Connection implements java.sql.Connection {
 	public Connection(ChannelFuture chf) {
-		ch = chf.channel();
-		ph = (ProtocolHandler)ch.pipeline().get("mysql.protocol");
 		try {
-			chf.await();
-		} catch (Exception e) {
-			throwAny(e);
+			if (!chf.await().isSuccess()) {
+				throw chf.cause();
+			}
+		} catch (Throwable t) {
+			throwAny(t);
 		}
+
+		ch = chf.channel();
+		ph = (ProtocolHandler)ch.pipeline().get(
+			"mysql.protocol"
+		);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -58,7 +63,7 @@ public class Connection implements java.sql.Connection {
 	}
 
 	public ServerVersion getServerVersion() {
-		return null;
+		return ph.getServerVersion();
 	}
 
 	@Override
@@ -85,7 +90,7 @@ public class Connection implements java.sql.Connection {
 		if (sql == null)
 			return null;
 
-
+/*
 		Object escapedSqlResult = EscapeProcessor.escapeSQL(
 			sql,
 			getMultiHostSafeProxy().getSession().getDefaultTimeZone(),
@@ -98,6 +103,8 @@ public class Connection implements java.sql.Connection {
 		}
 
 		return ((EscapeProcessorResult)escapedSqlResult).escapedSql;
+*/
+		return "";
 	}
 
 	@Override

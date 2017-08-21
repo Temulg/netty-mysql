@@ -13,25 +13,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
- * Adapted from MySQL Connector/J testsuite
- *
- * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
- *
- * The MySQL Connector/J is licensed under the terms of the GPLv2
- * <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most MySQL
- * Connectors. There are special exceptions to the terms and conditions of
- * the GPLv2 as it is applied to this software, see the FOSS License Exception
- * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
- */
-
 package udentric.mysql.util;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
-public class EscapeTokenizer {
-	public EscapeTokenizer(String s_) {
+public class QueryTokenizer {
+	public QueryTokenizer(String s_) {
 		s = s_;
 		last = s.length();
 		cur = 0;
@@ -42,8 +30,8 @@ public class EscapeTokenizer {
 		return cur < last;
 	}
 
-	public String nextToken() {
-		StringBuilder tokenBuf = new StringBuilder();
+	public CharSequence nextToken() {
+		tokenBuf.setLength(0);
 
 		tokenLoop: while (cur < last) {
 			char ch = s.charAt(cur);
@@ -134,7 +122,7 @@ public class EscapeTokenizer {
 			cur++;
 		}
 
-		return tokenBuf.toString();
+		return tokenBuf;
 	}
 
 	private static final char CHR_ESCAPE = '\\';
@@ -160,6 +148,7 @@ public class EscapeTokenizer {
 	private final String s;
 	private final ArrayDeque<State> state = new ArrayDeque<>();
 	private final int last;
+	private final StringBuilder tokenBuf = new StringBuilder();
 	private int cur;
 	private boolean hasVariables = false;
 }
