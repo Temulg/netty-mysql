@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
  *
- * This file is made available under the Apache License, version 2.0
- * (the "License"); you may not use this file except in compliance
+ * This file is made available under the GNU General Public License
+ * version 2 (the "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at:
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,129 +13,140 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+/*
+ * May contain portions of MySQL Connector/J implementation
+ *
+ * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
+ *
+ * The MySQL Connector/J is licensed under the terms of the GPLv2
+ * <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most MySQL
+ * Connectors. There are special exceptions to the terms and conditions of
+ * the GPLv2 as it is applied to this software, see the FOSS License Exception
+ * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
+ */
+
 package udentric.mysql.util;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-
 public class QueryTokenizer {
-	public QueryTokenizer(String s_) {
-		s = s_;
-		last = s.length();
-		cur = 0;
-		state.offerLast(State.NORMAL);
+	public QueryTokenizer(String src_) {
+		src = src_;
+		srcLastPos = src != null ? src.length() : 0;
+		srcCurPos = 0;
 	}
 
-	public boolean hasMoreTokens() {
-		return cur < last;
+	protected CharSequence updateSubExpr(CharSequence seq) {
+		return seq;
 	}
 
-	public CharSequence nextToken() {
-		tokenBuf.setLength(0);
+	protected void parseSrc() {
+		while (srcCurPos < srcLastPos) {
+			char ch = src.charAt(srcCurPos);
 
-		tokenLoop: while (cur < last) {
-			char ch = s.charAt(cur);
-
-			switch (state.peekLast()) {
+			switch (curExpr.state) {
+			case SUBEXPR:
 			case NORMAL:
 				switch (ch) {
 				case CHR_ESCAPE:
-					state.offerLast(State.ESCAPE);
+					beginSimpleExpr(State.ESCAPE);
 					break;
 				case CHR_SGL_QUOTE:
-					tokenBuf.append(ch);
-					state.offerLast(State.QUOTE_SGL);
+					curExpr.append(ch);
+					beginSimpleExpr(State.QUOTE_SGL);
 					break;
 				case CHR_DBL_QUOTE:
-					tokenBuf.append(ch);
-					state.offerLast(State.QUOTE_DBL);
+					curExpr.append(ch);
+					beginSimpleExpr(State.QUOTE_DBL);
 					break;
 				case CHR_COMMENT:
-					tokenBuf.append(ch);
-					state.offerLast(State.POSSIBLE_COMMENT);
+					curExpr.append(ch);
+					beginSimpleExpr(State.POSSIBLE_COMMENT);
 					break;
-				case CHR_BEGIN_TOKEN:
-					
+				case CHR_BEGIN_SUBEXPR:
+					beginSubExpr(State.SUBEXPR);
+					curExpr.append(ch);
+					break;
+				case CHR_END_SUBEXPR:
+					curExpr.append(ch);
+					endExpr();
 					break;
 				case CHR_VARIABLE:
-					tokenBuf.append(ch);
+					curExpr.append(ch);
 					hasVariables = true;
 					break;
 				default:
-					tokenBuf.append(ch);
+					curExpr.append(ch);
 				}
 				break;
 			case ESCAPE:
-				tokenBuf.append(ch);
-				state.pollLast();
+				curExpr.append(ch);
+				endExpr();
 				break;
 			case QUOTE_SGL:
 				switch (ch) {
 				case CHR_ESCAPE:
-					state.offerLast(State.ESCAPE);
+					beginSimpleExpr(State.ESCAPE);
 					break;
 				case CHR_SGL_QUOTE:
-					tokenBuf.append(ch);
-					state.pollLast();
+					curExpr.append(ch);
+					endExpr();
 					break;
 				default:
-					tokenBuf.append(ch);
+					curExpr.append(ch);
 				}
 				break;
 			case QUOTE_DBL:
 				switch (ch) {
 				case CHR_ESCAPE:
-					state.offerLast(State.ESCAPE);
+					beginSimpleExpr(State.ESCAPE);
 					break;
 				case CHR_DBL_QUOTE:
-					tokenBuf.append(ch);
-					state.pollLast();
+					curExpr.append(ch);
+					endExpr();
 					break;
 				default:
-					tokenBuf.append(ch);
+					curExpr.append(ch);
 				}
 				break;
 			case POSSIBLE_COMMENT:
-				state.pollLast();
-				if (ch != CHR_COMMENT)
+				if (ch != CHR_COMMENT) {
+					endExpr();
 					continue;
+				}
 
-				state.offerLast(State.IN_COMMENT);
-				tokenBuf.append(ch);
+				curExpr.state = State.IN_COMMENT;
+				curExpr.append(ch);
 				break;
 			case IN_COMMENT:
 				if (ch == CHR_LF || ch == CHR_CR) {
-					state.pollLast();
-					state.offerLast(State.AFTER_COMMENT);
+					curExpr.state = State.AFTER_COMMENT;
 				}
-				tokenBuf.append(ch);
+				curExpr.append(ch);
 				break;
 			case AFTER_COMMENT:
 				if (ch != CHR_LF && ch != CHR_CR) {
-					state.pollLast();
+					endExpr();
 					continue;
 				}
-				tokenBuf.append(ch);
+				curExpr.append(ch);
 				break;
 			}
 
-			cur++;
+			srcCurPos++;
 		}
-
-		return tokenBuf;
 	}
 
-	private static final char CHR_ESCAPE = '\\';
-	private static final char CHR_SGL_QUOTE = '\'';
-	private static final char CHR_DBL_QUOTE = '"';
-	private static final char CHR_LF = '\n';
-	private static final char CHR_CR = '\r';
-	private static final char CHR_COMMENT = '-';
-	private static final char CHR_BEGIN_TOKEN = '{';
-	private static final char CHR_END_TOKEN = '}';
-	private static final char CHR_VARIABLE = '@';
+	static final char CHR_ESCAPE = '\\';
+	static final char CHR_SGL_QUOTE = '\'';
+	static final char CHR_DBL_QUOTE = '"';
+	static final char CHR_LF = '\n';
+	static final char CHR_CR = '\r';
+	static final char CHR_COMMENT = '-';
+	static final char CHR_BEGIN_SUBEXPR = '{';
+	static final char CHR_END_SUBEXPR = '}';
+	static final char CHR_VARIABLE = '@';
 
-	private enum State {
+	protected enum State {
+		SUBEXPR,
 		NORMAL,
 		ESCAPE,
 		QUOTE_SGL,
@@ -145,10 +156,76 @@ public class QueryTokenizer {
 		AFTER_COMMENT;
 	}
 
-	private final String s;
-	private final ArrayDeque<State> state = new ArrayDeque<>();
-	private final int last;
-	private final StringBuilder tokenBuf = new StringBuilder();
-	private int cur;
-	private boolean hasVariables = false;
+
+	protected static abstract class Expr {
+		Expr(Expr prev_, State state_) {
+			prev = prev_;
+			state = state_;
+		}
+
+		abstract void append(char ch);
+		abstract StringBuilder getBuf();
+
+		final Expr prev;
+		State state;
+	}
+
+	protected void beginSimpleExpr(State state) {
+		curExpr = new SimpleExpr(curExpr, state);
+	}
+
+	protected void beginSubExpr(State state) {
+		curExpr = new SubExpr(curExpr, state);
+	}
+
+	protected void endExpr() {
+		if (curExpr instanceof SubExpr) {
+			curExpr.prev.getBuf().append(
+				updateSubExpr(curExpr.getBuf())
+			);
+		}
+
+		curExpr = curExpr.prev;
+	}
+
+	protected static class SimpleExpr extends Expr {
+		SimpleExpr(Expr prev_, State state_) {
+			super(prev_, state_);
+		}
+
+		@Override
+		void append(char ch) {
+			prev.append(ch);
+		}
+
+		@Override
+		StringBuilder getBuf() {
+			return prev.getBuf();
+		}
+	}
+
+	protected static class SubExpr extends Expr {
+		SubExpr(Expr prev_, State state_) {
+			super(prev_, state_);
+		}
+
+		@Override
+		void append(char ch) {
+			buf.append(ch);
+		}
+
+		@Override
+		StringBuilder getBuf() {
+			return buf;
+		}
+
+		final StringBuilder buf = new StringBuilder();
+	}
+
+	protected final String src;
+	protected final int srcLastPos;
+	protected final SubExpr rootExpr = new SubExpr(null, State.NORMAL);
+	protected Expr curExpr = rootExpr;
+	protected int srcCurPos;
+	protected boolean hasVariables = false;
 }

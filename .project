@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>service/netty_mysql</name>
+	<name>netty_mysql</name>
 	<comment></comment>
 	<projects/>
 	<natures>

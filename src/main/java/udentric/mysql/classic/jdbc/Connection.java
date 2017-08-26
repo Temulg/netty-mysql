@@ -38,6 +38,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.ProtocolHandler;
+import udentric.mysql.util.QueryNormalizer;
 
 public class Connection implements java.sql.Connection {
 	public Connection(ChannelFuture chf) {
@@ -87,24 +88,11 @@ public class Connection implements java.sql.Connection {
 
 	@Override
 	public String nativeSQL(String sql) throws SQLException {
-		if (sql == null)
-			return null;
-
-/*
-		Object escapedSqlResult = EscapeProcessor.escapeSQL(
-			sql,
-			getMultiHostSafeProxy().getSession().getDefaultTimeZone(),
-			getMultiHostSafeProxy().getSession().serverSupportsFracSecs(),
-			getExceptionInterceptor()
+		QueryNormalizer qn = new QueryNormalizer(
+			sql, null, false, null
 		);
 
-		if (escapedSqlResult instanceof String) {
-			return (String) escapedSqlResult;
-		}
-
-		return ((EscapeProcessorResult)escapedSqlResult).escapedSql;
-*/
-		return "";
+		return qn.normalize().toString();
 	}
 
 	@Override

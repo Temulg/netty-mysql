@@ -48,8 +48,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
-import org.testng.Reporter;
-import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
 import udentric.mysql.classic.jdbc.Connection;

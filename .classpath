@@ -25,6 +25,7 @@
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.13.Final/c900b23627f652ca97ccbcc2f33f4bde2891300d/netty-codec-4.1.13.Final-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/mysql/mysql-connector-java/8.0.7-dmr/1aa71e2b852e6b6deffb66d8c33f0864bbd03309/mysql-connector-java-8.0.7-dmr-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/mysql/mysql-connector-java/8.0.7-dmr/8b1e615f7a7ad219a1aa8d01b6980faf94f5a644/mysql-connector-java-8.0.7-dmr.jar"/>
 	<classpathentry kind="lib" path="/root/.m2/repository/com/google/code/findbugs/jsr305/1.3.9/jsr305-1.3.9.jar"/>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.0.18/220c1232fa6d13b427c10ccc1243a87f5f501d31/error_prone_annotations-2.0.18-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.0.18/5f65affce1684999e2f4024983835efc3504012e/error_prone_annotations-2.0.18.jar">
 		<attributes>
