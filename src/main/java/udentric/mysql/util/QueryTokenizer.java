@@ -47,6 +47,7 @@ public class QueryTokenizer {
 			case NORMAL:
 				switch (ch) {
 				case CHR_ESCAPE:
+					curExpr.append(ch);
 					beginSimpleExpr(State.ESCAPE);
 					break;
 				case CHR_SGL_QUOTE:

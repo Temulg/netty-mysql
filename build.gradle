@@ -13,6 +13,7 @@ dependencies {
 	compile 'com.google.guava:guava:22.0'
 	compile 'io.netty:netty-codec:4.1.13.Final'
 	compile 'org.apache.logging.log4j:log4j-core:2.8.2'
+	compile 'dk.brics:automaton:1.12-1'
 	compile 'mysql:mysql-connector-java:8.0.7-dmr'
 	testCompile 'org.testng:testng:6.11'
 }

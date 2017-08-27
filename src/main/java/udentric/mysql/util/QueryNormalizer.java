@@ -28,7 +28,16 @@
 package udentric.mysql.util;
 
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
+import java.util.Locale;
 import java.util.TimeZone;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,7 +50,8 @@ public class QueryNormalizer extends QueryTokenizer {
 		ExceptionInterceptor exceptionInterceptor_
 	) {
 		super(s);
-		defaultTimeZone = defaultTimeZone_;
+		defaultTimeZone = defaultTimeZone_ != null
+		? defaultTimeZone_ : TimeZone.getDefault();
 		serverSupportsFractionalSecond = serverSupportsFractionalSecond_;
 		exceptionInterceptor = exceptionInterceptor_;
 	}
@@ -59,33 +69,83 @@ public class QueryNormalizer extends QueryTokenizer {
 	protected CharSequence updateSubExpr(CharSequence seq) {
 		Matcher m = EXPR_CLASSIFIER.matcher(seq);
 
-		if (!m.matches())
+		if (!m.find())
 			return seq;
 
-		String type = m.group(1).toLowerCase();
+		String type = m.group(1).toLowerCase(Locale.ENGLISH);
 
 		switch (type) {
 		case "escape":
 		case "fn":
 			return updateFnSubExpr(seq);
 		case "d":
+			m = EXPR_DATE.matcher(seq);
+			if (!m.matches())
+				break;
+			return formatDate(m.group(1), seq);
 		case "ts":
+			m = EXPR_TIMESTAMP.matcher(seq);
+			if (!m.matches())
+				break;
+			return formatTimestamp(m.group(1), seq);
 		case "t":
+			m = EXPR_TIME.matcher(seq);
+			if (!m.matches())
+				break;
+			return formatTime(m.group(1), seq);
 		case "call":
 		case "?=call":
-		default:
-			return seq;
+
 		}
+		return seq;
 	}
 
 	private CharSequence updateFnSubExpr(CharSequence seq) {
 		Matcher m = EXPR_FN_CONVERT.matcher(seq);
 
-		if (!m.matches())
-			return seq;
+		if (!m.matches()) {
+			m = EXPR_FN_ANY.matcher(seq);
+			if (!m.matches())
+				return seq;
+			else
+				return m.group(1);
+		}
 
-		String type = m.group(1).toLowerCase();
-		return seq;
+		String type = m.group(4);
+		return JDBC_CONVERT_TO_MYSQL_TYPE_MAP.getOrDefault(
+			type.toUpperCase(Locale.ENGLISH),
+			expr -> {
+				return seq;
+			}
+		).apply(m.group(1));
+	}
+
+	private CharSequence formatDate(CharSequence val, CharSequence orig) {
+		return LocalDate.parse(
+			val, DateTimeFormatter.ISO_LOCAL_DATE
+		).format(MYSQL_DATE);
+	}
+
+	private CharSequence formatTimestamp(
+		CharSequence val, CharSequence orig
+	) {
+		Timestamp ts = Timestamp.valueOf(val.toString());
+
+		return ZonedDateTime.of(
+			ts.toLocalDateTime(), defaultTimeZone.toZoneId()
+		).format(
+			serverSupportsFractionalSecond
+			? MYSQL_DATE_TIME_FRAC : MYSQL_DATE_TIME
+		);
+	}
+
+	private CharSequence formatTime(CharSequence val, CharSequence orig) {
+		return LocalTime.parse(
+			val, DateTimeFormatter.ISO_LOCAL_TIME
+		).format(
+			serverSupportsFractionalSecond
+			? MYSQL_TIME_FRAC : MYSQL_TIME
+		);
 	}
 
 	public final static byte USES_VARIABLES_FALSE = 0;
@@ -94,54 +154,112 @@ public class QueryNormalizer extends QueryTokenizer {
 
 	private static final Pattern EXPR_CLASSIFIER = Pattern.compile(
 		"^\\{\\s*([acdeflnpst?=]+)",
-		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
 	);
+
 	private static final Pattern EXPR_FN_CONVERT = Pattern.compile(
-		"^\\{\\s*fn\\s+convert\\s+",
+		"^\\{\\s*fn\\s+convert\\s*\\((.+?)\\s*,\\s*((sql_)?(.+?))\\s*\\)\\s*\\}$",
 		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
 	);
 
+	private static final Pattern EXPR_FN_ANY = Pattern.compile(
+		"^\\{\\s*fn\\s+(.*?)\\s*\\}$",
+		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+	);
+
+	private static final Pattern EXPR_DATE = Pattern.compile(
+		"^\\{d\\s+'(.*?)'\\s*\\}$",
+		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
+	);
+
+	private static final Pattern EXPR_TIME = Pattern.compile(
+		"^\\{t\\s+'(.*?)'\\s*\\}$",
+		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
+	);
+
+	private static final Pattern EXPR_TIMESTAMP = Pattern.compile(
+		"^\\{ts\\s+'(.*?)'\\s*\\}$",
+		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
+	);
+
+	private static final DateTimeFormatter MYSQL_DATE
+	= new DateTimeFormatterBuilder().appendLiteral('\'').append(
+		DateTimeFormatter.ISO_LOCAL_DATE
+	).appendLiteral('\'').toFormatter(Locale.US);
+
+	private static final DateTimeFormatter MYSQL_TIME
+	= new DateTimeFormatterBuilder().appendLiteral('\'').appendValue(
+		ChronoField.HOUR_OF_DAY, 2
+	).appendLiteral(':').appendValue(
+		ChronoField.MINUTE_OF_HOUR, 2
+	).optionalStart().appendLiteral(':').appendValue(
+		ChronoField.SECOND_OF_MINUTE, 2
+	).appendLiteral('\'').toFormatter(Locale.US);
+
+	private static final DateTimeFormatter MYSQL_TIME_FRAC
+	= new DateTimeFormatterBuilder().appendLiteral('\'').append(
+		DateTimeFormatter.ISO_LOCAL_TIME
+	).appendLiteral('\'').toFormatter(Locale.US);
+
+	private static final DateTimeFormatter MYSQL_DATE_TIME
+	= new DateTimeFormatterBuilder().appendLiteral('\'').append(
+		DateTimeFormatter.ISO_LOCAL_DATE
+	).appendLiteral(' ').appendValue(
+		ChronoField.HOUR_OF_DAY, 2
+	).appendLiteral(':').appendValue(
+		ChronoField.MINUTE_OF_HOUR, 2
+	).optionalStart().appendLiteral(':').appendValue(
+		ChronoField.SECOND_OF_MINUTE, 2
+	).appendLiteral('\'').toFormatter(Locale.US);
+
+	private static final DateTimeFormatter MYSQL_DATE_TIME_FRAC
+	= new DateTimeFormatterBuilder().appendLiteral('\'').append(
+		DateTimeFormatter.ISO_LOCAL_DATE
+	).appendLiteral(' ').append(
+		DateTimeFormatter.ISO_LOCAL_TIME
+	).appendLiteral('\'').toFormatter(Locale.US);
+
 	private static final ImmutableMap<
-		String, String
+		String, Function<CharSequence, CharSequence>
 	> JDBC_CONVERT_TO_MYSQL_TYPE_MAP = ImmutableMap.<
-		String, String
-	>builder().put(
-		"BIGINT", "0 + ?"
-	).put(
-		"BINARY", "BINARY"
-	).put(
-		"BIT", "0 + ?"
-	).put(
-		"CHAR", "CHAR"
-	).put(
-		"DATE", "DATE"
-	).put(
-		"DECIMAL", "0.0 + ?"
-	).put(
-		"DOUBLE", "0.0 + ?"
-	).put(
-		"FLOAT", "0.0 + ?"
-	).put(
-		"INTEGER", "0 + ?"
-	).put(
-		"LONGVARBINARY", "BINARY"
-	).put(
-		"LONGVARCHAR", "CONCAT(?)"
-	).put(
-		"REAL", "0.0 + ?"
-	).put(
-		"SMALLINT", "CONCAT(?)"
-	).put(
-		"TIME", "TIME"
-	).put(
-		"TIMESTAMP", "DATETIME"
-	).put(
-		"TINYINT", "CONCAT(?)"
-	).put(
-		"VARBINARY", "BINARY"
-	).put(
-		"VARCHAR", "CONCAT(?)"
-	).build();
+		String, Function<CharSequence, CharSequence>
+	>builder().put("BIGINT", expr -> {
+		return "0 + " + expr;
+	}).put("BINARY", expr -> {
+		return "CAST(" + expr + " AS BINARY)";
+	}).put("BIT", expr -> {
+		return "0 + " + expr;
+	}).put("CHAR", expr -> {
+		return "CAST(" + expr + " AS CHAR)";
+	}).put("DATE", expr -> {
+		return "CAST(" + expr + " AS DATE)";
+	}).put("DECIMAL", expr -> {
+		return "0.0 + " + expr;
+	}).put("DOUBLE", expr -> {
+		return "0.0 + " + expr;
+	}).put("FLOAT", expr -> {
+		return "0.0 + " + expr;
+	}).put("INTEGER", expr -> {
+		return "0 + " + expr;
+	}).put("LONGVARBINARY", expr -> {
+		return "CAST(" + expr + " AS BINARY)";
+	}).put("LONGVARCHAR", expr -> {
+		return "CONCAT(" + expr + ")";
+	}).put("REAL", expr -> {
+		return "0.0 + " + expr;
+	}).put("SMALLINT", expr -> {
+		return "CONCAT(" + expr + ")";
+	}).put("TIME", expr -> {
+		return "CAST(" + expr + " AS TIME)";
+	}).put("TIMESTAMP", expr -> {
+		return "CAST(" + expr + " AS DATETIME)";
+	}).put("TINYINT", expr -> {
+		return "CONCAT(" + expr + ")";
+	}).put("VARBINARY", expr -> {
+		return "CAST(" + expr + " AS BINARY)";
+	}).put("VARCHAR", expr -> {
+		return "CONCAT(" + expr + ")";
+	}).build();
 
 	private final TimeZone defaultTimeZone;
 	private final boolean serverSupportsFractionalSecond;

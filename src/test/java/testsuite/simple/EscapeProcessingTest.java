@@ -65,9 +65,6 @@ public class EscapeProcessingTest extends TestCase {
 			+ "--  Also note that you can safely include { and } in comments";
 
 		String escapedSql = conn().nativeSQL(exSql);
-		logger.info(String.format(
-			"in %s, out %s, want %s", exSql, escapedSql, results
-		));
 		Assert.assertEquals(escapedSql, results);
 	}
 

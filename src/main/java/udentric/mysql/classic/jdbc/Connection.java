@@ -88,11 +88,18 @@ public class Connection implements java.sql.Connection {
 
 	@Override
 	public String nativeSQL(String sql) throws SQLException {
-		QueryNormalizer qn = new QueryNormalizer(
-			sql, null, false, null
-		);
+		long ts = System.nanoTime();
+		try {
+			QueryNormalizer qn = new QueryNormalizer(
+				sql, null, false, null
+			);
 
-		return qn.normalize().toString();
+			return qn.normalize().toString();
+		} finally {
+			System.err.format(
+				"--0- elapsed %d\n", System.nanoTime() - ts
+			);
+		}
 	}
 
 	@Override
