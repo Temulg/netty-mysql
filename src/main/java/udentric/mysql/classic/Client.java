@@ -18,10 +18,18 @@ package udentric.mysql.classic;
 
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import udentric.mysql.Config;
 import udentric.mysql.classic.auth.CredentialsProvider;
 
 public class Client extends ChannelInitializer<SocketChannel> {
 	public static class Builder {
+		public Builder withConfig(Config config_) {
+			config = config_;
+			return this;
+		}
+
 		public Builder withCredentials(CredentialsProvider creds_) {
 			creds = creds_;
 			return this;
@@ -31,6 +39,7 @@ public class Client extends ChannelInitializer<SocketChannel> {
 			return new Client(this);
 		}
 
+		private Config config;
 		private CredentialsProvider creds;
 	}
 
@@ -38,7 +47,13 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		return new Builder();
 	}
 
+	public Config getConfig() {
+		return config;
+	}
+
 	private Client(Builder bld) {
+		config = bld.config == null
+			? Config.fromEnvironment(true) : bld.config;
 		creds = bld.creds;
 	}
 
@@ -51,5 +66,18 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		);
 	}
 
+	public SocketAddress remoteAddress() {
+		String h = config.getOrDefault(Config.Key.HOST, "localhost");
+		int port = config.getOrDefault(Config.Key.TCP_PORT, 3306);
+		/*
+		String unix = config.getOrDefault(Config.Key.UNIX_PORT, "");
+		if (h.equals("localhost") && !unix.isEmpty()) {
+			return DomainSocketAddress(unix);
+		}
+		*/
+		return InetSocketAddress.createUnresolved(h, port);
+	}
+
+	private final Config config;
 	final CredentialsProvider creds;
 }

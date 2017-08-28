@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
+ /*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -24,66 +24,43 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
+package udentric.mysql.exceptions;
 
-package udentric.mysql;
+import udentric.mysql.Config;
+import udentric.mysql.ServerSession;
 
-public class ServerVersion implements Comparable<ServerVersion> {
-	public ServerVersion(String value_) {
-		value = value_;
-		parseVersionString();
+public class CJCommunicationsException extends CJException {
+	public CJCommunicationsException() {
 	}
 
-	public boolean meetsMinimum(int... version) {
-		int ordPos = 0;
-
-		for (int ord: version) {
-			if (ord > ordinals[ordPos])
-				return false;
-
-			ordPos++;
-			if (ordPos == ordinals.length)
-				break;
-		}
-		return true;
+	public CJCommunicationsException(String message) {
+		super(message);
 	}
 
-	@Override
-	public String toString() {
-		return value;
+	public CJCommunicationsException(String message, Throwable cause) {
+		super(message, cause);
 	}
 
-	@Override
-	public int compareTo(ServerVersion other) {
-		int ordPos = 0;
-		int rv = 0;
-
-		for (int ord: ordinals) {
-			rv = Integer.compare(ord, other.ordinals[ordPos]);
-			if (rv != 0)
-				break;
-			ordPos++;
-		}
-		return rv;
+	public CJCommunicationsException(Throwable cause) {
+		super(cause);
 	}
 
-	private void parseVersionString() {
-		int ordPos = 0;
-
-		for (int vpos = 0; vpos < value.length(); vpos++) {
-			char c = value.charAt(vpos);
-
-			if (Character.isDigit(c)) {
-				ordinals[ordPos] *= 10;
-				ordinals[ordPos] += c - '0';
-			} else if (c == '.') {
-				ordPos++;
-				if (ordPos == ordinals.length)
-					return;
-			} else
-				return;
-		}
+	protected CJCommunicationsException(
+		String message, Throwable cause, boolean enableSuppression,
+		boolean writableStackTrace
+	) {
+		super(message, cause, enableSuppression, writableStackTrace);
 	}
 
-	private final String value;
-	private final int[] ordinals = new int[3];
+	public void init(
+		Config cfg, ServerSession serverSession,
+		long lastPacketSentTimeMs, long lastPacketReceivedTimeMs
+	) {
+		exceptionMessage = ExceptionFactory.createLinkFailureMessageBasedOnHeuristics(
+			cfg, serverSession, lastPacketSentTimeMs,
+			lastPacketReceivedTimeMs, getCause()
+		);
+	}
+
+	private static final long serialVersionUID = 0x5e1cfe46644c766eL;
 }

@@ -71,16 +71,17 @@ public abstract class TestCase {
 
 	protected Connection conn() {
 		return (Connection)testObjects.computeIfAbsent(TestObject.CONN, k -> {
+			Client cl = Client.builder().withCredentials(
+				new NativePasswordCredentialsProvider()
+			).build();
 			Connection c = new Connection(
 				(new Bootstrap()).group(grp).channel(
 					NioSocketChannel.class
 				).handler(
-					Client.builder().withCredentials(
-						new NativePasswordCredentialsProvider()
-					).build()
-				).connect(System.getProperty(
-					"udentric.mysql.host"
-				), 3306)
+					cl
+				).connect(
+					cl.remoteAddress()
+				)
 			);
 			closeableObjects.offerFirst(c);
 			return c;

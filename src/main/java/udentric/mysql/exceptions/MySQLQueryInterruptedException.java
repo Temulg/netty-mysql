@@ -25,65 +25,28 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql;
+package udentric.mysql.exceptions;
 
-public class ServerVersion implements Comparable<ServerVersion> {
-	public ServerVersion(String value_) {
-		value = value_;
-		parseVersionString();
+import java.sql.SQLNonTransientException;
+
+public class MySQLQueryInterruptedException extends SQLNonTransientException {
+	public MySQLQueryInterruptedException() {
+		super();
 	}
 
-	public boolean meetsMinimum(int... version) {
-		int ordPos = 0;
-
-		for (int ord: version) {
-			if (ord > ordinals[ordPos])
-				return false;
-
-			ordPos++;
-			if (ordPos == ordinals.length)
-				break;
-		}
-		return true;
+	public MySQLQueryInterruptedException(
+		String reason, String SQLState, int vendorCode
+	) {
+		super(reason, SQLState, vendorCode);
 	}
 
-	@Override
-	public String toString() {
-		return value;
+	public MySQLQueryInterruptedException(String reason, String SQLState) {
+		super(reason, SQLState);
 	}
 
-	@Override
-	public int compareTo(ServerVersion other) {
-		int ordPos = 0;
-		int rv = 0;
-
-		for (int ord: ordinals) {
-			rv = Integer.compare(ord, other.ordinals[ordPos]);
-			if (rv != 0)
-				break;
-			ordPos++;
-		}
-		return rv;
+	public MySQLQueryInterruptedException(String reason) {
+		super(reason);
 	}
 
-	private void parseVersionString() {
-		int ordPos = 0;
-
-		for (int vpos = 0; vpos < value.length(); vpos++) {
-			char c = value.charAt(vpos);
-
-			if (Character.isDigit(c)) {
-				ordinals[ordPos] *= 10;
-				ordinals[ordPos] += c - '0';
-			} else if (c == '.') {
-				ordPos++;
-				if (ordPos == ordinals.length)
-					return;
-			} else
-				return;
-		}
-	}
-
-	private final String value;
-	private final int[] ordinals = new int[3];
+	private static final long serialVersionUID = 0x7d18fa75b61e69a9L;
 }

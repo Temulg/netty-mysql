@@ -258,6 +258,10 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		});
 	}
 
+	public Client getClient() {
+		return cl;
+	}
+
 	private ByteBuf encodeAttrs() {
 		ByteBuf rv = channelCtx.alloc().buffer();
 		connAttributes.forEach((k, v) -> {
