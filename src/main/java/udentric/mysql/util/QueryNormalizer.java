@@ -57,9 +57,16 @@ public class QueryNormalizer extends QueryTokenizer {
 	}
 
 	public CharSequence normalize() throws SQLException {
-		if (srcLastPos == 0) {
+		if (srcLastPos == 0)
 			return null;
-		}
+
+		int pos = src.indexOf(CHR_BEGIN_SUBEXPR);
+		if (pos < 0)
+			return src;
+
+		pos = src.indexOf(CHR_END_SUBEXPR, pos);
+		if (pos < 0)
+			return src;
 
 		parseSrc();
 		return rootExpr.getBuf();
@@ -67,51 +74,55 @@ public class QueryNormalizer extends QueryTokenizer {
 
 	@Override
 	protected CharSequence updateSubExpr(CharSequence seq) {
-		Matcher m = EXPR_CLASSIFIER.matcher(seq);
-
-		if (!m.find())
+		int pos = skipWhitespaceFwd(seq, 1);
+		if (pos >= seq.length())
 			return seq;
 
-		String type = m.group(1).toLowerCase(Locale.ENGLISH);
+		Matcher m;
 
-		switch (type) {
-		case "escape":
-		case "fn":
+		switch (Character.toLowerCase(seq.charAt(pos))) {
+		case 'e': // escape
+			break;
+		case 'f': //fn
 			return updateFnSubExpr(seq);
-		case "d":
+		case 'd': //d
 			m = EXPR_DATE.matcher(seq);
 			if (!m.matches())
 				break;
 			return formatDate(m.group(1), seq);
-		case "ts":
-			m = EXPR_TIMESTAMP.matcher(seq);
+		case 't': //t || ts
+			m = EXPR_DATE.matcher(seq);
 			if (!m.matches())
 				break;
-			return formatTimestamp(m.group(1), seq);
-		case "t":
-			m = EXPR_TIME.matcher(seq);
-			if (!m.matches())
-				break;
-			return formatTime(m.group(1), seq);
-		case "call":
-		case "?=call":
 
+			if (m.group(1) != null && !m.group(1).isEmpty()) {
+				return formatTimestamp(m.group(2), seq);
+			} else {
+				return formatTime(m.group(2), seq);
+			}
+		case 'c': // call
+			break; 
+		case '?': //?=call
+			break;
 		}
 		return seq;
 	}
 
 	private CharSequence updateFnSubExpr(CharSequence seq) {
-		Matcher m = EXPR_FN_CONVERT.matcher(seq);
+		Matcher m = EXPR_FN_ANY.matcher(seq);
+		if (!m.matches())
+			return seq;
 
-		if (!m.matches()) {
-			m = EXPR_FN_ANY.matcher(seq);
-			if (!m.matches())
-				return seq;
-			else
-				return m.group(1);
-		}
+		String fn = m.group(1);
 
-		String type = m.group(4);
+
+		m = EXPR_FN_CONVERT.matcher(fn);
+
+		if (!m.matches())
+			return fn;
+
+
+		String type = m.group(3);
 		return JDBC_CONVERT_TO_MYSQL_TYPE_MAP.getOrDefault(
 			type.toUpperCase(Locale.ENGLISH),
 			expr -> {
@@ -148,17 +159,22 @@ public class QueryNormalizer extends QueryTokenizer {
 		);
 	}
 
+	public static int skipWhitespaceFwd(CharSequence seq, int first) {
+		int pos = first;
+		for (; pos < seq.length(); pos++) {
+			if (!Character.isWhitespace(seq.charAt(pos)))
+				break;
+		}
+
+		return pos;
+	}
+
 	public final static byte USES_VARIABLES_FALSE = 0;
 	public final static byte USES_VARIABLES_TRUE = 1;
 	public final static byte USES_VARIABLES_UNKNOWN = -1;
 
-	private static final Pattern EXPR_CLASSIFIER = Pattern.compile(
-		"^\\{\\s*([acdeflnpst?=]+)",
-		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
-	);
-
 	private static final Pattern EXPR_FN_CONVERT = Pattern.compile(
-		"^\\{\\s*fn\\s+convert\\s*\\((.+?)\\s*,\\s*((sql_)?(.+?))\\s*\\)\\s*\\}$",
+		"^convert\\s*\\((.+?)\\s*,\\s*(sql_)?(.+?)\\s*\\)$",
 		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
 	);
 
@@ -168,17 +184,12 @@ public class QueryNormalizer extends QueryTokenizer {
 	);
 
 	private static final Pattern EXPR_DATE = Pattern.compile(
-		"^\\{d\\s+'(.*?)'\\s*\\}$",
+		"^\\{\\s*d\\s+'(.*?)'\\s*\\}$",
 		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
 	);
 
 	private static final Pattern EXPR_TIME = Pattern.compile(
-		"^\\{t\\s+'(.*?)'\\s*\\}$",
-		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
-	);
-
-	private static final Pattern EXPR_TIMESTAMP = Pattern.compile(
-		"^\\{ts\\s+'(.*?)'\\s*\\}$",
+		"^\\{\\s*t(s?)\\s+'(.*?)'\\s*\\}$",
 		Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE	
 	);
 
