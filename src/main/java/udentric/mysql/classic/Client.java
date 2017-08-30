@@ -18,6 +18,9 @@ package udentric.mysql.classic;
 
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import udentric.mysql.Config;
@@ -54,7 +57,8 @@ public class Client extends ChannelInitializer<SocketChannel> {
 	private Client(Builder bld) {
 		config = bld.config == null
 			? Config.fromEnvironment(true) : bld.config;
-		creds = bld.creds;
+		creds = bld.creds != null
+			? bld.creds.withConfig(config) : null;
 	}
 
 	@Override
@@ -69,13 +73,31 @@ public class Client extends ChannelInitializer<SocketChannel> {
 	public SocketAddress remoteAddress() {
 		String h = config.getOrDefault(Config.Key.HOST, "localhost");
 		int port = config.getOrDefault(Config.Key.TCP_PORT, 3306);
-		/*
+
 		String unix = config.getOrDefault(Config.Key.UNIX_PORT, "");
-		if (h.equals("localhost") && !unix.isEmpty()) {
-			return DomainSocketAddress(unix);
+		SocketAddress rv = null;
+		if (h.equals("localhost") && !unix.isEmpty())
+			rv = domainSocketAddress(unix);
+
+		return rv != null ? rv : InetSocketAddress.createUnresolved(
+			h, port
+		);
+	}
+
+	private static SocketAddress domainSocketAddress(String addr) {
+		try {
+			Class cls = Client.class.getClassLoader().loadClass(
+				"io.netty.channel.unix.DomainSocketAddress"
+			);
+			MethodHandle h = MethodHandles.lookup().findConstructor(
+				cls, MethodType.methodType(
+					void.class, String.class
+				)
+			);
+			return (SocketAddress)h.invoke(addr);
+		} catch (Throwable e) {
+			return null;
 		}
-		*/
-		return InetSocketAddress.createUnresolved(h, port);
 	}
 
 	private final Config config;

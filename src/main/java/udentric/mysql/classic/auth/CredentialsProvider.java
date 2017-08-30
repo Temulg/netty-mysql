@@ -17,10 +17,13 @@
 package udentric.mysql.classic.auth;
 
 import io.netty.buffer.ByteBuf;
+import udentric.mysql.Config;
 import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.util.ByteString;
 
-public interface CredentialsProvider {
+public interface CredentialsProvider {	
+	public CredentialsProvider withConfig(Config cfg);
+
 	public void updateAuthMessage(
 		ProtocolHandler ph, ByteBuf msg, ByteString authPluginName,
 		byte[] secret

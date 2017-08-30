@@ -27,20 +27,15 @@
 
 package testsuite;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.List;
 
 import org.testng.ITestContext;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.log4testng.Logger;
 
 import io.netty.bootstrap.Bootstrap;
@@ -87,6 +82,105 @@ public abstract class TestCase {
 			return c;
 		});
 	}
+
+	protected Statement stmt() {
+		return (Statement)testObjects.computeIfAbsent(TestObject.STMT, k -> {
+			Connection c = conn();
+			try {
+				Statement stmt = c.createStatement();
+				closeableObjects.offerFirst(stmt);
+				return stmt;
+			} catch (SQLException e) {
+				Connection.throwAny(e);
+			}
+			return null;
+		});
+	}
+
+	protected void createTable(
+		Statement stmt, String tableName, String columnsAndOtherStuff
+	) throws SQLException {
+		createSchemaObject(
+			stmt, "TABLE", tableName, columnsAndOtherStuff
+		);
+	}
+
+	protected void createTable(
+		String tableName, String columnsAndOtherStuff
+	) throws SQLException {
+		createTable(stmt(), tableName, columnsAndOtherStuff);
+	}
+
+	protected class SchemaObject {
+		SchemaObject(
+			Statement stmt, String name_, String type_
+		) throws SQLException {
+			name = name_;
+			type = type_;
+
+			try {
+				drop(stmt);
+			} catch (SQLException e) {
+				if (!e.getMessage().startsWith(
+					"Operation DROP USER failed"
+				))
+					throw e;
+			}
+		}
+
+		void drop(Statement stmt) throws SQLException {
+			if (
+				!type.equalsIgnoreCase("USER")
+				|| (
+					(Connection)stmt.getConnection()
+				).getServerVersion().meetsMinimum(5, 7, 8)
+			) {
+				stmt.executeUpdate(String.format(
+					"DROP %s IF EXISTS %s",
+					type, name
+				));
+			} else {
+				stmt.executeUpdate(String.format(
+					"DROP %s %s", type, name
+				));
+			}
+			stmt.executeUpdate("flush privileges");
+		}
+
+		final String name;
+		final String type;
+	}
+
+	protected void createSchemaObject(
+		Statement stmt, String objectType, String objectName,
+		String columnsAndOtherStuff
+	) throws SQLException {
+		createdObjects.offerLast(
+			new SchemaObject(stmt, objectType, objectName)
+		);
+
+		String sql = String.format(
+			"CREATE  %s %s %s", objectName, objectType,
+			columnsAndOtherStuff
+		);
+
+		try {
+			stmt.executeUpdate(sql);
+		} catch (SQLException e) {
+			if ("42S01".equals(e.getSQLState())) {
+				logger.warn(
+					"Stale mysqld table cache preventing "
+					+ "table creation - flushing tables "
+					+ "and trying again"
+				);
+				stmt.executeUpdate("FLUSH TABLES");
+				stmt.executeUpdate(sql);
+			} else {
+				throw e;
+			}
+		}
+	}
+
 /*
 	protected Connection sha256Conn() {
 	}
@@ -119,10 +213,10 @@ public abstract class TestCase {
 		grp = null;
 	}
 
+	/*
 	@BeforeMethod
 	public void setUp() {
 
-		/*
 		conn = DriverManager.getConnection(dbUrl, props);
 
 		//this.sha256Conn = sha256Url == null ? null : DriverManager.getConnection(sha256Url, props);
@@ -167,8 +261,8 @@ public abstract class TestCase {
 				}
 			}
 		}
-		*/
 	}
+	*/
 
 	@AfterMethod
 	public void tearDown() throws Exception {
@@ -224,7 +318,9 @@ public abstract class TestCase {
 		SHA256STMT;
 	}
 
-	private final ArrayList<String[]> createdObjects = new ArrayList<>();
+	private final ArrayDeque<
+		SchemaObject
+	> createdObjects = new ArrayDeque<>();
 	private final EnumMap<TestObject, Object> testObjects = new EnumMap<>(
 		TestObject.class
 	);

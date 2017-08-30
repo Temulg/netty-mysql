@@ -91,11 +91,13 @@ public class QueryNormalizer extends QueryTokenizer {
 				break;
 			return formatDate(m.group(1), seq);
 		case 't': //t || ts
-			m = EXPR_DATE.matcher(seq);
+			m = EXPR_TIME.matcher(seq);
 			if (!m.matches())
 				break;
 
-			if (m.group(1) != null && !m.group(1).isEmpty()) {
+			String s = m.group(1);
+
+			if (s != null && !s.isEmpty()) {
 				return formatTimestamp(m.group(2), seq);
 			} else {
 				return formatTime(m.group(2), seq);

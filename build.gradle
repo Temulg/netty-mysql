@@ -29,12 +29,18 @@ test {
 	useTestNG()
 }
 
+compileJava {
+	options.encoding = 'UTF-8'
+	options.compilerArgs << "-Xlint:unchecked"
+}
+
 tasks.withType(Test) {task ->
 	project.properties.each{k, v ->
 		if (k.startsWith("udentric.")) {
 			task.systemProperty(k, v)
 		}
 	}
+	task.jvmArgs project.properties.getOrDefault('jvmLineArgs', '')
 }
 
 task run(type: JavaExec) {

@@ -43,7 +43,7 @@ public class Config {
 		Properties props = System.getProperties();
 		Map<String, String> env = useEnv
 			? System.getenv()
-			: Collections.EMPTY_MAP;
+			: Collections.emptyMap();
 
 		for (Key key: Key.values()) {
 			key.sysProp.ifPresent(prop -> {
@@ -72,6 +72,8 @@ public class Config {
 	private Config() {
 		
 	}
+
+	@SuppressWarnings("unchecked")
 	public <T> T getOrDefault(Key key, T defVal) {
 		return (T)key.accessor.getOrDefault(values, key, defVal);
 	}
@@ -156,5 +158,5 @@ public class Config {
 		private final Optional<String> envVar;
 	}
 
-	private final EnumMap<Key, Object> values = new EnumMap(Key.class);
+	private final EnumMap<Key, Object> values = new EnumMap<>(Key.class);
 }

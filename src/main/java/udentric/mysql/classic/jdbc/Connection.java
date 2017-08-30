@@ -39,7 +39,6 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
-import java.sql.Statement;
 import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
@@ -70,7 +69,7 @@ public class Connection implements java.sql.Connection {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T extends Throwable> void throwAny(
+	public static <T extends Throwable> void throwAny(
 		Throwable t
 	) throws T {
 		throw (T)t;
@@ -81,8 +80,8 @@ public class Connection implements java.sql.Connection {
 	}
 
 	@Override
-	public Statement createStatement() throws SQLException {
-		return null;
+	public java.sql.Statement createStatement() throws SQLException {
+		return new Statement(this);
 	}
 
 	@Override
@@ -101,18 +100,11 @@ public class Connection implements java.sql.Connection {
 
 	@Override
 	public String nativeSQL(String sql) throws SQLException {
-		long ts = System.nanoTime();
-		try {
-			QueryNormalizer qn = new QueryNormalizer(
-				sql, null, false, null
-			);
+		QueryNormalizer qn = new QueryNormalizer(
+			sql, null, true, null
+		);
 
-			return qn.normalize().toString();
-		} finally {
-			System.err.format(
-				"--0- elapsed %d\n", System.nanoTime() - ts
-			);
-		}
+		return qn.normalize().toString();
 	}
 
 	@Override

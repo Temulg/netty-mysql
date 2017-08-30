@@ -16,9 +16,10 @@
 
 package udentric.mysql.classic.auth;
 
-import java.nio.charset.StandardCharsets;
 
 import io.netty.buffer.ByteBuf;
+import java.nio.charset.StandardCharsets;
+import udentric.mysql.Config;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.handler.AuthResponse;
@@ -26,30 +27,12 @@ import udentric.mysql.util.ByteString;
 import udentric.mysql.util.Scramble411;
 
 public class NativePasswordCredentialsProvider implements CredentialsProvider {
-	public NativePasswordCredentialsProvider() {
-		String user = System.getProperty("udentric.mysql.user");
-		if (user == null) {
-			user = System.getenv("USER");
-		}
+	public NativePasswordCredentialsProvider() {}
 
-		String pwd = System.getProperty("udentric.mysql.password");
-		if (pwd == null) {
-			pwd = System.getenv("MYSQL_PWD");
-		}
-
-		username = user != null
-			? user.getBytes(StandardCharsets.UTF_8)
-			: new byte[0];
-		password = pwd != null
-			? pwd.getBytes(StandardCharsets.UTF_8)
-			: new byte[0];
-	}
-
-	public NativePasswordCredentialsProvider(
-		byte[] username_, byte[] password_
-	) {
-		username = username_;
-		password = password_;
+	@Override
+	public CredentialsProvider withConfig(Config cfg_) {
+		cfg = cfg_;
+		return this;
 	}
 
 	@Override
@@ -65,7 +48,10 @@ public class NativePasswordCredentialsProvider implements CredentialsProvider {
 
 		long caps = ph.getClientCapabilities();
 
-		msg.writeBytes(username);
+		
+		msg.writeBytes(cfg.getOrDefault(Config.Key.user, "").getBytes(
+			StandardCharsets.UTF_8
+		));
 		msg.writeByte(0);
 
 		if (
@@ -74,7 +60,9 @@ public class NativePasswordCredentialsProvider implements CredentialsProvider {
 			) || ClientCapability.SECURE_CONNECTION.get(caps)
 		) {
 			msg.writeByte(20);
-			Scramble411.encode(msg, password, secret);
+			Scramble411.encode(msg, cfg.getOrDefault(
+				Config.Key.password, ""
+			).getBytes(StandardCharsets.UTF_8), secret);
 		} else
 			msg.writeByte(0);
 
@@ -85,13 +73,12 @@ public class NativePasswordCredentialsProvider implements CredentialsProvider {
 
 	@Override
 	public boolean isSecure() {
-		return password.length > 0;
+		return cfg.containsKey(Config.Key.password);
 	}
 
 	public static ByteString AUTH_PLUGIN_NAME = new ByteString(
 		"mysql_native_password"
 	);
 
-	private final byte[] username;
-	private final byte[] password;
+	private Config cfg;
 }
