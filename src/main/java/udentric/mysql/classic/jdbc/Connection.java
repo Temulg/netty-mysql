@@ -46,10 +46,12 @@ import java.util.concurrent.Executor;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelPromise;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.Session;
 import udentric.mysql.classic.ProtocolHandler;
+import udentric.mysql.classic.command.Any;
 import udentric.mysql.util.QueryNormalizer;
 
 public class Connection implements java.sql.Connection {
@@ -386,6 +388,10 @@ public class Connection implements java.sql.Connection {
 
 	public Session getSession() {
 		return null;
+	}
+
+	ChannelFuture submitCommand(Any cmd) {
+		return ch.writeAndFlush(cmd);
 	}
 
 	private final Channel ch;

@@ -27,17 +27,6 @@
 
 package udentric.mysql.classic;
 
-import udentric.mysql.classic.command.Query;
-import udentric.mysql.classic.command.Quit;
-
-public class Commands {
-	private Commands() {}
-
-	public static Quit quit() {
-		return Quit.INSTANCE;
-	}
-
-	public static Query query(String sql) {
-		return new Query(sql);
-	}
+public class Request {
+	
 }

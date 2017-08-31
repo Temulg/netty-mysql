@@ -27,10 +27,17 @@
 
 package udentric.mysql.classic.jdbc;
 
+import io.netty.util.concurrent.Future;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
+import java.util.List;
+import java.util.concurrent.Phaser;
+import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.Commands;
+import udentric.mysql.classic.ResponseConsumer;
+import udentric.mysql.classic.command.Any;
 
 public class Statement implements java.sql.Statement {
 	Statement(Connection conn_) {
@@ -44,7 +51,24 @@ public class Statement implements java.sql.Statement {
 
 	@Override
 	public int executeUpdate(String sql) throws SQLException {
-		return 0;
+		int phase = responseWaiter.register();
+
+		
+		Any cmd = Commands.query(sql).withResponseConsumer(
+			onSimpleResponse.clear()
+		);
+
+		conn.submitCommand(cmd).addListener(
+			onSimpleResponse::commandSend
+		);
+
+		responseWaiter.awaitAdvance(phase);
+
+		if (onSimpleResponse.error != null) {
+			
+		}
+
+		return onSimpleResponse.value();
 	}
 
 	@Override
@@ -162,7 +186,7 @@ public class Statement implements java.sql.Statement {
 
 	@Override
 	public java.sql.Connection getConnection() throws SQLException {
-		return null;
+		return conn;
 	}
 
 	@Override
@@ -315,5 +339,50 @@ public class Statement implements java.sql.Statement {
 		return false;
 	}
 
+	private class SimpleResponseHandler implements ResponseConsumer {
+		SimpleResponseHandler clear() {
+			error = null;
+			return this;
+		}
+
+		@Override
+		public void onMetadata(List<ColumnDefinition> colDef) {
+
+		}
+
+		@Override
+		public void onData() {
+
+		}
+
+		@Override
+		public void onFailure(Throwable cause) {
+
+		}
+
+		@Override
+		public void onSuccess() {
+
+		}
+
+		
+		int value() {
+			return 0;
+		}
+
+		void commandSend(Future f) {
+			if (f.isSuccess()) {
+				
+			} else {
+				error = f.cause();
+				responseWaiter.arriveAndDeregister();
+			}
+		}
+
+		Throwable error;
+	}
+
 	private final Connection conn;
+	private final Phaser responseWaiter = new Phaser();
+	private final SimpleResponseHandler onSimpleResponse = new SimpleResponseHandler();
 }

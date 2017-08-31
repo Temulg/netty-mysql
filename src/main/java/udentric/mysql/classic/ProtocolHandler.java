@@ -277,6 +277,7 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	private final Client cl;
 	private final LinkedHashMap<ByteString, ByteString> connAttributes
 	= new LinkedHashMap<>();
+
 	private ChannelPromise clientPromise;
 	private ChannelHandlerContext channelCtx;
 	private MessageHandler handler;

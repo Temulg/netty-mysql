@@ -27,17 +27,14 @@
 
 package udentric.mysql.classic;
 
-import udentric.mysql.classic.command.Query;
-import udentric.mysql.classic.command.Quit;
+import java.util.List;
 
-public class Commands {
-	private Commands() {}
+public interface ResponseConsumer {
+	void onMetadata(List<ColumnDefinition> colDef);
 
-	public static Quit quit() {
-		return Quit.INSTANCE;
-	}
+	void onData();
 
-	public static Query query(String sql) {
-		return new Query(sql);
-	}
+	void onFailure(Throwable cause);
+
+	void onSuccess();
 }

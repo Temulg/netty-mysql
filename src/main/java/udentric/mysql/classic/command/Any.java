@@ -17,7 +17,9 @@
 package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.ProtocolHandler;
+import udentric.mysql.classic.ResponseConsumer;
 
 public abstract class Any {
 	public abstract void encode(ByteBuf dst, ProtocolHandler ph);
