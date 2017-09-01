@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
- /*
+/*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -24,43 +24,31 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
-package udentric.mysql.exceptions;
 
-import udentric.mysql.Config;
-import udentric.mysql.classic.ServerSession;
+package udentric.mysql.classic.command;
 
-public class CJCommunicationsException extends CJException {
-	public CJCommunicationsException() {
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelPromise;
+import udentric.mysql.classic.Session;
+
+public class Handshake implements Any {
+	public Handshake(ChannelPromise chp_) {
+		chp = chp_;
 	}
 
-	public CJCommunicationsException(String message) {
-		super(message);
+	@Override
+	public void encode(ByteBuf dst, Session cs) {
 	}
 
-	public CJCommunicationsException(String message, Throwable cause) {
-		super(message, cause);
+	@Override
+	public void handleReply(ByteBuf src, Session cs) {
+		cs.handleInitialHandshake(src);
 	}
 
-	public CJCommunicationsException(Throwable cause) {
-		super(cause);
+	@Override
+	public void handleFailure(Throwable cause) {
+		chp.setFailure(cause);
 	}
 
-	protected CJCommunicationsException(
-		String message, Throwable cause, boolean enableSuppression,
-		boolean writableStackTrace
-	) {
-		super(message, cause, enableSuppression, writableStackTrace);
-	}
-
-	public void init(
-		Config cfg, ServerSession serverSession,
-		long lastPacketSentTimeMs, long lastPacketReceivedTimeMs
-	) {
-		exceptionMessage = ExceptionFactory.createLinkFailureMessageBasedOnHeuristics(
-			cfg, serverSession, lastPacketSentTimeMs,
-			lastPacketReceivedTimeMs, getCause()
-		);
-	}
-
-	private static final long serialVersionUID = 0x5e1cfe46644c766eL;
+	private final ChannelPromise chp;
 }

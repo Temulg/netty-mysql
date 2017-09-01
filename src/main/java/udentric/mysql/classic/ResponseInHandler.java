@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
- /*
+/*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -24,43 +24,33 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
-package udentric.mysql.exceptions;
 
-import udentric.mysql.Config;
-import udentric.mysql.classic.ServerSession;
+package udentric.mysql.classic;
 
-public class CJCommunicationsException extends CJException {
-	public CJCommunicationsException() {
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+
+@Sharable
+class ResponseInHandler extends ChannelInboundHandlerAdapter {
+	@Override
+	public void channelRead(
+		ChannelHandlerContext ctx, Object msg_
+	) throws Exception {
+		if (!(msg_ instanceof ByteBuf)) {
+			super.channelRead(ctx, msg_);
+			return;
+		}
+
+		ByteBuf msg = (ByteBuf)msg_;
+		Session cs = ctx.channel().attr(Client.SESSION).get();
+
+		if (!cs.processServerMessage(ctx, msg)) {
+			super.channelRead(ctx, msg);
+			return;
+		} else {
+			msg.release();
+		}
 	}
-
-	public CJCommunicationsException(String message) {
-		super(message);
-	}
-
-	public CJCommunicationsException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public CJCommunicationsException(Throwable cause) {
-		super(cause);
-	}
-
-	protected CJCommunicationsException(
-		String message, Throwable cause, boolean enableSuppression,
-		boolean writableStackTrace
-	) {
-		super(message, cause, enableSuppression, writableStackTrace);
-	}
-
-	public void init(
-		Config cfg, ServerSession serverSession,
-		long lastPacketSentTimeMs, long lastPacketReceivedTimeMs
-	) {
-		exceptionMessage = ExceptionFactory.createLinkFailureMessageBasedOnHeuristics(
-			cfg, serverSession, lastPacketSentTimeMs,
-			lastPacketReceivedTimeMs, getCause()
-		);
-	}
-
-	private static final long serialVersionUID = 0x5e1cfe46644c766eL;
 }

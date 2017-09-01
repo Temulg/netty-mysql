@@ -25,9 +25,11 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql;
+package udentric.mysql.classic;
 
 import java.util.Map;
+import udentric.mysql.ServerCapabilities;
+import udentric.mysql.ServerVersion;
 
 public interface ServerSession {
 	ServerCapabilities getCapabilities();

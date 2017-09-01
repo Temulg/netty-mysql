@@ -49,7 +49,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelPromise;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
-import udentric.mysql.Session;
+import udentric.mysql.classic.Session;
 import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.command.Any;
 import udentric.mysql.util.QueryNormalizer;

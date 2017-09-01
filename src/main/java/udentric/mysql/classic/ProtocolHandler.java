@@ -36,110 +36,14 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 		logger = LogManager.getLogger(ProtocolHandler.class);
 		handler = Handshake.INSTANCE;
 		cl = cl_;
-		addCommonAttributes();
+
 	}
 
-	@Override
-	public void connect(
-		ChannelHandlerContext ctx, SocketAddress remoteAddress,
-		SocketAddress localAddress, ChannelPromise promise
-	) throws Exception {
-		ChannelPromise nextPromise = ctx.channel().newPromise();
-		clientPromise = promise;
 
-		nextPromise.addListener(chf -> {
-			if (!chf.isSuccess()) {
-				ChannelPromise cp = clientPromise;
-				clientPromise = null;
-				cp.setFailure(chf.cause());
-			}
-		});
 
-		ctx.connect(remoteAddress, localAddress, nextPromise);
-	}
 
-	private void addCommonAttributes() {
-		connAttributes.put(
-			new ByteString("_os"),
-			new ByteString(System.getProperty("os.name"))
-		);
-		connAttributes.put(
-			new ByteString("_platform"),
-			new ByteString(System.getProperty("os.arch"))
-		);
-		connAttributes.put(
-			new ByteString("_client_name"),
-			new ByteString("netty_mysql")
-		);
-		connAttributes.put(
-			new ByteString("_client_version"),
-			new ByteString("1.0")
-		);
-		//_pid
-		//program_name
-	}
 
-	@Override
-	public void channelRead(
-		ChannelHandlerContext ctx, Object msg_
-	) throws Exception {
-		if (!(msg_ instanceof ByteBuf)) {
-			super.channelRead(ctx, msg_);
-			return;
-		}
 
-		channelCtx = ctx;
-		ByteBuf msg = (ByteBuf)msg_;
-		seqNum = Packet.getSeqNum(msg);
-		msg.skipBytes(Packet.HEADER_SIZE);
-
-		try {
-			handler.process(this, msg);
-		} finally {
-			channelCtx = null;
-			int remaining = msg.readableBytes();
-			if (remaining > 0) {
-				logger.warn(
-					"{} bytes left in incoming packet",
-					remaining
-				);
-			}
-			msg.release();
-
-			if (replyMsg != null) {
-				replyMsg.release();
-				replyMsg = null;
-			}
-		}
-	}
-
-	@Override
-	public void write(
-		ChannelHandlerContext ctx, Object msg_, ChannelPromise promise
-	) throws Exception {
-		if (!(msg_ instanceof Any)) {
-			super.write(ctx, msg_, promise);
-			return;
-		}
-
-		Any msg = (Any)msg_;
-
-		channelCtx = ctx;
-		try {
-			ByteBuf dst = ctx.alloc().buffer();
-			int wpos = dst.writerIndex();
-			dst.writeZero(Packet.HEADER_SIZE);
-			msg.encode(dst, this);
-			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
-			dst.setMediumLE(wpos, len);
-			dst.setByte(wpos + 3, seqNum);
-			super.write(ctx, dst, promise);
-		} catch (Throwable t) {
-			promise.setFailure(t);
-		} finally {
-			channelCtx = null;
-		}
-	}
 
 	public void setChannelSuccess() {
 		if (clientPromise != null) {
@@ -278,7 +182,7 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	private final LinkedHashMap<ByteString, ByteString> connAttributes
 	= new LinkedHashMap<>();
 
-	private ChannelPromise clientPromise;
+
 	private ChannelHandlerContext channelCtx;
 	private MessageHandler handler;
 	private ByteBuf replyMsg;
@@ -286,5 +190,5 @@ public class ProtocolHandler extends ChannelDuplexHandler {
 	private long serverCaps;
 	private long clientCaps;
 	private int srvConnId;
-	private int seqNum;
+	
 }

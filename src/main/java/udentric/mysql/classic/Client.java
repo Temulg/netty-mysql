@@ -17,13 +17,17 @@
 package udentric.mysql.classic;
 
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPromise;
+import io.netty.util.AttributeKey;
 import io.netty.channel.socket.SocketChannel;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.LinkedHashMap;
 import udentric.mysql.Config;
+import udentric.mysql.util.ByteString;
 import udentric.mysql.classic.auth.CredentialsProvider;
 
 public class Client extends ChannelInitializer<SocketChannel> {
@@ -59,14 +63,40 @@ public class Client extends ChannelInitializer<SocketChannel> {
 			? Config.fromEnvironment(true) : bld.config;
 		creds = bld.creds != null
 			? bld.creds.withConfig(config) : null;
+
+		addCommonAttributes();
+	}
+
+	private void addCommonAttributes() {
+		connAttributes.put(
+			new ByteString("_os"),
+			new ByteString(System.getProperty("os.name"))
+		);
+		connAttributes.put(
+			new ByteString("_platform"),
+			new ByteString(System.getProperty("os.arch"))
+		);
+		connAttributes.put(
+			new ByteString("_client_name"),
+			new ByteString("netty_mysql")
+		);
+		connAttributes.put(
+			new ByteString("_client_version"),
+			new ByteString("1.0")
+		);
+		//_pid
+		//program_name
 	}
 
 	@Override
 	protected void initChannel(SocketChannel ch) throws Exception {
+		ch.attr(SESSION).set(new Session(this));
 		ch.pipeline().addLast(
 			"mysql.packet.in", new InboundPacketFramer()
 		).addLast(
-			"mysql.protocol", new ProtocolHandler(this)
+			"mysql.command.out", COMMAND_OUT_HANDLER
+		).addLast(
+			"mysql.response.in", RESPONSE_IN_HANDLER
 		);
 	}
 
@@ -100,6 +130,19 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		}
 	}
 
+	final static AttributeKey<Session> SESSION = AttributeKey.valueOf(
+		"udentric.mysql.classic.Session"
+	);
+	final static AttributeKey<ChannelPromise> HANDSHAKE_PROMISE = AttributeKey.valueOf(
+		"udentric.mysql.classic.HandshakePromise"
+	);
+
+	final static CommandOutHandler COMMAND_OUT_HANDLER = new CommandOutHandler();
+	final static ResponseInHandler RESPONSE_IN_HANDLER = new ResponseInHandler();
+
 	private final Config config;
 	final CredentialsProvider creds;
+	private final LinkedHashMap<
+		ByteString, ByteString
+	> connAttributes = new LinkedHashMap<>();
 }

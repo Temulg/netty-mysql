@@ -29,11 +29,11 @@ package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelPromise;
-import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.ResponseConsumer;
+import udentric.mysql.classic.Session;
 
 
-public class Query extends Any {
+public class Query implements Any {
 	public Query(String sql_) {
 		sql = sql_;
 	}
@@ -48,7 +48,21 @@ public class Query extends Any {
 		return this;
 	}
 
-	public void encode(ByteBuf dst, ProtocolHandler ph) {
+	@Override
+	public void encode(ByteBuf dst, Session cs) {
+	}
+
+	@Override
+	public void handleReply(ByteBuf src, Session cs) {
+
+	}
+
+	@Override
+	public void handleFailure(Throwable cause) {
+		if (rc != null)
+			rc.onFailure(cause);
+		if (chp != null)
+			chp.setFailure(cause);
 	}
 
 	public static final int OPCODE = 3;

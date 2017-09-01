@@ -30,7 +30,7 @@ package udentric.mysql.exceptions;
 import java.net.BindException;
 import udentric.mysql.Config;
 import udentric.mysql.Messages;
-import udentric.mysql.ServerSession;
+import udentric.mysql.classic.ServerSession;
 import udentric.mysql.util.ExceptionInterceptor;
 
 public class ExceptionFactory {
