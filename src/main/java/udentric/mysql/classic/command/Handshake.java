@@ -28,21 +28,30 @@
 package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.Session;
 
 public class Handshake implements Any {
-	public Handshake(ChannelPromise chp_) {
-		chp = chp_;
+	public Handshake() {
 	}
 
 	@Override
-	public void encode(ByteBuf dst, Session cs) {
+	public void encode(ByteBuf dst, Session ss) {
 	}
 
 	@Override
-	public void handleReply(ByteBuf src, Session cs) {
-		cs.handleInitialHandshake(src);
+	public void handleReply(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
+		try {
+			Any nextCommand = ss.handleInitialHandshake(src, ctx);
+			ctx.channel().writeAndFlush(
+				nextCommand.withChannelPromise(chp), chp
+			);
+		} catch (Exception e) {
+			chp.setFailure(e);
+		}
 	}
 
 	@Override
@@ -50,5 +59,16 @@ public class Handshake implements Any {
 		chp.setFailure(cause);
 	}
 
-	private final ChannelPromise chp;
+	@Override
+	public ChannelPromise channelPromise() {
+		return chp;
+	}
+
+	@Override
+	public Handshake withChannelPromise(ChannelPromise chp_) {
+		chp = chp_;
+		return this;
+	}
+
+	private ChannelPromise chp;
 }

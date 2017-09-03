@@ -44,7 +44,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
 import udentric.mysql.classic.Client;
-import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
 import udentric.mysql.classic.jdbc.Connection;
 
 public abstract class TestCase {
@@ -66,17 +65,11 @@ public abstract class TestCase {
 
 	protected Connection conn() {
 		return (Connection)testObjects.computeIfAbsent(TestObject.CONN, k -> {
-			Client cl = Client.builder().withCredentials(
-				new NativePasswordCredentialsProvider()
-			).build();
+			Client cl = Client.builder().build();
 			Connection c = new Connection(
 				(new Bootstrap()).group(grp).channel(
 					NioSocketChannel.class
-				).handler(
-					cl
-				).connect(
-					cl.remoteAddress()
-				)
+				).handler(cl).connect(cl.remoteAddress())
 			);
 			closeableObjects.offerFirst(c);
 			return c;

@@ -16,6 +16,7 @@
 
 package udentric.mysql.util;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -23,7 +24,11 @@ import io.netty.buffer.ByteBuf;
 
 public class ByteString {
 	public ByteString(String s) {
-		bytes = s.getBytes(StandardCharsets.UTF_8);
+		this(s, StandardCharsets.UTF_8);
+	}
+
+	public ByteString(String s, Charset cs) {
+		bytes = s.getBytes(cs);
 		hashCode = Arrays.hashCode(bytes);
 	}
 
@@ -38,6 +43,10 @@ public class ByteString {
 		return new String(bytes, StandardCharsets.UTF_8);
 	}
 
+	public String toString(Charset cs) {
+		return new String(bytes, cs);
+	}
+
 	@Override
 	public int hashCode() {
 		return hashCode;
@@ -50,6 +59,7 @@ public class ByteString {
 
 		if (other_ instanceof ByteString) {
 			ByteString other = (ByteString)other_;
+
 			return Arrays.equals(bytes, other.bytes);
 		} else
 			return false;

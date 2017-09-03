@@ -28,6 +28,7 @@
 package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.ResponseConsumer;
 import udentric.mysql.classic.Session;
@@ -49,11 +50,13 @@ public class Query implements Any {
 	}
 
 	@Override
-	public void encode(ByteBuf dst, Session cs) {
+	public void encode(ByteBuf dst, Session ss) {
 	}
 
 	@Override
-	public void handleReply(ByteBuf src, Session cs) {
+	public void handleReply(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
 
 	}
 

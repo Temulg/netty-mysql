@@ -28,6 +28,7 @@
 package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.classic.Session;
 
 public class Quit implements Any {
@@ -35,12 +36,14 @@ public class Quit implements Any {
 	}
 
 	@Override
-	public void encode(ByteBuf dst, Session cs) {
+	public void encode(ByteBuf dst, Session ss) {
 		dst.writeByte(OPCODE);
 	}
 
 	@Override
-	public void handleReply(ByteBuf src, Session cs) {
+	public void handleReply(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
 	}
 
 	@Override

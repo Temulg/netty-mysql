@@ -30,23 +30,28 @@ package udentric.mysql.classic;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderException;
+
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.StampedLock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
-import udentric.mysql.classic.auth.NativePasswordCredentialsProvider;
+import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.command.Any;
-import udentric.mysql.util.ByteString;
+import udentric.mysql.classic.command.MysqlNativePasswordAuth;
 
 public class Session {
 	Session(Client cl_) {
 		cl = cl_;
+		serverCharset = CharsetInfo.forId(223);
 	}
 
 	public Config getConfig() {
 		return cl.getConfig();
+	}
+
+	public ServerVersion getServerVersion() {
+		return serverVersion;
 	}
 
 	public ServerSession getServerSession() {
@@ -61,108 +66,167 @@ public class Session {
 		}
 
 		currentCommand = cmd;
-		seqNum = 0;
 		lock.unlock(stamp);
 		return null;
 	}
 
-	int getSeqNum() {
-		return seqNum;
-	}
-
-	void processClientFailure(Throwable cause) {
+	void discardCommand(Throwable cause) {
+		Any cmd = null;
 		long stamp = lock.writeLock();
-		Any cmd = currentCommand;
+		cmd = currentCommand;
 		currentCommand = null;
 		lock.unlock(stamp);
-		cmd.handleFailure(cause);
+
+		if (cmd != null) {
+			cmd.handleFailure(cause);
+		}
 	}
 
-	boolean processServerMessage(ChannelHandlerContext ctx, ByteBuf msg) {
-		Any cmd = currentCommand.get();
-		if (cmd == null) {
-			return false;
-		}
+	Any getCurrentCommand() {
+		return currentCommand;
+	}
+
+	public Any handleInitialHandshake(
+		ByteBuf msg, ChannelHandlerContext ctx
+	) throws Exception {
+		long stamp = lock.writeLock();
+		currentCommand = null;
 
 		try {
 			seqNum = Packet.getSeqNum(msg);
 			msg.skipBytes(Packet.HEADER_SIZE);
-			cmd.handleReply(msg, this);
-		} finally {
-			int remaining = msg.readableBytes();
-			if (remaining > 0) {
-				LOGGER.warn(
-					"{} bytes left in incoming packet",
-					remaining
+
+			int protoVers = Fields.readInt1(msg);
+			if (PROTOCOL_VERSION != protoVers) {
+				throw new DecoderException(
+					"unsupported protocol version "
+					+ Integer.toString(protoVers)
 				);
 			}
-			msg.release();
 
-			return true;
+			String authPluginName
+			= MysqlNativePasswordAuth.AUTH_PLUGIN_NAME;
+
+			serverVersion = new ServerVersion(Fields.readStringNT(
+				msg, serverCharset.javaCharset
+			));
+			srvConnId = msg.readIntLE();
+			LOGGER.debug(
+				"server identity set: {} ({})", srvConnId,
+				serverVersion
+			);
+
+			byte[] secret = Fields.readBytes(msg, 8);
+			msg.skipBytes(1);
+
+			if (!msg.isReadable()) {
+				return selectAuthCommand(
+					authPluginName, secret, ctx
+				);
+			}
+
+			serverCaps = Fields.readLong2(msg);
+
+			if (!msg.isReadable()) {
+				updateClientCapabilities();
+				return selectAuthCommand(
+					authPluginName, secret, ctx
+				);
+			}
+
+			serverCharset = CharsetInfo.forId(
+				Fields.readInt1(msg)
+			);
+
+			msg.skipBytes(2);//short statusFlags = msg.readShortLE();
+
+			serverCaps |= Fields.readLong2(msg) << 16;
+			updateClientCapabilities();
+			int s2Len = Fields.readInt1(msg);
+			msg.skipBytes(10);
+
+			if (ClientCapability.PLUGIN_AUTH.get(serverCaps)) {
+				int oldLen = secret.length;
+				secret = Arrays.copyOf(secret, s2Len - 1);
+				msg.readBytes(
+					secret, oldLen, s2Len - oldLen - 1
+				);
+				msg.skipBytes(1);
+				authPluginName = Fields.readStringNT(
+					msg, serverCharset.javaCharset
+				);
+			} else {
+				s2Len = Math.max(12, msg.readableBytes());
+				int oldLen = secret.length;
+				secret = Arrays.copyOf(secret, oldLen + s2Len);
+				msg.readBytes(secret, oldLen, s2Len);
+			}
+
+			return selectAuthCommand(
+				authPluginName, secret, ctx
+			);
+		} finally {
+			lock.unlock(stamp);
 		}
 	}
 
-	public void handleInitialHandshake(ByteBuf msg) {
-		int protoVers = Fields.readInt1(msg);
-		if (PROTOCOL_VERSION != protoVers) {
-			processClientFailure(new DecoderException(
-				"unsupported protocol version "
-				+ Integer.toString(protoVers)
-			));
-			return;
+	private Any selectAuthCommand(
+		String authPluginName, byte[] secret, ChannelHandlerContext ctx
+	) throws Exception {
+		ByteBuf attrBuf = null;
+
+		switch (authPluginName) {
+		case "mysql_native_password":
+			if (ClientCapability.CONNECT_ATTRS.get(clientCaps)) {
+				attrBuf = encodeAttrs(ctx);
+			}
+
+			if (getConfig().containsKey(Config.Key.password)) {
+				clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
+				if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
+					serverCaps
+				))
+					clientCaps
+					|= ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.mask();
+			}
+
+			++seqNum;
+			return new MysqlNativePasswordAuth(
+				seqNum, clientCaps, secret,
+				getConfig().getOrDefault(
+					Config.Key.maxPacketSize, 0xffffff
+				), serverCharset, attrBuf
+			);
+		default:
+			throw new IllegalStateException("unsupported auth");
 		}
+	}
 
-		ByteString authPluginName
-		= NativePasswordCredentialsProvider.AUTH_PLUGIN_NAME;
+	private ByteBuf encodeAttrs(ChannelHandlerContext ctx) {
+		ByteBuf buf = ctx.alloc().buffer();
+		cl.connAttributes.forEach((k, v) -> {
+			byte[] b = k.getBytes(serverCharset.javaCharset);
+			Fields.writeIntLenenc(buf, b.length);
+			buf.writeBytes(b);
+			b = v.getBytes(serverCharset.javaCharset);
+			Fields.writeIntLenenc(buf, b.length);
+			buf.writeBytes(b);
+		});
+		return buf;
+	}
 
-		ph.updateServerIdentity(
-			Fields.readStringNT(msg), msg.readIntLE()
-		);
+	private void updateClientCapabilities() {
+		clientCaps = ClientCapability.LONG_PASSWORD.mask()
+			| ClientCapability.LONG_FLAG.mask()
+			| ClientCapability.PROTOCOL_41.mask()
+			| ClientCapability.TRANSACTIONS.mask()
+			| ClientCapability.MULTI_STATEMENTS.mask()
+			| ClientCapability.MULTI_RESULTS.mask()
+			| ClientCapability.PS_MULTI_RESULTS.mask()
+			| ClientCapability.PLUGIN_AUTH.mask();
 
-		byte[] secret = Fields.readBytes(msg, 8);
-		msg.skipBytes(1);
-
-		long srvCaps = 0;
-
-		if (!msg.isReadable()) {
-			reply(ph, authPluginName, secret);
-			return;
-		}
-
-		srvCaps = Fields.readLong2(msg);
-
-		if (!msg.isReadable()) {
-			ph.updateServerCapabilities(srvCaps);
-			reply(ph, authPluginName, secret);
-			return;
-		}
-
-		ph.updateServerCharsetId(Fields.readInt1(msg));
-
-		short statusFlags = msg.readShortLE();
-
-		srvCaps |= Fields.readLong2(msg) << 16;
-
-		int s2Len = Fields.readInt1(msg);
-
-		ph.updateServerCapabilities(srvCaps);
-
-		msg.skipBytes(10);
-
-		if (ClientCapability.PLUGIN_AUTH.get(srvCaps)) {
-			int oldLen = secret.length;
-			secret = Arrays.copyOf(secret, s2Len - 1);
-			msg.readBytes(secret, oldLen, s2Len - oldLen - 1);
-			msg.skipBytes(1);
-			authPluginName = Fields.readStringNT(msg);
-		} else {
-			s2Len = Math.max(12, msg.readableBytes());
-			int oldLen = secret.length;
-			secret = Arrays.copyOf(secret, oldLen + s2Len);
-			msg.readBytes(secret, oldLen, s2Len);
-		}
-
-		reply(ph, authPluginName, secret);
+		if (ClientCapability.CONNECT_ATTRS.get(serverCaps))
+			clientCaps |= ClientCapability.CONNECT_ATTRS.mask();
 	}
 
 	/*
@@ -185,8 +249,6 @@ public class Session {
 	void quit();
 
 	void forceClose();
-
-	ServerVersion getServerVersion();
 
 	boolean versionMeetsMinimum(int major, int minor, int subminor);
 
@@ -237,6 +299,11 @@ public class Session {
 
 	private final Client cl;
 	private final StampedLock lock = new StampedLock();
-	private Any currentCommand;
+	private volatile Any currentCommand;
 	private int seqNum;
+	private volatile ServerVersion serverVersion;
+	private long serverCaps;
+	private long clientCaps;
+	private int srvConnId;
+	private CharsetInfo.Entry serverCharset;
 }

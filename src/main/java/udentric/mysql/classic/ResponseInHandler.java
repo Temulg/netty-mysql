@@ -29,6 +29,7 @@ package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler.Sharable;
+import udentric.mysql.classic.command.Any;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -43,13 +44,25 @@ class ResponseInHandler extends ChannelInboundHandlerAdapter {
 			return;
 		}
 
-		ByteBuf msg = (ByteBuf)msg_;
-		Session cs = ctx.channel().attr(Client.SESSION).get();
+		ByteBuf msg = (ByteBuf) msg_;
+		Session ss = ctx.channel().attr(Client.SESSION).get();
+		Any cmd = ss.getCurrentCommand();
 
-		if (!cs.processServerMessage(ctx, msg)) {
+		if (cmd == null) {
 			super.channelRead(ctx, msg);
 			return;
-		} else {
+		}
+
+		try {
+			cmd.handleReply(msg, ss, ctx);
+		} finally {
+			int remaining = msg.readableBytes();
+			if (remaining > 0) {
+				Session.LOGGER.warn(
+					"{} bytes left in incoming packet",
+					remaining
+				);
+			}
 			msg.release();
 		}
 	}

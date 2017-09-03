@@ -28,12 +28,26 @@
 package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.Session;
 
 public interface Any {
-	void encode(ByteBuf dst, Session cs);
+	void encode(ByteBuf dst, Session ss);
 
-	void handleReply(ByteBuf src, Session cs);
+	void handleReply(ByteBuf src, Session ss, ChannelHandlerContext ctx);
 
 	void handleFailure(Throwable cause);
+
+	default int getSeqNum() {
+		return 0;
+	}
+
+	default ChannelPromise channelPromise() {
+		return null;
+	}
+
+	default Any withChannelPromise(ChannelPromise chp_) {
+		throw new UnsupportedOperationException("not implemented");
+	}
 }

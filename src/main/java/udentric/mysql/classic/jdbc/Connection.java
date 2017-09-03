@@ -46,11 +46,10 @@ import java.util.concurrent.Executor;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelPromise;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
+import udentric.mysql.classic.Client;
 import udentric.mysql.classic.Session;
-import udentric.mysql.classic.ProtocolHandler;
 import udentric.mysql.classic.command.Any;
 import udentric.mysql.util.QueryNormalizer;
 
@@ -65,9 +64,7 @@ public class Connection implements java.sql.Connection {
 		}
 
 		ch = chf.channel();
-		ph = (ProtocolHandler)ch.pipeline().get(
-			"mysql.protocol"
-		);
+		ss = ch.attr(Client.SESSION).get();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -78,7 +75,7 @@ public class Connection implements java.sql.Connection {
 	}
 
 	public ServerVersion getServerVersion() {
-		return ph.getServerVersion();
+		return ss.getServerVersion();
 	}
 
 	@Override
@@ -383,11 +380,11 @@ public class Connection implements java.sql.Connection {
 	}
 
 	public Config getConfig() {
-		return ph.getClient().getConfig();
+		return ss.getConfig();
 	}
 
 	public Session getSession() {
-		return null;
+		return ss;
 	}
 
 	ChannelFuture submitCommand(Any cmd) {
@@ -395,5 +392,5 @@ public class Connection implements java.sql.Connection {
 	}
 
 	private final Channel ch;
-	private final ProtocolHandler ph;
+	private final Session ss;
 }

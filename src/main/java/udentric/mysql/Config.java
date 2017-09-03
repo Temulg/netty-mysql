@@ -139,7 +139,8 @@ public class Config {
 		interactiveClient(BOOLEAN_VALUE),
 		maintainTimeStats(BOOLEAN_VALUE),
 		paranoid(BOOLEAN_VALUE),
-		localSocketAddress(STRING_VALUE);
+		localSocketAddress(STRING_VALUE),
+		maxPacketSize(INTEGER_VALUE);
 
 		private Key(Value accessor_) {
 			accessor = accessor_;

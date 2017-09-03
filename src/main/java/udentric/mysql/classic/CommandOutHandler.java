@@ -45,10 +45,12 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 		SocketAddress localAddress, ChannelPromise promise
 	) throws Exception {
 		Channel ch = ctx.channel();
-		Session cs = ch.attr(Client.SESSION).get();
+		Session ss = ch.attr(Client.SESSION).get();
 
 		{
-			Throwable t = cs.beginRequest(new Handshake(promise));
+			Throwable t = ss.beginRequest(
+				new Handshake().withChannelPromise(promise)
+			);
 			if (t != null) {
 				promise.setFailure(t);
 				return;
@@ -58,7 +60,7 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 		ChannelPromise nextPromise = ch.newPromise();
 		nextPromise.addListener(chf -> {
 			if (!chf.isSuccess()) {
-				cs.processClientFailure(chf.cause());
+				ss.discardCommand(chf.cause());
 			}
 		});
 
@@ -67,18 +69,18 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 
 	@Override
 	public void write(
-		ChannelHandlerContext ctx, Object msg_, ChannelPromise promise
+		ChannelHandlerContext ctx, Object cmd_, ChannelPromise promise
 	) throws Exception {
-		if (!(msg_ instanceof Any)) {
-			super.write(ctx, msg_, promise);
+		if (!(cmd_ instanceof Any)) {
+			super.write(ctx, cmd_, promise);
 			return;
 		}
 
-		Any msg = (Any)msg_;
+		Any cmd = (Any)cmd_;
 		Session cs = ctx.channel().attr(Client.SESSION).get();
 
 		{
-			Throwable t = cs.beginRequest(msg);
+			Throwable t = cs.beginRequest(cmd);
 			if (t != null) {
 				promise.setFailure(t);
 				return;
@@ -88,11 +90,12 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 		try {
 			ByteBuf dst = ctx.alloc().buffer();
 			int wpos = dst.writerIndex();
-			dst.writeZero(Packet.HEADER_SIZE);
-			msg.encode(dst, cs);
+
+			dst.writeMediumLE(0);
+			dst.writeByte(cmd.getSeqNum());
+			cmd.encode(dst, cs);
 			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
 			dst.setMediumLE(wpos, len);
-			dst.setByte(wpos + 3, cs.getSeqNum());
 			super.write(ctx, dst, promise);
 		} catch (Throwable t) {
 			promise.setFailure(t);

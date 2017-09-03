@@ -26,9 +26,11 @@ import java.lang.invoke.MethodHandles;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.google.common.collect.ImmutableMap;
+
 import udentric.mysql.Config;
-import udentric.mysql.util.ByteString;
-import udentric.mysql.classic.auth.CredentialsProvider;
 
 public class Client extends ChannelInitializer<SocketChannel> {
 	public static class Builder {
@@ -37,8 +39,8 @@ public class Client extends ChannelInitializer<SocketChannel> {
 			return this;
 		}
 
-		public Builder withCredentials(CredentialsProvider creds_) {
-			creds = creds_;
+		public Builder withAttr(String key, String value) {
+			connAttributes.put(key, value);
 			return this;
 		}
 
@@ -47,7 +49,9 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		}
 
 		private Config config;
-		private CredentialsProvider creds;
+		private final LinkedHashMap<
+			String, String
+		> connAttributes = new LinkedHashMap<>();
 	}
 
 	public static Builder builder() {
@@ -61,29 +65,22 @@ public class Client extends ChannelInitializer<SocketChannel> {
 	private Client(Builder bld) {
 		config = bld.config == null
 			? Config.fromEnvironment(true) : bld.config;
-		creds = bld.creds != null
-			? bld.creds.withConfig(config) : null;
 
-		addCommonAttributes();
+		connAttributes = combineAttributes(bld.connAttributes).build();
 	}
 
-	private void addCommonAttributes() {
-		connAttributes.put(
-			new ByteString("_os"),
-			new ByteString(System.getProperty("os.name"))
-		);
-		connAttributes.put(
-			new ByteString("_platform"),
-			new ByteString(System.getProperty("os.arch"))
-		);
-		connAttributes.put(
-			new ByteString("_client_name"),
-			new ByteString("netty_mysql")
-		);
-		connAttributes.put(
-			new ByteString("_client_version"),
-			new ByteString("1.0")
-		);
+	private ImmutableMap.Builder<
+		String, String
+	> combineAttributes(Map<String, String> extraAttrs) {
+		return ImmutableMap.<String, String>builder().put(
+			"_os", System.getProperty("os.name")
+		).put(
+			"_platform", System.getProperty("os.arch")
+		).put(
+			"_client_name", "netty_mysql"
+		).put(
+			"_client_version", "1.0"
+		).putAll(extraAttrs);
 		//_pid
 		//program_name
 	}
@@ -130,19 +127,15 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		}
 	}
 
-	final static AttributeKey<Session> SESSION = AttributeKey.valueOf(
+	public final static AttributeKey<Session> SESSION = AttributeKey.valueOf(
 		"udentric.mysql.classic.Session"
 	);
-	final static AttributeKey<ChannelPromise> HANDSHAKE_PROMISE = AttributeKey.valueOf(
-		"udentric.mysql.classic.HandshakePromise"
-	);
 
-	final static CommandOutHandler COMMAND_OUT_HANDLER = new CommandOutHandler();
-	final static ResponseInHandler RESPONSE_IN_HANDLER = new ResponseInHandler();
+	final static CommandOutHandler COMMAND_OUT_HANDLER
+	= new CommandOutHandler();
+	final static ResponseInHandler RESPONSE_IN_HANDLER
+	= new ResponseInHandler();
 
 	private final Config config;
-	final CredentialsProvider creds;
-	private final LinkedHashMap<
-		ByteString, ByteString
-	> connAttributes = new LinkedHashMap<>();
+	final ImmutableMap<String, String> connAttributes;
 }

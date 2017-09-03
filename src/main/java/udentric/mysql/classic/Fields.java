@@ -16,6 +16,8 @@
 
 package udentric.mysql.classic;
 
+import java.nio.charset.Charset;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.util.ByteString;
@@ -74,6 +76,16 @@ public class Fields {
 			throw new DecoderException("malformed packet");
 
 		ByteString rv = new ByteString(in, len);
+		in.skipBytes(1);
+		return rv;
+	}
+
+	public static String readStringNT(ByteBuf in, Charset cs) {
+		int len = in.bytesBefore((byte)0);
+		if (len < 0)
+			throw new DecoderException("malformed packet");
+
+		String rv = in.readCharSequence(len, cs).toString();
 		in.skipBytes(1);
 		return rv;
 	}
