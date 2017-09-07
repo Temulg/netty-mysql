@@ -30,39 +30,44 @@ package testsuite.simple;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.testng.Assert;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
 import testsuite.TestCase;
 
-/**
- * Tests escape processing
- */
 public class NumbersTest extends TestCase {
 	public NumbersTest() {
-		super(Logger.getLogger(EscapeProcessingTest.class));
+		super(Logger.getLogger(NumbersTest.class));
 	}
 
-	@BeforeTest
-	public void setUpTest() throws SQLException {
+	@BeforeClass
+	public void beforeClass() throws SQLException {
+		/*
+		System.err.format("--2- before class\n");
 		createTable(
 			"number_test",
 			"(minBigInt bigint, maxBigInt bigint, testBigInt bigint)"
 		);
+		System.err.format("--2- create table\n");
 		stmt().executeUpdate(String.format(
 			"INSERT INTO number_test ("
 			+ "minBigInt, maxBigInt, testBigInt"
 			+ ") values (%d, %d, %d)",
 			Long.MIN_VALUE, Long.MAX_VALUE, TEST_BIGINT_VALUE
 		));
+		System.err.format("--2- execute update\n");
+		*/
 	}
 
 	@Test
 	public void numbers() throws SQLException {
+		System.err.format("--3- execute query\n");
 		try (ResultSet rs = stmt().executeQuery(
 			"SELECT * from number_test"
 		)) {
+			System.err.format("--3- result %s\n", rs);
+			/*
 			while (rs.next()) {
 				long minBigInt = rs.getLong(1);
 				long maxBigInt = rs.getLong(2);
@@ -73,6 +78,7 @@ public class NumbersTest extends TestCase {
 					testBigInt, TEST_BIGINT_VALUE
 				);
 			}
+			*/
 		}
 	}
 

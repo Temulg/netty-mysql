@@ -98,14 +98,16 @@ public class Client extends ChannelInitializer<SocketChannel> {
 	}
 
 	public SocketAddress remoteAddress() {
+		System.err.format("-a2-\n");
 		String h = config.getOrDefault(Config.Key.HOST, "localhost");
 		int port = config.getOrDefault(Config.Key.TCP_PORT, 3306);
 
 		String unix = config.getOrDefault(Config.Key.UNIX_PORT, "");
 		SocketAddress rv = null;
-		if (h.equals("localhost") && !unix.isEmpty())
+		if (h.equals("localhost") && !unix.isEmpty())			
 			rv = domainSocketAddress(unix);
 
+		System.err.format("-b2- rv %s\n", rv);
 		return rv != null ? rv : InetSocketAddress.createUnresolved(
 			h, port
 		);

@@ -28,12 +28,14 @@
 package udentric.mysql.classic.jdbc;
 
 import io.netty.util.concurrent.Future;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.Phaser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Commands;
 import udentric.mysql.classic.ResponseConsumer;
@@ -46,33 +48,47 @@ public class Statement implements java.sql.Statement {
 
 	@Override
 	public ResultSet executeQuery(String sql) throws SQLException {
-		return null;
+		int phase = responseWaiter.register();
+
+		ResultSetResponseConsumer rc = new ResultSetResponseConsumer();
+		Any cmd = Commands.query(sql).withResponseConsumer(rc);
+
+		conn.submitCommand(cmd).addListener(
+			rc::commandSend
+		);
+
+		responseWaiter.awaitAdvance(phase);
+
+		if (rc.error != null) {
+			
+		}
+
+		return rc.value();
 	}
 
 	@Override
 	public int executeUpdate(String sql) throws SQLException {
 		int phase = responseWaiter.register();
 
-		
-		Any cmd = Commands.query(sql).withResponseConsumer(
-			onSimpleResponse.clear()
-		);
+		SimpleResponseConsumer rc = new SimpleResponseConsumer();
+		Any cmd = Commands.query(sql).withResponseConsumer(rc);
 
 		conn.submitCommand(cmd).addListener(
-			onSimpleResponse::commandSend
+			rc::commandSend
 		);
 
 		responseWaiter.awaitAdvance(phase);
 
-		if (onSimpleResponse.error != null) {
+		if (rc.error != null) {
 			
 		}
 
-		return onSimpleResponse.value();
+		return rc.value();
 	}
 
 	@Override
 	public void close() throws SQLException {
+		conn.releaseStatement(this);
 	}
 
 	@Override
@@ -339,11 +355,8 @@ public class Statement implements java.sql.Statement {
 		return false;
 	}
 
-	private class SimpleResponseHandler implements ResponseConsumer {
-		SimpleResponseHandler clear() {
-			error = null;
-			return this;
-		}
+	private class SimpleResponseConsumer implements ResponseConsumer {
+
 
 		@Override
 		public void onMetadata(List<ColumnDefinition> colDef) {
@@ -382,7 +395,57 @@ public class Statement implements java.sql.Statement {
 		Throwable error;
 	}
 
+	private class ResultSetResponseConsumer implements ResponseConsumer {
+
+
+		@Override
+		public void onMetadata(List<ColumnDefinition> colDef) {
+
+		}
+
+		@Override
+		public void onData() {
+
+		}
+
+		@Override
+		public void onFailure(Throwable cause) {
+
+		}
+
+		@Override
+		public void onSuccess() {
+
+		}
+
+		
+		ResultSet value() {
+			return null;
+		}
+
+		void commandSend(Future f) {
+			if (f.isSuccess()) {
+				
+			} else {
+				error = f.cause();
+				responseWaiter.arriveAndDeregister();
+			}
+		}
+
+		Throwable error;
+	}
+
+	synchronized void releaseResult(ResultSet rs) {
+		results.remove(rs);
+	}
+
+	private static final Logger LOGGER = LogManager.getLogger(
+		Statement.class
+	);
+
 	private final Connection conn;
 	private final Phaser responseWaiter = new Phaser();
-	private final SimpleResponseHandler onSimpleResponse = new SimpleResponseHandler();
+	private final IdentityHashMap<
+		ResultSet, Boolean
+	> results = new IdentityHashMap<>();
 }

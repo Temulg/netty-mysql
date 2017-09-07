@@ -33,9 +33,6 @@ import org.testng.log4testng.Logger;
 
 import testsuite.TestCase;
 
-/**
- * Tests escape processing
- */
 public class EscapeProcessingTest extends TestCase {
 	public EscapeProcessingTest() {
 		super(Logger.getLogger(EscapeProcessingTest.class));

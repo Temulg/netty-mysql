@@ -27,28 +27,44 @@
 
 package testsuite;
 
+import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayDeque;
 import java.util.EnumMap;
 
 import org.testng.ITestContext;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.log4testng.Logger;
 
-import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
+import org.testng.TestRunner;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.jdbc.Connection;
 
 public abstract class TestCase {
 	protected TestCase(Logger logger_) {
 		logger = logger_;
+	}
+
+	@BeforeClass
+	public void beforeClass(ITestContext ctx) {
+		TestRunner runner = (TestRunner)ctx;
+		runner.setVerbose(1);
+
+		ResourceLeakDetector.setLevel(Level.PARANOID);
+		grp = new NioEventLoopGroup();
+	}
+
+	@AfterClass
+	public void afterClass(ITestContext ctx) throws Exception {
+		grp.shutdownGracefully().await();
+		grp = null;
 	}
 
 	protected boolean versionMeetsMinimum(int major, int minor) {
@@ -66,11 +82,13 @@ public abstract class TestCase {
 	protected Connection conn() {
 		return (Connection)testObjects.computeIfAbsent(TestObject.CONN, k -> {
 			Client cl = Client.builder().build();
+
 			Connection c = new Connection(
 				(new Bootstrap()).group(grp).channel(
 					NioSocketChannel.class
 				).handler(cl).connect(cl.remoteAddress())
 			);
+
 			closeableObjects.offerFirst(c);
 			return c;
 		});
@@ -79,6 +97,7 @@ public abstract class TestCase {
 	protected Statement stmt() {
 		return (Statement)testObjects.computeIfAbsent(TestObject.STMT, k -> {
 			Connection c = conn();
+
 			try {
 				Statement stmt = c.createStatement();
 				closeableObjects.offerFirst(stmt);
@@ -193,18 +212,6 @@ public abstract class TestCase {
 	protected Statement sha256Stmt() {
 	}
 */
-
-	@BeforeClass
-	public void setUpClass(ITestContext ctx) {
-		ResourceLeakDetector.setLevel(Level.PARANOID);
-		grp = new NioEventLoopGroup();
-	}
-
-	@AfterClass
-	public void tearDownClass(ITestContext ctx) throws Exception {
-		grp.shutdownGracefully().await();
-		grp = null;
-	}
 
 	/*
 	@BeforeMethod

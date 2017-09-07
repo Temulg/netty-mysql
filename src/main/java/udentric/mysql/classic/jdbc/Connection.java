@@ -27,6 +27,7 @@
 
 package udentric.mysql.classic.jdbc;
 
+import com.google.common.collect.Lists;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -46,6 +47,9 @@ import java.util.concurrent.Executor;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import java.util.IdentityHashMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.Client;
@@ -55,14 +59,17 @@ import udentric.mysql.util.QueryNormalizer;
 
 public class Connection implements java.sql.Connection {
 	public Connection(ChannelFuture chf) {
+		System.err.format("-a4-\n");
 		try {
 			if (!chf.await().isSuccess()) {
 				throw chf.cause();
 			}
 		} catch (Throwable t) {
+			System.err.format("-b4-\n");
+			t.printStackTrace(System.err);
 			throwAny(t);
 		}
-
+		System.err.format("-c4-\n");
 		ch = chf.channel();
 		ss = ch.attr(Client.SESSION).get();
 	}
@@ -79,8 +86,10 @@ public class Connection implements java.sql.Connection {
 	}
 
 	@Override
-	public java.sql.Statement createStatement() throws SQLException {
-		return new Statement(this);
+	public synchronized Statement createStatement() throws SQLException {
+		Statement stmt = new Statement(this);
+		statements.put(stmt, Boolean.TRUE);
+		return stmt;
 	}
 
 	@Override
@@ -125,6 +134,8 @@ public class Connection implements java.sql.Connection {
 
 	@Override
 	public void close() throws SQLException {
+		closeAllStatements();
+
 		try {
 			ch.close().await();
 		} catch (InterruptedException e) {
@@ -391,6 +402,27 @@ public class Connection implements java.sql.Connection {
 		return ch.writeAndFlush(cmd);
 	}
 
+	private synchronized void closeAllStatements() {
+		Lists.newArrayList(statements.keySet()).forEach(stmt -> {
+			try {
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.warn("exception closing statement", e);
+			}
+		});
+	}
+
+	synchronized void releaseStatement(Statement stmt) {
+		statements.remove(stmt);
+	}
+
+	private static final Logger LOGGER = LogManager.getLogger(
+		Connection.class
+	);
+
 	private final Channel ch;
 	private final Session ss;
+	private final IdentityHashMap<
+		Statement, Boolean
+	> statements = new IdentityHashMap<>();
 }
