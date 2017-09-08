@@ -39,6 +39,7 @@ import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.command.Any;
 import udentric.mysql.classic.command.MysqlNativePasswordAuth;
+import udentric.mysql.classic.command.Query;
 
 public class Session {
 	Session(Client cl_) {
@@ -58,10 +59,23 @@ public class Session {
 		return null;
 	}
 
+	public Query newQuery(String sql) {
+		long stamp = lock.tryOptimisticRead();
+		CharsetInfo.Entry charset = serverCharset;
+
+		if (!lock.validate(stamp)) {
+			stamp = lock.readLock();
+			charset = serverCharset;
+			lock.unlock(stamp);
+		}
+		return new Query(sql, charset);
+	}
+
 	Throwable beginRequest(Any cmd) {
 		long stamp = lock.tryWriteLock();
 
 		if (stamp == 0 || currentCommand != null) {
+			System.err.format("--6- current command %s, new command %s\n", currentCommand, cmd);
 			return new RuntimeException("channel busy");
 		}
 
@@ -70,7 +84,13 @@ public class Session {
 		return null;
 	}
 
-	void discardCommand(Throwable cause) {
+	public void discardCommand() {
+		long stamp = lock.writeLock();
+		currentCommand = null;
+		lock.unlock(stamp);
+	}
+
+	public void discardCommand(Throwable cause) {
 		Any cmd = null;
 		long stamp = lock.writeLock();
 		cmd = currentCommand;
@@ -83,7 +103,15 @@ public class Session {
 	}
 
 	Any getCurrentCommand() {
-		return currentCommand;
+		long stamp = lock.tryOptimisticRead();
+		Any cmd = currentCommand;
+
+		if (!lock.validate(stamp)) {
+			stamp = lock.readLock();
+			cmd = currentCommand;
+			lock.unlock(stamp);
+		}
+		return cmd;
 	}
 
 	public Any handleInitialHandshake(
@@ -93,7 +121,7 @@ public class Session {
 		currentCommand = null;
 
 		try {
-			seqNum = Packet.getSeqNum(msg);
+			int seqNum = Packet.getSeqNum(msg);
 			msg.skipBytes(Packet.HEADER_SIZE);
 
 			int protoVers = Fields.readInt1(msg);
@@ -121,7 +149,7 @@ public class Session {
 
 			if (!msg.isReadable()) {
 				return selectAuthCommand(
-					authPluginName, secret, ctx
+					authPluginName, secret, seqNum, ctx
 				);
 			}
 
@@ -130,7 +158,7 @@ public class Session {
 			if (!msg.isReadable()) {
 				updateClientCapabilities();
 				return selectAuthCommand(
-					authPluginName, secret, ctx
+					authPluginName, secret, seqNum, ctx
 				);
 			}
 
@@ -163,7 +191,7 @@ public class Session {
 			}
 
 			return selectAuthCommand(
-				authPluginName, secret, ctx
+				authPluginName, secret, seqNum, ctx
 			);
 		} finally {
 			lock.unlock(stamp);
@@ -171,7 +199,8 @@ public class Session {
 	}
 
 	private Any selectAuthCommand(
-		String authPluginName, byte[] secret, ChannelHandlerContext ctx
+		String authPluginName, byte[] secret, int seqNum,
+		ChannelHandlerContext ctx
 	) throws Exception {
 		ByteBuf attrBuf = null;
 
@@ -300,7 +329,6 @@ public class Session {
 	private final Client cl;
 	private final StampedLock lock = new StampedLock();
 	private volatile Any currentCommand;
-	private int seqNum;
 	private volatile ServerVersion serverVersion;
 	private long serverCaps;
 	private long clientCaps;

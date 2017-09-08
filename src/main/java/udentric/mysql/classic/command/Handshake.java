@@ -47,8 +47,12 @@ public class Handshake implements Any {
 		try {
 			Any nextCommand = ss.handleInitialHandshake(src, ctx);
 			ctx.channel().writeAndFlush(
-				nextCommand.withChannelPromise(chp), chp
-			);
+				nextCommand.withChannelPromise(chp)
+			).addListener(chf -> {
+				if (!chf.isSuccess()) {
+					ss.discardCommand(chf.cause());
+				}
+			});
 		} catch (Exception e) {
 			chp.setFailure(e);
 		}

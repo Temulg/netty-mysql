@@ -29,6 +29,7 @@ class InboundPacketFramer extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+		System.err.format("-b8- handler out\n");
 		ByteBuf acc = accumulator;
 		if (acc != null) {
 			accumulator = null;
@@ -47,6 +48,7 @@ class InboundPacketFramer extends ChannelInboundHandlerAdapter {
 	public void channelRead(
 		ChannelHandlerContext ctx, Object msg_
 	) throws Exception {
+		System.err.format("-a8- msg in %s, %s\n", msg_.getClass(), msg_);
 		if (!(msg_ instanceof ByteBuf)) {
 			ctx.fireChannelRead(msg_);
 			return;

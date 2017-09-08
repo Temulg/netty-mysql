@@ -39,6 +39,7 @@ class ResponseInHandler extends ChannelInboundHandlerAdapter {
 	public void channelRead(
 		ChannelHandlerContext ctx, Object msg_
 	) throws Exception {
+		System.err.format("--8- msg in %s, %s\n", msg_.getClass(), msg_);
 		if (!(msg_ instanceof ByteBuf)) {
 			super.channelRead(ctx, msg_);
 			return;

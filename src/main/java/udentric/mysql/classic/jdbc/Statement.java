@@ -37,7 +37,6 @@ import java.util.concurrent.Phaser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.ColumnDefinition;
-import udentric.mysql.classic.Commands;
 import udentric.mysql.classic.ResponseConsumer;
 import udentric.mysql.classic.command.Any;
 
@@ -51,16 +50,18 @@ public class Statement implements java.sql.Statement {
 		int phase = responseWaiter.register();
 
 		ResultSetResponseConsumer rc = new ResultSetResponseConsumer();
-		Any cmd = Commands.query(sql).withResponseConsumer(rc);
+		Any cmd = conn.getSession().newQuery(sql).withResponseConsumer(
+			rc
+		);
 
 		conn.submitCommand(cmd).addListener(
-			rc::commandSend
+			rc::commandSent
 		);
 
 		responseWaiter.awaitAdvance(phase);
 
 		if (rc.error != null) {
-			
+			System.err.format("-a5- error %s\n", rc.error);
 		}
 
 		return rc.value();
@@ -71,16 +72,18 @@ public class Statement implements java.sql.Statement {
 		int phase = responseWaiter.register();
 
 		SimpleResponseConsumer rc = new SimpleResponseConsumer();
-		Any cmd = Commands.query(sql).withResponseConsumer(rc);
+		Any cmd = conn.getSession().newQuery(sql).withResponseConsumer(
+			rc
+		);
 
 		conn.submitCommand(cmd).addListener(
-			rc::commandSend
+			rc::commandSent
 		);
 
 		responseWaiter.awaitAdvance(phase);
 
 		if (rc.error != null) {
-			
+			System.err.format("-b5- error %s\n", rc.error);
 		}
 
 		return rc.value();
@@ -383,7 +386,7 @@ public class Statement implements java.sql.Statement {
 			return 0;
 		}
 
-		void commandSend(Future f) {
+		void commandSent(Future f) {
 			if (f.isSuccess()) {
 				
 			} else {
@@ -423,7 +426,7 @@ public class Statement implements java.sql.Statement {
 			return null;
 		}
 
-		void commandSend(Future f) {
+		void commandSent(Future f) {
 			if (f.isSuccess()) {
 				
 			} else {

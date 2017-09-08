@@ -38,6 +38,7 @@ import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.MySQLException;
+import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 import udentric.mysql.util.Scramble411;
@@ -100,8 +101,12 @@ public class MysqlNativePasswordAuth implements Any {
 	public void handleReply(
 		ByteBuf src, Session ss, ChannelHandlerContext ctx
 	) {
-		int type = src.readByte();
+		int nextSeqNum = Packet.getSeqNum(src);
+		src.skipBytes(Packet.HEADER_SIZE);
 
+		int type = Fields.readInt1(src);
+
+		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {
 		case ResponseType.OK:
 			okReceived(src, ss);
@@ -110,11 +115,13 @@ public class MysqlNativePasswordAuth implements Any {
 			authSwitch(src, ss);
 			break;
 		case ResponseType.ERR:
+			ss.discardCommand();
 			handleFailure(
 				MySQLException.fromErrPacket(src)
 			);
 			return;
 		default:
+			ss.discardCommand();
 			handleFailure(new DecoderException(
 				"unsupported packet type "
 				+ Integer.toString(type)
@@ -125,6 +132,7 @@ public class MysqlNativePasswordAuth implements Any {
 
 	@SuppressWarnings("unused") 
 	private void okReceived(ByteBuf src, Session ss) {
+		ss.discardCommand();
 		long rows = Fields.readLongLenenc(src);
 		long insertId = Fields.readLongLenenc(src);
 		short srvStatus = src.readShortLE();
@@ -156,7 +164,8 @@ public class MysqlNativePasswordAuth implements Any {
 			chp.setSuccess();
 	}
 
-	private void authSwitch(ByteBuf src, Session cs) {
+	private void authSwitch(ByteBuf src, Session ss) {
+		ss.discardCommand();
 		if (!src.isReadable()) {
 			handleFailure(new DecoderException(
 				"mysql_old_password auth method not supported"

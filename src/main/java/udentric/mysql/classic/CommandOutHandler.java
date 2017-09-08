@@ -77,10 +77,10 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 		}
 
 		Any cmd = (Any)cmd_;
-		Session cs = ctx.channel().attr(Client.SESSION).get();
+		Session ss = ctx.channel().attr(Client.SESSION).get();
 
 		{
-			Throwable t = cs.beginRequest(cmd);
+			Throwable t = ss.beginRequest(cmd);
 			if (t != null) {
 				promise.setFailure(t);
 				return;
@@ -93,7 +93,7 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 
 			dst.writeMediumLE(0);
 			dst.writeByte(cmd.getSeqNum());
-			cmd.encode(dst, cs);
+			cmd.encode(dst, ss);
 			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
 			dst.setMediumLE(wpos, len);
 			super.write(ctx, dst, promise);
