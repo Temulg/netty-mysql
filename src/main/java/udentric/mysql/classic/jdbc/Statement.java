@@ -54,9 +54,10 @@ public class Statement implements java.sql.Statement {
 			rc
 		);
 
-		conn.submitCommand(cmd).addListener(
-			rc::commandSent
-		);
+		conn.submitCommand(cmd).addListener(chf -> {
+			if (!chf.isSuccess())
+				conn.getSession().discardCommand(chf.cause());
+		});
 
 		responseWaiter.awaitAdvance(phase);
 
@@ -76,9 +77,10 @@ public class Statement implements java.sql.Statement {
 			rc
 		);
 
-		conn.submitCommand(cmd).addListener(
-			rc::commandSent
-		);
+		conn.submitCommand(cmd).addListener(chf -> {
+			if (!chf.isSuccess())
+				conn.getSession().discardCommand(chf.cause());
+		});
 
 		responseWaiter.awaitAdvance(phase);
 
@@ -360,7 +362,6 @@ public class Statement implements java.sql.Statement {
 
 	private class SimpleResponseConsumer implements ResponseConsumer {
 
-
 		@Override
 		public void onMetadata(List<ColumnDefinition> colDef) {
 
@@ -381,25 +382,14 @@ public class Statement implements java.sql.Statement {
 
 		}
 
-		
 		int value() {
 			return 0;
-		}
-
-		void commandSent(Future f) {
-			if (f.isSuccess()) {
-				
-			} else {
-				error = f.cause();
-				responseWaiter.arriveAndDeregister();
-			}
 		}
 
 		Throwable error;
 	}
 
 	private class ResultSetResponseConsumer implements ResponseConsumer {
-
 
 		@Override
 		public void onMetadata(List<ColumnDefinition> colDef) {
@@ -424,15 +414,6 @@ public class Statement implements java.sql.Statement {
 		
 		ResultSet value() {
 			return null;
-		}
-
-		void commandSent(Future f) {
-			if (f.isSuccess()) {
-				
-			} else {
-				error = f.cause();
-				responseWaiter.arriveAndDeregister();
-			}
 		}
 
 		Throwable error;

@@ -47,6 +47,8 @@ import java.util.concurrent.Executor;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelPromise;
+
 import java.util.IdentityHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,20 +60,25 @@ import udentric.mysql.classic.command.Any;
 import udentric.mysql.util.QueryNormalizer;
 
 public class Connection implements java.sql.Connection {
-	public Connection(ChannelFuture chf) {
-		System.err.format("-a4-\n");
+	public Connection(ChannelFuture chf) throws SQLException {
 		try {
 			if (!chf.await().isSuccess()) {
 				throw chf.cause();
 			}
 		} catch (Throwable t) {
-			System.err.format("-b4-\n");
-			t.printStackTrace(System.err);
 			throwAny(t);
 		}
-		System.err.format("-c4-\n");
+
+		LOGGER.debug("connection established");
+
 		ch = chf.channel();
 		ss = ch.attr(Client.SESSION).get();
+
+		String catalog = ss.getConfig().getOrDefault(
+			Config.Key.DBNAME, ""
+		);
+		if (!catalog.isEmpty())
+			setCatalog(catalog);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -164,10 +171,27 @@ public class Connection implements java.sql.Connection {
 
 	@Override
 	public void setCatalog(String catalog) throws SQLException {
+		ChannelPromise chp = ch.newPromise();
+		ch.writeAndFlush(
+			ss.newInitDb(catalog).withChannelPromise(chp)
+		).addListener(chf -> {
+			if (!chf.isSuccess())
+				ss.discardCommand(chf.cause());
+		});
+
+		try {
+			chp.await();
+		} catch (InterruptedException e) {
+			ss.discardCommand(e);
+		}
+
+		if (!chp.isSuccess()) {
+			throwAny(chp.cause());
+		}
 	}
 
 	public String getCatalog() throws SQLException {
-		return "";
+		return ss.getCatalog();
 	}
 
 	@Override

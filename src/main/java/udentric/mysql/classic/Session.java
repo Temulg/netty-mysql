@@ -33,11 +33,14 @@ import io.netty.handler.codec.DecoderException;
 
 import java.util.Arrays;
 import java.util.concurrent.locks.StampedLock;
+import java.util.function.Consumer;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.command.Any;
+import udentric.mysql.classic.command.InitDb;
 import udentric.mysql.classic.command.MysqlNativePasswordAuth;
 import udentric.mysql.classic.command.Query;
 
@@ -55,20 +58,24 @@ public class Session {
 		return serverVersion;
 	}
 
+	public String getCatalog() {
+		return catalog;
+	}
+
+	public void setCatalog(String catalog_) {
+		catalog = catalog_;
+	}
+
 	public ServerSession getServerSession() {
 		return null;
 	}
 
 	public Query newQuery(String sql) {
-		long stamp = lock.tryOptimisticRead();
-		CharsetInfo.Entry charset = serverCharset;
+		return new Query(sql, serverCharset);
+	}
 
-		if (!lock.validate(stamp)) {
-			stamp = lock.readLock();
-			charset = serverCharset;
-			lock.unlock(stamp);
-		}
-		return new Query(sql, charset);
+	public InitDb newInitDb(String catalog) {
+		return new InitDb(catalog, serverCharset);
 	}
 
 	Throwable beginRequest(Any cmd) {
@@ -330,8 +337,9 @@ public class Session {
 	private final StampedLock lock = new StampedLock();
 	private volatile Any currentCommand;
 	private volatile ServerVersion serverVersion;
+	private volatile CharsetInfo.Entry serverCharset;
+	private volatile String catalog;
 	private long serverCaps;
 	private long clientCaps;
 	private int srvConnId;
-	private CharsetInfo.Entry serverCharset;
 }

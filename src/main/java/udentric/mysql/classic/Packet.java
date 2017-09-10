@@ -29,5 +29,24 @@ public class Packet {
 		return 0xff & in.getByte(in.readerIndex() + 3);
 	}
 
+	public static class OK	{
+		public OK(ByteBuf msg, CharsetInfo.Entry charset) {
+			rows = Fields.readLongLenenc(msg);
+			insertId = Fields.readLongLenenc(msg);
+			srvStatus = msg.readShortLE();
+			warnCount = Fields.readInt2(msg);
+
+			info = msg.readCharSequence(
+				msg.readableBytes(), charset.javaCharset
+			).toString();
+		}
+
+		public final long rows;
+		public final long insertId;
+		public final short srvStatus;
+		public final int warnCount;
+		public final String info;
+	}
+
 	public static final int HEADER_SIZE = 4;
 }

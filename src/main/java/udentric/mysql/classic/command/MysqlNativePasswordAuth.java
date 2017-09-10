@@ -109,59 +109,31 @@ public class MysqlNativePasswordAuth implements Any {
 		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {
 		case ResponseType.OK:
-			okReceived(src, ss);
+			try {
+				Packet.OK ok = new Packet.OK(src, charset);
+				Session.LOGGER.debug(
+					"authenticated: {}", ok.info
+				);
+				ss.discardCommand();
+				if (chp != null)
+					chp.setSuccess();
+			} catch (Exception e) {
+				ss.discardCommand(e);
+			}
 			break;
 		case ResponseType.EOF:
 			authSwitch(src, ss);
 			break;
 		case ResponseType.ERR:
-			ss.discardCommand();
-			handleFailure(
-				MySQLException.fromErrPacket(src)
-			);
+			ss.discardCommand(MySQLException.fromErrPacket(src));
 			return;
 		default:
-			ss.discardCommand();
-			handleFailure(new DecoderException(
+			ss.discardCommand(new DecoderException(
 				"unsupported packet type "
 				+ Integer.toString(type)
 			));
 			return;
 		}
-	}
-
-	@SuppressWarnings("unused") 
-	private void okReceived(ByteBuf src, Session ss) {
-		ss.discardCommand();
-		long rows = Fields.readLongLenenc(src);
-		long insertId = Fields.readLongLenenc(src);
-		short srvStatus = src.readShortLE();
-		int warnCount = Fields.readInt2(src);
-
-/*
-		if (ClientCapability.SESSION_TRACK.get(
-			ph.getServerCapabilities()
-		)) {
-			info = Fields.readStringLenenc(msg);
-			if (ServerStatus.SESSION_STATE_CHANGED.get(
-				srvStatus
-			)) {
-				ph.setChannelFailure(new DecoderException(
-					"session state info not decoded"
-				));
-				return;
-			}
-		} else
-*/
-		String info = src.readCharSequence(
-			src.readableBytes(), charset.javaCharset
-		).toString();
-
-		Session.LOGGER.debug(
-			"successfully connected to MySQL server ({})", info
-		);
-		if (chp != null)
-			chp.setSuccess();
 	}
 
 	private void authSwitch(ByteBuf src, Session ss) {

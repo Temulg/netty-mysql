@@ -28,7 +28,6 @@
 package udentric.mysql.classic.command;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
@@ -36,20 +35,67 @@ import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.MySQLException;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.ResponseConsumer;
 import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 
-
-public class Query implements Any {
-	public Query(String sql_, CharsetInfo.Entry charset_) {
-		sql = sql_;
+public class InitDb implements Any {
+	public InitDb(String catalog_, CharsetInfo.Entry charset_) {
+		catalog = catalog_;
 		charset = charset_;
 	}
 
-	public Query withResponseConsumer(ResponseConsumer rc_) {
-		rc = rc_;
-		return this;
+	@Override
+	public void encode(ByteBuf dst, Session ss) {
+		dst.writeByte(OPCODE);
+		dst.writeCharSequence(catalog, charset.javaCharset);
+	}
+
+	@Override
+	public void handleReply(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
+		int nextSeqNum = Packet.getSeqNum(src);
+		if (nextSeqNum != 1) {
+			ss.discardCommand(new DecoderException(
+				"unexpected seqNum"
+			));
+			return;
+		}
+
+		src.skipBytes(Packet.HEADER_SIZE);
+
+		int type = Fields.readInt1(src);
+		switch (type) {
+		case ResponseType.OK:
+			try {
+				Packet.OK ok = new Packet.OK(src, charset);
+				Session.LOGGER.debug(
+					"catalog changed: {}", ok.info
+				);
+				ss.setCatalog(catalog);
+				ss.discardCommand();
+				if (chp != null)
+					chp.setSuccess();
+			} catch (Exception e) {
+				ss.discardCommand(e);
+			}
+			break;
+		case ResponseType.ERR:
+			ss.discardCommand(MySQLException.fromErrPacket(src));
+			return;
+		default:
+			ss.discardCommand(new DecoderException(
+				"unsupported packet type "
+				+ Integer.toString(type)
+			));
+			return;
+		}
+	}
+
+	@Override
+	public void handleFailure(Throwable cause) {
+		if (chp != null)
+			chp.setFailure(cause);
 	}
 
 	@Override
@@ -58,58 +104,14 @@ public class Query implements Any {
 	}
 
 	@Override
-	public Query withChannelPromise(ChannelPromise chp_) {
+	public InitDb withChannelPromise(ChannelPromise chp_) {
 		chp = chp_;
 		return this;
 	}
 
-	@Override
-	public void encode(ByteBuf dst, Session ss) {
-		dst.writeByte(OPCODE);
-		dst.writeCharSequence(sql, charset.javaCharset);
-	}
+	public static final int OPCODE = 2;
 
-	@Override
-	public void handleReply(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
-	) {
-		int nextSeqNum = Packet.getSeqNum(src);
-		src.skipBytes(Packet.HEADER_SIZE);
-
-		int type = src.getByte(0) & 0xff;
-
-		System.err.format("--7- resp reply type %x\n", type);
-		switch (type) {
-		case ResponseType.OK:
-			okReceived(src, ss);
-			break;
-		case ResponseType.FILE_REQUEST:
-			authSwitch(src, ss);
-			break;
-		case ResponseType.ERR:
-			ss.discardCommand();
-			handleFailure(
-				MySQLException.fromErrPacket(src)
-			);
-			return;
-		default:
-			// result set
-			return;
-		}
-	}
-
-	@Override
-	public void handleFailure(Throwable cause) {
-		if (rc != null)
-			rc.onFailure(cause);
-		if (chp != null)
-			chp.setFailure(cause);
-	}
-
-	public static final int OPCODE = 3;
-
-	private final String sql;
+	private final String catalog;
 	private final CharsetInfo.Entry charset;
-	private ResponseConsumer rc;
 	private ChannelPromise chp;
 }
