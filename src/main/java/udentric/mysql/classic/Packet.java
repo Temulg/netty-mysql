@@ -27,14 +27,11 @@
 
 package udentric.mysql.classic;
 
+import java.sql.SQLException;
+
 import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
-import udentric.mysql.Messages;
-import udentric.mysql.exceptions.ClosedOnExpiredPasswordException;
-import udentric.mysql.exceptions.DataTruncationException;
-import udentric.mysql.exceptions.ExceptionFactory;
 import udentric.mysql.exceptions.MysqlErrorNumbers;
-import udentric.mysql.exceptions.PasswordExpiredException;
 
 public class Packet {
 	private Packet() {}
@@ -47,7 +44,7 @@ public class Packet {
 		return 0xff & in.getByte(in.readerIndex() + 3);
 	}
 
-	public static Exception parseError(
+	public static SQLException parseError(
 		ByteBuf msg, CharsetInfo.Entry charset
 	) {
 		int errno = Fields.readInt2(msg);
@@ -70,35 +67,8 @@ public class Packet {
 				);
 		} else
 			xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
-		
-		StringBuilder errBuf = new StringBuilder(
-			MysqlErrorNumbers.get(xOpen)
-		).append(
-			Messages.getString("Protocol.0")
-		).append(srvErrMsg).append('"');
 
-		if (xOpen.startsWith("22"))
-			return new DataTruncationException(
-				errBuf.toString(), 0, true, false, 0, 0,
-				errno
-			);
-		
-		switch (errno) {
-		case MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD:
-			return ExceptionFactory.createException(
-				PasswordExpiredException.class,
-				errBuf.toString()
-			);
-		case MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD_LOGIN:
-			return ExceptionFactory.createException(
-				ClosedOnExpiredPasswordException.class,
-				errBuf.toString()
-			);
-		default:
-			return ExceptionFactory.createException(
-				errBuf.toString(), xOpen, errno, false, null
-			);
-		}
+		return new SQLException(srvErrMsg, xOpen, errno, null);
 	}
 
 	public static class Ok	{

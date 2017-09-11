@@ -93,5 +93,5 @@ public class Messages {
 		} finally {
 			RESOURCE_BUNDLE = temp;
 		}
-	}        
+	}
 }

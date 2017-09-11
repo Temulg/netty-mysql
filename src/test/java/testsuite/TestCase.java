@@ -56,7 +56,7 @@ public abstract class TestCase {
 	@BeforeClass
 	public void beforeClass(ITestContext ctx) {
 		TestRunner runner = (TestRunner)ctx;
-		runner.setVerbose(1);
+		runner.setVerbose(0);
 
 		ResourceLeakDetector.setLevel(Level.PARANOID);
 		grp = new NioEventLoopGroup();
@@ -96,7 +96,8 @@ public abstract class TestCase {
 				);
 				closeableObjects.offerFirst(c);
 				return c;
-			} catch (SQLException e) {
+			} catch (Exception e) {
+				System.err.format("-- sql error %s\n", e);
 				Connection.throwAny(e);
 			}
 			return null;
@@ -134,10 +135,10 @@ public abstract class TestCase {
 
 	protected class SchemaObject {
 		SchemaObject(
-			Statement stmt, String name_, String type_
+			Statement stmt, String type_, String name_
 		) throws SQLException {
-			name = name_;
 			type = type_;
+			name = name_;
 
 			try {
 				drop(stmt);
@@ -168,8 +169,8 @@ public abstract class TestCase {
 			stmt.executeUpdate("flush privileges");
 		}
 
-		final String name;
 		final String type;
+		final String name;
 	}
 
 	protected void createSchemaObject(
@@ -181,7 +182,7 @@ public abstract class TestCase {
 		);
 
 		String sql = String.format(
-			"CREATE  %s %s %s", objectName, objectType,
+			"CREATE  %s %s %s", objectType, objectName,
 			columnsAndOtherStuff
 		);
 

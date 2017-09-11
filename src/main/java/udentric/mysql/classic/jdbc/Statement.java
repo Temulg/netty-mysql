@@ -48,7 +48,7 @@ public class Statement implements java.sql.Statement {
 
 	@Override
 	public ResultSet executeQuery(String sql) throws SQLException {
-		int phase = responseWaiter.register();
+		int phase = responseWaiter.getPhase();
 
 		ResultSetResponseConsumer rc = new ResultSetResponseConsumer();
 		Any cmd = conn.getSession().newQuery(sql).withResponseConsumer(
@@ -64,6 +64,7 @@ public class Statement implements java.sql.Statement {
 
 		if (rc.error != null) {
 			System.err.format("-a5- error %s\n", rc.error);
+			Connection.throwAny(rc.error);
 		}
 
 		return rc.value();
@@ -71,8 +72,9 @@ public class Statement implements java.sql.Statement {
 
 	@Override
 	public int executeUpdate(String sql) throws SQLException {
-		int phase = responseWaiter.register();
+		int phase = responseWaiter.getPhase();
 
+		System.err.format("-s5- %d sql %s\n", phase, sql);
 		SimpleResponseConsumer rc = new SimpleResponseConsumer();
 		Any cmd = conn.getSession().newQuery(sql).withResponseConsumer(
 			rc
@@ -83,13 +85,15 @@ public class Statement implements java.sql.Statement {
 				conn.getSession().discardCommand(chf.cause());
 		});
 
-		responseWaiter.awaitAdvance(phase);
+		System.err.format("-t5- %d - %d\n", phase, responseWaiter.awaitAdvance(phase));
 
 		if (rc.error != null) {
 			System.err.format("-b5- error %s\n", rc.error);
+			Connection.throwAny(rc.error);
 		}
 
-		return rc.value();
+		System.err.format("-c5- value %s\n", rc.value);
+		return Math.toIntExact(rc.value.rows);
 	}
 
 	@Override
@@ -375,19 +379,18 @@ public class Statement implements java.sql.Statement {
 
 		@Override
 		public void onFailure(Throwable cause) {
-
+			error = cause;
+			responseWaiter.arrive();
 		}
 
 		@Override
-		public void onSuccess(Packet.Ok ok) {
-
-		}
-
-		int value() {
-			return 0;
+		public void onSuccess(Packet.Ok value_) {
+			value = value_;
+			responseWaiter.arrive();
 		}
 
 		Throwable error;
+		Packet.Ok value;
 	}
 
 	private class ResultSetResponseConsumer implements ResponseConsumer {
@@ -404,7 +407,8 @@ public class Statement implements java.sql.Statement {
 
 		@Override
 		public void onFailure(Throwable cause) {
-
+			error = cause;
+			responseWaiter.arrive();
 		}
 
 		@Override
@@ -429,7 +433,7 @@ public class Statement implements java.sql.Statement {
 	);
 
 	private final Connection conn;
-	private final Phaser responseWaiter = new Phaser();
+	private final Phaser responseWaiter = new Phaser(1);
 	private final IdentityHashMap<
 		ResultSet, Boolean
 	> results = new IdentityHashMap<>();

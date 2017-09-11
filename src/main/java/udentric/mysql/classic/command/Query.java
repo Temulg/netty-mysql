@@ -74,7 +74,7 @@ public class Query implements Any {
 		int nextSeqNum = Packet.getSeqNum(src);
 		src.skipBytes(Packet.HEADER_SIZE);
 
-		int type = src.getByte(0) & 0xff;
+		int type = src.getByte(src.readerIndex()) & 0xff;
 
 		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {

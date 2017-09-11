@@ -43,7 +43,6 @@ public class NumbersTest extends TestCase {
 
 	@BeforeClass
 	public void beforeClass() throws SQLException {
-		/*
 		System.err.format("--2- before class\n");
 		createTable(
 			"number_test",
@@ -57,7 +56,6 @@ public class NumbersTest extends TestCase {
 			Long.MIN_VALUE, Long.MAX_VALUE, TEST_BIGINT_VALUE
 		));
 		System.err.format("--2- execute update\n");
-		*/
 	}
 
 	@Test
