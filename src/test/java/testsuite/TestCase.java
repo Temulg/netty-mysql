@@ -44,6 +44,7 @@ import io.netty.util.ResourceLeakDetector.Level;
 import org.testng.TestRunner;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import udentric.mysql.Config;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.jdbc.Connection;
 
@@ -81,16 +82,24 @@ public abstract class TestCase {
 
 	protected Connection conn() {
 		return (Connection)testObjects.computeIfAbsent(TestObject.CONN, k -> {
-			Client cl = Client.builder().build();
+			Client cl = Client.builder().withConfig(
+				Config.fromEnvironment(true).withValue(
+					Config.Key.DBNAME, "testsuite"
+				).build()
+			).build();
 
-			Connection c = new Connection(
-				(new Bootstrap()).group(grp).channel(
-					NioSocketChannel.class
-				).handler(cl).connect(cl.remoteAddress())
-			);
-
-			closeableObjects.offerFirst(c);
-			return c;
+			try {
+				Connection c = new Connection(
+					(new Bootstrap()).group(grp).channel(
+						NioSocketChannel.class
+					).handler(cl).connect(cl.remoteAddress())
+				);
+				closeableObjects.offerFirst(c);
+				return c;
+			} catch (SQLException e) {
+				Connection.throwAny(e);
+			}
+			return null;
 		});
 	}
 

@@ -116,7 +116,7 @@ public class Connection implements java.sql.Connection {
 	@Override
 	public String nativeSQL(String sql) throws SQLException {
 		QueryNormalizer qn = new QueryNormalizer(
-			sql, null, true, null
+			sql, null, true
 		);
 
 		return qn.normalize().toString();

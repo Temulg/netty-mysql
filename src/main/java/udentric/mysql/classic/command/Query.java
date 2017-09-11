@@ -33,8 +33,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.classic.CharsetInfo;
-import udentric.mysql.classic.Fields;
-import udentric.mysql.classic.MySQLException;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
 import udentric.mysql.classic.ResponseType;
@@ -81,19 +79,28 @@ public class Query implements Any {
 		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {
 		case ResponseType.OK:
-			okReceived(src, ss);
-			break;
-		case ResponseType.FILE_REQUEST:
-			authSwitch(src, ss);
+			src.skipBytes(1);
+			try {
+				Packet.Ok ok = new Packet.Ok(src, charset);
+				ss.discardCommand();
+				if (rc != null)
+					rc.onSuccess(ok);
+				if (chp != null)
+					chp.setSuccess();
+			} catch (Exception e) {
+				ss.discardCommand(e);
+			}
 			break;
 		case ResponseType.ERR:
-			ss.discardCommand();
-			handleFailure(
-				MySQLException.fromErrPacket(src)
-			);
+			src.skipBytes(1);
+			ss.discardCommand(Packet.parseError(src, charset));
 			return;
 		default:
-			// result set
+			StringBuilder sb = new StringBuilder(
+				"-a7- resultset\n"
+			);
+			ByteBufUtil.appendPrettyHexDump(sb, src);
+			System.err.println(sb);
 			return;
 		}
 	}

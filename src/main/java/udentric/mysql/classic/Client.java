@@ -64,7 +64,7 @@ public class Client extends ChannelInitializer<SocketChannel> {
 
 	private Client(Builder bld) {
 		config = bld.config == null
-			? Config.fromEnvironment(true) : bld.config;
+			? Config.fromEnvironment(true).build() : bld.config;
 
 		connAttributes = combineAttributes(bld.connAttributes).build();
 	}

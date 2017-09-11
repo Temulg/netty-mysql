@@ -34,14 +34,35 @@ import java.util.Optional;
 import java.util.Properties;
 
 public class Config {
-	public static Config empty() {
-		return new Config();
+	public static class Builder {
+		private Builder() {
+		}
+
+		public <T> Builder withValue(Key k, T val_) {
+			Object val = k.accessor.fromObject(val_);
+			if (val != null)
+				values.put(k, val);
+
+			return this;
+		}
+
+		public Config build() {
+			return new Config(values);
+		}
+
+		private final EnumMap<
+			Key, Object
+		> values = new EnumMap<>(Key.class);
 	}
 
-	public static Config fromEnvironment(boolean useEnv) {
-		Config cfg = new Config();
+	public static Builder empty() {
+		return new Builder();
+	}
+
+	public static Builder fromEnvironment(boolean useSysEnv) {
+		Builder cfg = new Builder();
 		Properties props = System.getProperties();
-		Map<String, String> env = useEnv
+		Map<String, String> env = useSysEnv
 			? System.getenv()
 			: Collections.emptyMap();
 
@@ -54,7 +75,7 @@ public class Config {
 					cfg.values.put(key, val);
 			});
 
-			if (!useEnv)
+			if (!useSysEnv)
 				continue;
 
 			key.envVar.ifPresent(var -> {
@@ -69,8 +90,9 @@ public class Config {
 		return cfg;
 	}
 
-	private Config() {
-		
+	
+	private Config(EnumMap<Key, Object> values_) {
+		values = values_;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -91,12 +113,26 @@ public class Config {
 		}
 
 		abstract Object fromString(String val);
+
+		abstract Object fromObject(Object val);
 	}
 
 	private static final Value BOOLEAN_VALUE = new Value() {
 		@Override
 		Object fromString(String val) {
 			return Boolean.parseBoolean(val);
+		}
+
+		@Override
+		Object fromObject(Object val) {
+			if (val instanceof Boolean)
+				return val;
+			else if (val instanceof Number)
+				return ((Number)val).intValue() > 0;
+			else if (val instanceof CharSequence)
+				return Boolean.parseBoolean(val.toString());
+			else
+				return null;
 		}
 	};
 
@@ -109,12 +145,25 @@ public class Config {
 				return null;
 			}
 		}
+
+		@Override
+		Object fromObject(Object val) {
+			if (val instanceof Number)
+				return ((Number)val).intValue();
+			else
+				return null;
+		}
 	};
 
 	private static final Value STRING_VALUE = new Value() {
 		@Override
 		Object fromString(String val) {
 			return val;
+		}
+
+		@Override
+		Object fromObject(Object val) {
+			return val.toString();
 		}
 	};
 
@@ -159,5 +208,5 @@ public class Config {
 		private final Optional<String> envVar;
 	}
 
-	private final EnumMap<Key, Object> values = new EnumMap<>(Key.class);
+	private final EnumMap<Key, Object> values;
 }

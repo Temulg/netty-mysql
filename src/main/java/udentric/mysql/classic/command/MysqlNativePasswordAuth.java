@@ -37,7 +37,6 @@ import udentric.mysql.Config;
 import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.Fields;
-import udentric.mysql.classic.MySQLException;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
@@ -110,7 +109,7 @@ public class MysqlNativePasswordAuth implements Any {
 		switch (type) {
 		case ResponseType.OK:
 			try {
-				Packet.OK ok = new Packet.OK(src, charset);
+				Packet.Ok ok = new Packet.Ok(src, charset);
 				Session.LOGGER.debug(
 					"authenticated: {}", ok.info
 				);
@@ -125,7 +124,7 @@ public class MysqlNativePasswordAuth implements Any {
 			authSwitch(src, ss);
 			break;
 		case ResponseType.ERR:
-			ss.discardCommand(MySQLException.fromErrPacket(src));
+			ss.discardCommand(Packet.parseError(src, charset));
 			return;
 		default:
 			ss.discardCommand(new DecoderException(

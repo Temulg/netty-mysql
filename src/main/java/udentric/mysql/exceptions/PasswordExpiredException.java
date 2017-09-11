@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
+ /*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -24,17 +24,36 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
+package udentric.mysql.exceptions;
 
-package udentric.mysql.classic;
+public class PasswordExpiredException extends CJException {
 
-import java.util.List;
+	public PasswordExpiredException() {
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD);
+	}
 
-public interface ResponseConsumer {
-	void onMetadata(List<ColumnDefinition> colDef);
+	public PasswordExpiredException(String message) {
+		super(message);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD);
+	}
 
-	void onData();
+	public PasswordExpiredException(String message, Throwable cause) {
+		super(message, cause);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD);
+	}
 
-	void onFailure(Throwable cause);
+	public PasswordExpiredException(Throwable cause) {
+		super(cause);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD);
+	}
 
-	void onSuccess(Packet.Ok ok);
+	protected PasswordExpiredException(
+		String message, Throwable cause, boolean enableSuppression,
+		boolean writableStackTrace
+	) {
+		super(message, cause, enableSuppression, writableStackTrace);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD);
+	}
+
+	private static final long serialVersionUID = 0x9a9c3e1a8488ec2aL;
 }

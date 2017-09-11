@@ -33,7 +33,6 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.Fields;
-import udentric.mysql.classic.MySQLException;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
@@ -68,7 +67,7 @@ public class InitDb implements Any {
 		switch (type) {
 		case ResponseType.OK:
 			try {
-				Packet.OK ok = new Packet.OK(src, charset);
+				Packet.Ok ok = new Packet.Ok(src, charset);
 				Session.LOGGER.debug(
 					"catalog changed: {}", ok.info
 				);
@@ -81,7 +80,7 @@ public class InitDb implements Any {
 			}
 			break;
 		case ResponseType.ERR:
-			ss.discardCommand(MySQLException.fromErrPacket(src));
+			ss.discardCommand(Packet.parseError(src, charset));
 			return;
 		default:
 			ss.discardCommand(new DecoderException(

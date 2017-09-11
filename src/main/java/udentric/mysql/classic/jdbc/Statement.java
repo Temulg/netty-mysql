@@ -37,6 +37,7 @@ import java.util.concurrent.Phaser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
 import udentric.mysql.classic.command.Any;
 
@@ -378,7 +379,7 @@ public class Statement implements java.sql.Statement {
 		}
 
 		@Override
-		public void onSuccess() {
+		public void onSuccess(Packet.Ok ok) {
 
 		}
 
@@ -407,7 +408,7 @@ public class Statement implements java.sql.Statement {
 		}
 
 		@Override
-		public void onSuccess() {
+		public void onSuccess(Packet.Ok ok) {
 
 		}
 

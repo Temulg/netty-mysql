@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
+ /*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -24,9 +24,37 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
+package udentric.mysql.exceptions;
 
-package udentric.mysql.util;
+public class ClosedOnExpiredPasswordException extends CJException {
+	public ClosedOnExpiredPasswordException() {
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD_LOGIN);
+	}
 
-public interface ExceptionInterceptor {
-	Exception interceptException(Exception sqlEx);
+	public ClosedOnExpiredPasswordException(String message) {
+		super(message);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD_LOGIN);
+	}
+
+	public ClosedOnExpiredPasswordException(
+		String message, Throwable cause
+	) {
+		super(message, cause);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD_LOGIN);
+	}
+
+	public ClosedOnExpiredPasswordException(Throwable cause) {
+		super(cause);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD_LOGIN);
+	}
+
+	protected ClosedOnExpiredPasswordException(
+		String message, Throwable cause, boolean enableSuppression,
+		boolean writableStackTrace
+	) {
+		super(message, cause, enableSuppression, writableStackTrace);
+		setVendorCode(MysqlErrorNumbers.ER_MUST_CHANGE_PASSWORD_LOGIN);
+	}
+
+	private static final long serialVersionUID = 0x9edbfa43fc07f614L;
 }

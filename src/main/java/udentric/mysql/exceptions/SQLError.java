@@ -39,29 +39,23 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLTransientConnectionException;
 import udentric.mysql.Messages;
 import udentric.mysql.classic.jdbc.Connection;
-import udentric.mysql.util.ExceptionInterceptor;
 
 public class SQLError {
 	private SQLError() {
 	}
 	
 	public static SQLException createSQLException(
-		String message, String sqlState,
-		ExceptionInterceptor interceptor
+		String message, String sqlState
 	) {
-		return createSQLException(message, sqlState, 0, interceptor);
+		return createSQLException(message, sqlState, 0);
+	}
+
+	public static SQLException createSQLException(String message) {
+		return new SQLException(message);
 	}
 
 	public static SQLException createSQLException(
-		String message, ExceptionInterceptor interceptor
-	) {
-		SQLException sqlEx = new SQLException(message);
-		return runThroughExceptionInterceptor(interceptor, sqlEx);
-	}
-
-	public static SQLException createSQLException(
-		String message, String sqlState, Throwable cause,
-		ExceptionInterceptor interceptor
+		String message, String sqlState, Throwable cause
 	) {
 		SQLException sqlEx = createSQLException(
 			message, sqlState, null
@@ -74,35 +68,32 @@ public class SQLError {
 				} catch (Throwable t) {}
 			}
 		}
-		return runThroughExceptionInterceptor(interceptor, sqlEx);
+		return sqlEx;
 	}
 
 	public static SQLException createSQLException(
-		String message, String sqlState, int vendorErrorCode,
-		ExceptionInterceptor interceptor
+		String message, String sqlState, int vendorErrorCode
 	) {
 		return createSQLException(
-			message, sqlState, vendorErrorCode, false, interceptor
+			message, sqlState, vendorErrorCode, false
 		);
 	}
 
 	public static SQLException createSQLException(
 		String message, String sqlState, int vendorErrorCode,
-		Throwable cause, ExceptionInterceptor interceptor
+		Throwable cause
 	) {
 		return createSQLException(
-			message, sqlState, vendorErrorCode, false, cause,
-			interceptor
+			message, sqlState, vendorErrorCode, false, cause
 		);
 	}
 
 	public static SQLException createSQLException(
 		String message, String sqlState, int vendorErrorCode,
-		boolean isTransient, ExceptionInterceptor interceptor
+		boolean isTransient
 	) {
 		return createSQLException(
-			message, sqlState, vendorErrorCode, isTransient, null,
-			interceptor
+			message, sqlState, vendorErrorCode, isTransient, null
 		);
 	}
 
@@ -160,8 +151,7 @@ public class SQLError {
 
 	public static SQLException createSQLException(
 		String message, String sqlState, int vendorErrorCode,
-		boolean isTransient, Throwable cause,
-		ExceptionInterceptor interceptor
+		boolean isTransient, Throwable cause
 	) {
 
 		try {
@@ -184,28 +174,21 @@ public class SQLError {
 				} catch (Throwable t) {}
 			}
 
-			return runThroughExceptionInterceptor(
-				interceptor, sqlEx
-			);
+			return sqlEx;
 		} catch (Exception sqlEx) {
-			SQLException unexpectedEx = new SQLException(
+			return new SQLException(
 				"Unable to create correct SQLException class "
 				+ "instance, error class/codes may be "
 				+ "incorrect. Reason: "
 				+ stackTraceToString(sqlEx),
 				MysqlErrorNumbers.SQL_STATE_GENERAL_ERROR
 			);
-
-			return runThroughExceptionInterceptor(
-				interceptor, unexpectedEx
-			);
 		}
 	}
 
 	public static SQLException createCommunicationsException(
 		Connection conn, long lastPacketSentTimeMs,
-		long lastPacketReceivedTimeMs, Exception underlyingException,
-		ExceptionInterceptor interceptor
+		long lastPacketReceivedTimeMs, Exception underlyingException
 	) {
 		SQLException exToReturn = new CommunicationsException(
 			conn, lastPacketSentTimeMs, lastPacketReceivedTimeMs,
@@ -218,12 +201,11 @@ public class SQLError {
 			} catch (Throwable t) {}
 		}
 
-		return runThroughExceptionInterceptor(interceptor, exToReturn);
+		return exToReturn;
 	}
 
 	public static SQLException createCommunicationsException(
-		String message, Throwable underlyingException,
-		ExceptionInterceptor interceptor
+		String message, Throwable underlyingException
 	) {
 		SQLException exToReturn = new CommunicationsException(
 			message, underlyingException
@@ -235,35 +217,18 @@ public class SQLError {
 			} catch (Throwable t) {}
 		}
 
-		return runThroughExceptionInterceptor(interceptor, exToReturn);
-	}
-
-	private static SQLException runThroughExceptionInterceptor(
-		ExceptionInterceptor exInterceptor, SQLException sqlEx
-	) {
-		if (exInterceptor != null) {
-			Exception interceptedEx = exInterceptor.interceptException(
-				sqlEx
-			);
-
-			if (interceptedEx != null) {
-				return (SQLException)interceptedEx;
-			}
-		}
-		return sqlEx;
+		return exToReturn;
 	}
 
 	public static SQLException createBatchUpdateException(
-		SQLException underlyingEx, long[] updateCounts,
-		ExceptionInterceptor interceptor
+		SQLException underlyingEx, long[] updateCounts
 	) throws SQLException {
-		BatchUpdateException newEx = new BatchUpdateException(
+		return new BatchUpdateException(
 			underlyingEx.getMessage(),
 			underlyingEx.getSQLState(),
 			underlyingEx.getErrorCode(),
 			updateCounts, underlyingEx
 		);
-		return runThroughExceptionInterceptor(interceptor, newEx);
 	}
 
 	public static SQLException createSQLFeatureNotSupportedException() {
@@ -271,13 +236,11 @@ public class SQLError {
 	}
 
 	public static SQLException createSQLFeatureNotSupportedException(
-		String message, String sqlState,
-		ExceptionInterceptor interceptor
+		String message, String sqlState
 	) throws SQLException {
-		SQLException newEx = new SQLFeatureNotSupportedException(
+		return new SQLFeatureNotSupportedException(
 			message, sqlState
 		);
-		return runThroughExceptionInterceptor(interceptor, newEx);
 	}
 
 	public static String stackTraceToString(Throwable ex) {

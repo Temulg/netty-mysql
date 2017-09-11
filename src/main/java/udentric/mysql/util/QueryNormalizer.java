@@ -46,14 +46,12 @@ import com.google.common.collect.ImmutableMap;
 public class QueryNormalizer extends QueryTokenizer {
 	public QueryNormalizer(
 		String s, TimeZone defaultTimeZone_,
-		boolean serverSupportsFractionalSecond_,
-		ExceptionInterceptor exceptionInterceptor_
+		boolean serverSupportsFractionalSecond_
 	) {
 		super(s);
 		defaultTimeZone = defaultTimeZone_ != null
 		? defaultTimeZone_ : TimeZone.getDefault();
 		serverSupportsFractionalSecond = serverSupportsFractionalSecond_;
-		exceptionInterceptor = exceptionInterceptor_;
 	}
 
 	public CharSequence normalize() throws SQLException {
@@ -276,5 +274,4 @@ public class QueryNormalizer extends QueryTokenizer {
 
 	private final TimeZone defaultTimeZone;
 	private final boolean serverSupportsFractionalSecond;
-	private final ExceptionInterceptor exceptionInterceptor;
 }

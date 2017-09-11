@@ -31,7 +31,6 @@ import java.net.BindException;
 import udentric.mysql.Config;
 import udentric.mysql.Messages;
 import udentric.mysql.classic.ServerSession;
-import udentric.mysql.util.ExceptionInterceptor;
 
 public class ExceptionFactory {
 	public static CJException createException(String message) {
@@ -50,19 +49,6 @@ public class ExceptionFactory {
 		} catch (Throwable e) {
 			sqlEx = (T)new CJException(message);
 		}
-		return sqlEx;
-	}
-
-	public static CJException createException(
-		String message, ExceptionInterceptor interceptor
-	) {
-		return createException(CJException.class, message, interceptor);
-	}
-
-	public static <T extends CJException> T createException(
-		Class<T> clazz, String message, ExceptionInterceptor interceptor
-	) {
-		T sqlEx = createException(clazz, message);
 		return sqlEx;
 	}
 
@@ -98,21 +84,11 @@ public class ExceptionFactory {
 	}
 
 	public static CJException createException(
-		String message, Throwable cause,
-		ExceptionInterceptor interceptor
-	) {
-		return createException(
-			CJException.class, message, cause, interceptor
-		);
-	}
-
-	public static CJException createException(
 		String message, String sqlState, int vendorErrorCode,
-		boolean isTransient, Throwable cause,
-		ExceptionInterceptor interceptor
+		boolean isTransient, Throwable cause
 	) {
 		CJException ex = createException(
-			CJException.class, message, cause, interceptor
+			CJException.class, message, cause
 		);
 		ex.setSQLState(sqlState);
 		ex.setVendorCode(vendorErrorCode);
@@ -120,22 +96,13 @@ public class ExceptionFactory {
 		return ex;
 	}
 
-	public static <T extends CJException> T createException(
-		Class<T> clazz, String message, Throwable cause,
-		ExceptionInterceptor interceptor
-	) {
-		T sqlEx = createException(clazz, message, cause);
-		return sqlEx;
-	}
-
 	public static CJCommunicationsException createCommunicationsException(
 		Config cfg, ServerSession serverSession,
 		long lastPacketSentTimeMs, long lastPacketReceivedTimeMs,
-		Throwable cause, ExceptionInterceptor interceptor
+		Throwable cause
 	) {
 		CJCommunicationsException sqlEx = createException(
-			CJCommunicationsException.class, null, cause,
-			interceptor
+			CJCommunicationsException.class, null, cause
 		);
 		sqlEx.init(
 			cfg, serverSession, lastPacketSentTimeMs,
