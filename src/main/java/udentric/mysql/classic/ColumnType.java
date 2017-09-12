@@ -16,6 +16,8 @@
 
 package udentric.mysql.classic;
 
+import com.google.common.collect.ImmutableMap;
+
 public enum ColumnType {
 	DECIMAL,
 	TINY,
@@ -57,5 +59,23 @@ public enum ColumnType {
 		id = id_;
 	}
 
+	public static ColumnType forId(int id) {
+		return TYPES_BY_ID.get(id);
+	}
+
+	private static final ImmutableMap<
+		Integer, ColumnType
+	> TYPES_BY_ID;
+
 	private final int id;
+	static {
+		ImmutableMap.Builder<
+			Integer, ColumnType
+		> builder = ImmutableMap.builder();
+
+		for (ColumnType ct: ColumnType.values())
+			builder.put(ct.id, ct);
+
+		TYPES_BY_ID = builder.build();
+	}
 }

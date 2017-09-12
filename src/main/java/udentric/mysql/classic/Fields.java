@@ -19,7 +19,7 @@ package udentric.mysql.classic;
 import java.nio.charset.Charset;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.DecoderException;
+import udentric.mysql.exceptions.MysqlErrorNumbers;
 import udentric.mysql.util.ByteString;
 
 public class Fields {
@@ -66,14 +66,19 @@ public class Fields {
 		case 0xfe:
 			return in.readLongLE();
 		default:
-			throw new DecoderException("malformed packet");
+			Client.throwAny(Packet.makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
+			return 0;
 		}
 	}
 
 	public static ByteString readStringNT(ByteBuf in) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			throw new DecoderException("malformed packet");
+			Client.throwAny(Packet.makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
 
 		ByteString rv = new ByteString(in, len);
 		in.skipBytes(1);
@@ -83,7 +88,9 @@ public class Fields {
 	public static String readStringNT(ByteBuf in, Charset cs) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			throw new DecoderException("malformed packet");
+			Client.throwAny(Packet.makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
 
 		String rv = in.readCharSequence(len, cs).toString();
 		in.skipBytes(1);
@@ -101,7 +108,9 @@ public class Fields {
 	public static byte[] readBytesNT(ByteBuf in) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			throw new DecoderException("malformed packet");
+			Client.throwAny(Packet.makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
 
 		byte[] rv = new byte[len];
 		in.readBytes(rv);
@@ -128,10 +137,39 @@ public class Fields {
 			len = Math.toIntExact(in.readLongLE());
 			break;
 		default:
-			throw new DecoderException("malformed packet");
+			Client.throwAny(Packet.makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
 		}
 
 		return new ByteString(in, len);
+	}
+
+	public static String readStringLenenc(ByteBuf in, Charset cs) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			return in.readCharSequence(len, cs).toString();
+		}
+
+		switch (len) {
+		case 0xfb:
+			return null;
+		case 0xfc:
+			len = readInt2(in);
+			break;
+		case 0xfd:
+			len = in.readMediumLE();
+			break;
+		case 0xfe:
+			len = Math.toIntExact(in.readLongLE());
+			break;
+		default:
+			Client.throwAny(Packet.makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
+		}
+
+		return in.readCharSequence(len, cs).toString();
 	}
 
 	public static int writeIntLenenc(ByteBuf out, int val) {

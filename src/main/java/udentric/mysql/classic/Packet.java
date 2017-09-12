@@ -44,6 +44,13 @@ public class Packet {
 		return 0xff & in.getByte(in.readerIndex() + 3);
 	}
 
+	public static SQLException makeError(int errno) {
+		String xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
+		return new SQLException(
+			MysqlErrorNumbers.get(xOpen), xOpen, errno
+		);
+	}
+
 	public static SQLException parseError(
 		ByteBuf msg, CharsetInfo.Entry charset
 	) {
@@ -51,7 +58,7 @@ public class Packet {
 		String srvErrMsg = msg.readCharSequence(
 			msg.readableBytes(), charset.javaCharset
 		).toString();
-		String xOpen = MysqlErrorNumbers.SQL_STATE_CLI_SPECIFIC_CONDITION;
+		String xOpen;
 
 		if (srvErrMsg.charAt(0) == '#') {
 			if (srvErrMsg.length() > 6) {
@@ -71,16 +78,19 @@ public class Packet {
 		return new SQLException(srvErrMsg, xOpen, errno, null);
 	}
 
-	public static class Ok	{
-		public Ok(ByteBuf msg, CharsetInfo.Entry charset) {
-			rows = Fields.readLongLenenc(msg);
-			insertId = Fields.readLongLenenc(msg);
+	public static class ServerAck	{
+		public ServerAck(
+			ByteBuf msg, boolean okPacket,
+			CharsetInfo.Entry charset
+		) {
+			rows = okPacket ? Fields.readLongLenenc(msg) : 0;
+			insertId = okPacket ? Fields.readLongLenenc(msg) : 0;
 			srvStatus = msg.readShortLE();
 			warnCount = Fields.readInt2(msg);
 
-			info = msg.readCharSequence(
+			info = okPacket ? msg.readCharSequence(
 				msg.readableBytes(), charset.javaCharset
-			).toString();
+			).toString() : "";
 		}
 
 		@Override

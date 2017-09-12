@@ -27,7 +27,6 @@
 
 package udentric.mysql.classic.jdbc;
 
-import io.netty.util.concurrent.Future;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
@@ -36,10 +35,11 @@ import java.util.List;
 import java.util.concurrent.Phaser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import udentric.mysql.classic.Client;
 import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
-import udentric.mysql.classic.command.Any;
+import udentric.mysql.classic.dicta.Dictum;
 
 public class Statement implements java.sql.Statement {
 	Statement(Connection conn_) {
@@ -51,11 +51,11 @@ public class Statement implements java.sql.Statement {
 		int phase = responseWaiter.getPhase();
 
 		ResultSetResponseConsumer rc = new ResultSetResponseConsumer();
-		Any cmd = conn.getSession().newQuery(sql).withResponseConsumer(
+		Dictum dct = conn.getSession().newQuery(sql).withResponseConsumer(
 			rc
 		);
 
-		conn.submitCommand(cmd).addListener(chf -> {
+		conn.dicito(dct).addListener(chf -> {
 			if (!chf.isSuccess())
 				conn.getSession().discardCommand(chf.cause());
 		});
@@ -64,7 +64,7 @@ public class Statement implements java.sql.Statement {
 
 		if (rc.error != null) {
 			System.err.format("-a5- error %s\n", rc.error);
-			Connection.throwAny(rc.error);
+			Client.throwAny(rc.error);
 		}
 
 		return rc.value();
@@ -76,11 +76,11 @@ public class Statement implements java.sql.Statement {
 
 		System.err.format("-s5- %d sql %s\n", phase, sql);
 		SimpleResponseConsumer rc = new SimpleResponseConsumer();
-		Any cmd = conn.getSession().newQuery(sql).withResponseConsumer(
+		Dictum dct = conn.getSession().newQuery(sql).withResponseConsumer(
 			rc
 		);
 
-		conn.submitCommand(cmd).addListener(chf -> {
+		conn.dicito(dct).addListener(chf -> {
 			if (!chf.isSuccess())
 				conn.getSession().discardCommand(chf.cause());
 		});
@@ -89,11 +89,11 @@ public class Statement implements java.sql.Statement {
 
 		if (rc.error != null) {
 			System.err.format("-b5- error %s\n", rc.error);
-			Connection.throwAny(rc.error);
+			Client.throwAny(rc.error);
 		}
 
-		System.err.format("-c5- value %s\n", rc.value);
-		return Math.toIntExact(rc.value.rows);
+		System.err.format("-c5- ack %s\n", rc.ack);
+		return Math.toIntExact(rc.ack.rows);
 	}
 
 	@Override
@@ -384,13 +384,13 @@ public class Statement implements java.sql.Statement {
 		}
 
 		@Override
-		public void onSuccess(Packet.Ok value_) {
-			value = value_;
+		public void onSuccess(Packet.ServerAck ack_) {
+			ack = ack_;
 			responseWaiter.arrive();
 		}
 
 		Throwable error;
-		Packet.Ok value;
+		Packet.ServerAck ack;
 	}
 
 	private class ResultSetResponseConsumer implements ResponseConsumer {
@@ -412,7 +412,7 @@ public class Statement implements java.sql.Statement {
 		}
 
 		@Override
-		public void onSuccess(Packet.Ok ok) {
+		public void onSuccess(Packet.ServerAck ack) {
 
 		}
 

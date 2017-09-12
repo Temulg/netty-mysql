@@ -33,16 +33,15 @@ import io.netty.handler.codec.DecoderException;
 
 import java.util.Arrays;
 import java.util.concurrent.locks.StampedLock;
-import java.util.function.Consumer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
-import udentric.mysql.classic.command.Any;
-import udentric.mysql.classic.command.InitDb;
-import udentric.mysql.classic.command.MysqlNativePasswordAuth;
-import udentric.mysql.classic.command.Query;
+import udentric.mysql.classic.dicta.Dictum;
+import udentric.mysql.classic.dicta.InitDb;
+import udentric.mysql.classic.dicta.MysqlNativePasswordAuth;
+import udentric.mysql.classic.dicta.Query;
 
 public class Session {
 	Session(Client cl_) {
@@ -78,54 +77,57 @@ public class Session {
 		return new InitDb(catalog, serverCharset);
 	}
 
-	Throwable beginRequest(Any cmd) {
+	Throwable beginRequest(Dictum dct) {
 		long stamp = lock.tryWriteLock();
 
-		if (stamp == 0 || currentCommand != null) {
-			System.err.format("--6- current command %s, new command %s\n", currentCommand, cmd);
+		if (stamp == 0 || currentDictum != null) {
+			System.err.format(
+				"--6- current dictum %s, new dictum %s\n",
+				currentDictum, dct
+			);
 			return new RuntimeException("channel busy");
 		}
 
-		currentCommand = cmd;
+		currentDictum = dct;
 		lock.unlock(stamp);
 		return null;
 	}
 
 	public void discardCommand() {
 		long stamp = lock.writeLock();
-		currentCommand = null;
+		currentDictum = null;
 		lock.unlock(stamp);
 	}
 
 	public void discardCommand(Throwable cause) {
-		Any cmd = null;
+		Dictum dct = null;
 		long stamp = lock.writeLock();
-		cmd = currentCommand;
-		currentCommand = null;
+		dct = currentDictum;
+		currentDictum = null;
 		lock.unlock(stamp);
 
-		if (cmd != null) {
-			cmd.handleFailure(cause);
+		if (dct != null) {
+			dct.handleFailure(cause);
 		}
 	}
 
-	Any getCurrentCommand() {
+	Dictum getCurrentCommand() {
 		long stamp = lock.tryOptimisticRead();
-		Any cmd = currentCommand;
+		Dictum dct = currentDictum;
 
 		if (!lock.validate(stamp)) {
 			stamp = lock.readLock();
-			cmd = currentCommand;
+			dct = currentDictum;
 			lock.unlock(stamp);
 		}
-		return cmd;
+		return dct;
 	}
 
-	public Any handleInitialHandshake(
+	public Dictum handleInitialHandshake(
 		ByteBuf msg, ChannelHandlerContext ctx
 	) throws Exception {
 		long stamp = lock.writeLock();
-		currentCommand = null;
+		currentDictum = null;
 
 		try {
 			int seqNum = Packet.getSeqNum(msg);
@@ -205,7 +207,7 @@ public class Session {
 		}
 	}
 
-	private Any selectAuthCommand(
+	private Dictum selectAuthCommand(
 		String authPluginName, byte[] secret, int seqNum,
 		ChannelHandlerContext ctx
 	) throws Exception {
@@ -335,7 +337,7 @@ public class Session {
 
 	private final Client cl;
 	private final StampedLock lock = new StampedLock();
-	private volatile Any currentCommand;
+	private volatile Dictum currentDictum;
 	private volatile ServerVersion serverVersion;
 	private volatile CharsetInfo.Entry serverCharset;
 	private volatile String catalog;

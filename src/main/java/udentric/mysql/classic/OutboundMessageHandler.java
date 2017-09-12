@@ -34,11 +34,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import java.net.SocketAddress;
-import udentric.mysql.classic.command.Any;
-import udentric.mysql.classic.command.Handshake;
+import udentric.mysql.classic.dicta.Dictum;
+import udentric.mysql.classic.dicta.Handshake;
 
 @Sharable
-class CommandOutHandler extends ChannelOutboundHandlerAdapter {
+class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 	@Override
 	public void connect(
 		ChannelHandlerContext ctx, SocketAddress remoteAddress,
@@ -69,18 +69,18 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 
 	@Override
 	public void write(
-		ChannelHandlerContext ctx, Object cmd_, ChannelPromise promise
+		ChannelHandlerContext ctx, Object dct_, ChannelPromise promise
 	) throws Exception {
-		if (!(cmd_ instanceof Any)) {
-			super.write(ctx, cmd_, promise);
+		if (!(dct_ instanceof Dictum)) {
+			super.write(ctx, dct_, promise);
 			return;
 		}
 
-		Any cmd = (Any)cmd_;
+		Dictum dct = (Dictum)dct_;
 		Session ss = ctx.channel().attr(Client.SESSION).get();
 
 		{
-			Throwable t = ss.beginRequest(cmd);
+			Throwable t = ss.beginRequest(dct);
 			if (t != null) {
 				promise.setFailure(t);
 				return;
@@ -92,8 +92,8 @@ class CommandOutHandler extends ChannelOutboundHandlerAdapter {
 			int wpos = dst.writerIndex();
 
 			dst.writeMediumLE(0);
-			dst.writeByte(cmd.getSeqNum());
-			cmd.encode(dst, ss);
+			dst.writeByte(dct.getSeqNum());
+			dct.encode(dst, ss);
 			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
 			dst.setMediumLE(wpos, len);
 			super.write(ctx, dst, promise);

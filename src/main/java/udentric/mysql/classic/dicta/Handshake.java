@@ -25,32 +25,55 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.command;
+package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.Session;
 
-public class Quit implements Any {
-	private Quit() {
+public class Handshake implements Dictum {
+	public Handshake() {
 	}
 
 	@Override
 	public void encode(ByteBuf dst, Session ss) {
-		dst.writeByte(OPCODE);
+		throw new UnsupportedOperationException("Not supported.");
 	}
 
 	@Override
 	public void handleReply(
 		ByteBuf src, Session ss, ChannelHandlerContext ctx
 	) {
+		try {
+			Dictum next = ss.handleInitialHandshake(src, ctx);
+			ctx.channel().writeAndFlush(
+				next.withChannelPromise(chp)
+			).addListener(chf -> {
+				if (!chf.isSuccess()) {
+					ss.discardCommand(chf.cause());
+				}
+			});
+		} catch (Exception e) {
+			chp.setFailure(e);
+		}
 	}
 
 	@Override
 	public void handleFailure(Throwable cause) {
-
+		chp.setFailure(cause);
 	}
 
-	public static final Quit INSTANCE = new Quit();
-	public static final int OPCODE = 1;
+	@Override
+	public ChannelPromise channelPromise() {
+		return chp;
+	}
+
+	@Override
+	public Handshake withChannelPromise(ChannelPromise chp_) {
+		chp = chp_;
+		return this;
+	}
+
+	private ChannelPromise chp;
 }

@@ -25,39 +25,32 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.dicta;
 
-public enum ServerCommand {
-	SLEEP,
-	QUIT,
-	INIT_DB,
-	QUERY,
-	FIELD_LIST,
-	CREATE_DB,
-	DROP_DB,
-	REFRESH,
-	SHUTDOWN,
-	STATISTICS,
-	PROCESS_INFO,
-	CONNECT,
-	PROCESS_KILL,
-	DEBUG,
-	PING,
-	TIME,
-	DELAYED_INSERT,
-	CHANGE_USER,
-	BINLOG_DUMP,
-	TABLE_DUMP,
-	CONNECT_OUT,
-	REGISTER_SLAVE,
-	STMT_PREPARE,
-	STMT_EXECUTE,
-	STMT_SEND_LONG_DATA,
-	STMT_CLOSE,
-	STMT_RESET,
-	SET_OPTION,
-	STMT_FETCH,
-	DAEMON,
-	BINLOG_DUMP_GTID,
-	RESET_CONNECTION;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import udentric.mysql.classic.Session;
+
+public class Quit implements Dictum {
+	private Quit() {
+	}
+
+	@Override
+	public void encode(ByteBuf dst, Session ss) {
+		dst.writeByte(OPCODE);
+	}
+
+	@Override
+	public void handleReply(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
+	}
+
+	@Override
+	public void handleFailure(Throwable cause) {
+
+	}
+
+	public static final Quit INSTANCE = new Quit();
+	public static final int OPCODE = 1;
 }

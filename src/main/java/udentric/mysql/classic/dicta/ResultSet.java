@@ -25,27 +25,32 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.command;
+package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import io.netty.handler.codec.DecoderException;
 import udentric.mysql.classic.CharsetInfo;
+import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
 import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
+import udentric.mysql.exceptions.MysqlErrorNumbers;
 
-
-public class Query implements Any {
-	public Query(String sql_, CharsetInfo.Entry charset_) {
-		sql = sql_;
+public abstract class ResultSet implements Dictum {
+	protected ResultSet(
+		int columnCount, boolean expectEof_, int lastSeqNum_,
+		CharsetInfo.Entry charset_
+	) {
+		columns = new ColumnDefinition[columnCount];
+		expectEof = expectEof_;
+		lastSeqNum = lastSeqNum_;
 		charset = charset_;
 	}
 
-	public Query withResponseConsumer(ResponseConsumer rc_) {
+	public ResultSet withResponseConsumer(ResponseConsumer rc_) {
 		rc = rc_;
 		return this;
 	}
@@ -56,54 +61,68 @@ public class Query implements Any {
 	}
 
 	@Override
-	public Query withChannelPromise(ChannelPromise chp_) {
+	public ResultSet withChannelPromise(ChannelPromise chp_) {
 		chp = chp_;
 		return this;
 	}
 
 	@Override
 	public void encode(ByteBuf dst, Session ss) {
-		dst.writeByte(OPCODE);
-		dst.writeCharSequence(sql, charset.javaCharset);
+		throw new UnsupportedOperationException("Not supported.");
 	}
 
 	@Override
-	public void handleReply(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
-	) {
+	public void handleReply(ByteBuf src, Session ss, ChannelHandlerContext ctx) {
 		int nextSeqNum = Packet.getSeqNum(src);
+		if ((lastSeqNum + 1) != nextSeqNum) {
+			ss.discardCommand(Packet.makeError(
+				MysqlErrorNumbers.ER_NET_PACKETS_OUT_OF_ORDER
+			));
+			return;
+		} else
+			lastSeqNum = nextSeqNum;
+
 		src.skipBytes(Packet.HEADER_SIZE);
 
-		int type = src.getByte(src.readerIndex()) & 0xff;
+		if (hasMeta)
+			handleRowData(src, ss, ctx);
+		else
+			handleColumnMeta(src, ss, ctx);
+	}
 
-		System.err.format("--7- resp reply type %x\n", type);
-		switch (type) {
-		case ResponseType.OK:
-			src.skipBytes(1);
-			try {
-				Packet.Ok ok = new Packet.Ok(src, charset);
-				ss.discardCommand();
-				if (rc != null)
-					rc.onSuccess(ok);
-				if (chp != null)
-					chp.setSuccess();
-			} catch (Exception e) {
-				ss.discardCommand(e);
+	protected void handleColumnMeta(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
+		if (receivedColumns >= columns.length) {
+			if (expectEof) {
+				if ((
+					ResponseType.EOF != Fields.readInt1(src)
+				) || (src.readableBytes() != 4)) {
+					ss.discardCommand(Packet.makeError(
+						MysqlErrorNumbers.ER_MALFORMED_PACKET
+					));
+				} else
+					hasMeta = true;
+			} else {
+				hasMeta = true;
+				handleRowData(src, ss, ctx);
 			}
-			break;
-		case ResponseType.ERR:
-			src.skipBytes(1);
-			ss.discardCommand(Packet.parseError(src, charset));
-			return;
-		default:
-			StringBuilder sb = new StringBuilder(
-				"-a7- resultset\n"
-			);
-			ByteBufUtil.appendPrettyHexDump(sb, src);
-			System.err.println(sb);
 			return;
 		}
+
+		try {
+			columns[receivedColumns] = new ColumnDefinition(
+				src, charset
+			);
+		} catch (Exception e) {
+			ss.discardCommand(e);
+		}
+		receivedColumns++;
 	}
+
+	protected abstract void handleRowData(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	);
 
 	@Override
 	public void handleFailure(Throwable cause) {
@@ -113,10 +132,12 @@ public class Query implements Any {
 			chp.setFailure(cause);
 	}
 
-	public static final int OPCODE = 3;
-
-	private final String sql;
-	private final CharsetInfo.Entry charset;
-	private ResponseConsumer rc;
-	private ChannelPromise chp;
+	protected final ColumnDefinition[] columns;
+	protected final boolean expectEof;
+	protected final CharsetInfo.Entry charset;
+	protected ResponseConsumer rc;
+	protected ChannelPromise chp;
+	protected int lastSeqNum;
+	protected boolean hasMeta = false;
+	protected int receivedColumns = 0;
 }

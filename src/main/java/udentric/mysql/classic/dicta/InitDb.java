@@ -25,42 +25,78 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.command;
+package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.DecoderException;
+import udentric.mysql.classic.CharsetInfo;
+import udentric.mysql.classic.Fields;
+import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 
-public class Handshake implements Any {
-	public Handshake() {
+public class InitDb implements Dictum {
+	public InitDb(String catalog_, CharsetInfo.Entry charset_) {
+		catalog = catalog_;
+		charset = charset_;
 	}
 
 	@Override
 	public void encode(ByteBuf dst, Session ss) {
+		dst.writeByte(OPCODE);
+		dst.writeCharSequence(catalog, charset.javaCharset);
 	}
 
 	@Override
 	public void handleReply(
 		ByteBuf src, Session ss, ChannelHandlerContext ctx
 	) {
-		try {
-			Any nextCommand = ss.handleInitialHandshake(src, ctx);
-			ctx.channel().writeAndFlush(
-				nextCommand.withChannelPromise(chp)
-			).addListener(chf -> {
-				if (!chf.isSuccess()) {
-					ss.discardCommand(chf.cause());
-				}
-			});
-		} catch (Exception e) {
-			chp.setFailure(e);
+		int nextSeqNum = Packet.getSeqNum(src);
+		if (nextSeqNum != 1) {
+			ss.discardCommand(new DecoderException(
+				"unexpected seqNum"
+			));
+			return;
+		}
+
+		src.skipBytes(Packet.HEADER_SIZE);
+
+		int type = Fields.readInt1(src);
+		switch (type) {
+		case ResponseType.OK:
+			try {
+				Packet.ServerAck ack = new Packet.ServerAck(
+					src, true, charset
+				);
+				Session.LOGGER.debug(
+					"catalog changed: {}", ack.info
+				);
+				ss.setCatalog(catalog);
+				ss.discardCommand();
+				if (chp != null)
+					chp.setSuccess();
+			} catch (Exception e) {
+				ss.discardCommand(e);
+			}
+			break;
+		case ResponseType.ERR:
+			ss.discardCommand(Packet.parseError(src, charset));
+			return;
+		default:
+			ss.discardCommand(new DecoderException(
+				"unsupported packet type "
+				+ Integer.toString(type)
+			));
+			return;
 		}
 	}
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		chp.setFailure(cause);
+		if (chp != null)
+			chp.setFailure(cause);
 	}
 
 	@Override
@@ -69,10 +105,14 @@ public class Handshake implements Any {
 	}
 
 	@Override
-	public Handshake withChannelPromise(ChannelPromise chp_) {
+	public InitDb withChannelPromise(ChannelPromise chp_) {
 		chp = chp_;
 		return this;
 	}
 
+	public static final int OPCODE = 2;
+
+	private final String catalog;
+	private final CharsetInfo.Entry charset;
 	private ChannelPromise chp;
 }

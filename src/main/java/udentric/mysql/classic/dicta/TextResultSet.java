@@ -25,29 +25,26 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.command;
+package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
+import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.Session;
 
-public interface Any {
-	void encode(ByteBuf dst, Session ss);
-
-	void handleReply(ByteBuf src, Session ss, ChannelHandlerContext ctx);
-
-	void handleFailure(Throwable cause);
-
-	default int getSeqNum() {
-		return 0;
+public class TextResultSet extends ResultSet {
+	public TextResultSet(
+		int columnCount_, boolean expectEof_, int lastSeqNum_,
+		CharsetInfo.Entry charset_
+	) {
+		super(columnCount_, expectEof_, lastSeqNum_, charset_);
 	}
 
-	default ChannelPromise channelPromise() {
-		return null;
+	@Override
+	protected void handleRowData(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
+		
 	}
 
-	default Any withChannelPromise(ChannelPromise chp_) {
-		throw new UnsupportedOperationException("not implemented");
-	}
 }

@@ -25,46 +25,29 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler.Sharable;
-import udentric.mysql.classic.command.Any;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
+import udentric.mysql.classic.Session;
 
-@Sharable
-class ResponseInHandler extends ChannelInboundHandlerAdapter {
-	@Override
-	public void channelRead(
-		ChannelHandlerContext ctx, Object msg_
-	) throws Exception {
-		System.err.format("--8- msg in %s, %s\n", msg_.getClass(), msg_);
-		if (!(msg_ instanceof ByteBuf)) {
-			super.channelRead(ctx, msg_);
-			return;
-		}
+public interface Dictum {
+	void encode(ByteBuf dst, Session ss);
 
-		ByteBuf msg = (ByteBuf) msg_;
-		Session ss = ctx.channel().attr(Client.SESSION).get();
-		Any cmd = ss.getCurrentCommand();
+	void handleReply(ByteBuf src, Session ss, ChannelHandlerContext ctx);
 
-		if (cmd == null) {
-			super.channelRead(ctx, msg);
-			return;
-		}
+	void handleFailure(Throwable cause);
 
-		try {
-			cmd.handleReply(msg, ss, ctx);
-		} finally {
-			int remaining = msg.readableBytes();
-			if (remaining > 0) {
-				Session.LOGGER.warn(
-					"{} bytes left in incoming packet",
-					remaining
-				);
-			}
-			msg.release();
-		}
+	default int getSeqNum() {
+		return 0;
+	}
+
+	default ChannelPromise channelPromise() {
+		return null;
+	}
+
+	default Dictum withChannelPromise(ChannelPromise chp_) {
+		throw new UnsupportedOperationException("not implemented");
 	}
 }

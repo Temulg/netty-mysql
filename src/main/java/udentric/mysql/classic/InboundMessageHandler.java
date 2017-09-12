@@ -27,14 +27,44 @@
 
 package udentric.mysql.classic;
 
-import java.util.List;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import udentric.mysql.classic.dicta.Dictum;
 
-public interface ResponseConsumer {
-	void onMetadata(List<ColumnDefinition> colDef);
+@Sharable
+class InboundMessageHandler extends ChannelInboundHandlerAdapter {
+	@Override
+	public void channelRead(
+		ChannelHandlerContext ctx, Object msg_
+	) throws Exception {
+		System.err.format("--8- msg in %s, %s\n", msg_.getClass(), msg_);
+		if (!(msg_ instanceof ByteBuf)) {
+			super.channelRead(ctx, msg_);
+			return;
+		}
 
-	void onData();
+		ByteBuf msg = (ByteBuf) msg_;
+		Session ss = ctx.channel().attr(Client.SESSION).get();
+		Dictum dct = ss.getCurrentCommand();
 
-	void onFailure(Throwable cause);
+		if (dct == null) {
+			super.channelRead(ctx, msg);
+			return;
+		}
 
-	void onSuccess(Packet.ServerAck ack);
+		try {
+			dct.handleReply(msg, ss, ctx);
+		} finally {
+			int remaining = msg.readableBytes();
+			if (remaining > 0) {
+				Session.LOGGER.warn(
+					"{} bytes left in incoming packet",
+					remaining
+				);
+			}
+			msg.release();
+		}
+	}
 }

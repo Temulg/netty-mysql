@@ -56,7 +56,7 @@ import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.Session;
-import udentric.mysql.classic.command.Any;
+import udentric.mysql.classic.dicta.Dictum;
 import udentric.mysql.util.QueryNormalizer;
 
 public class Connection implements java.sql.Connection {
@@ -66,7 +66,7 @@ public class Connection implements java.sql.Connection {
 				throw chf.cause();
 			}
 		} catch (Throwable t) {
-			throwAny(t);
+			Client.throwAny(t);
 		}
 
 		LOGGER.debug("connection established");
@@ -79,13 +79,6 @@ public class Connection implements java.sql.Connection {
 		);
 		if (!catalog.isEmpty())
 			setCatalog(catalog);
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T extends Throwable> void throwAny(
-		Throwable t
-	) throws T {
-		throw (T)t;
 	}
 
 	public ServerVersion getServerVersion() {
@@ -186,7 +179,7 @@ public class Connection implements java.sql.Connection {
 		}
 
 		if (!chp.isSuccess()) {
-			throwAny(chp.cause());
+			Client.throwAny(chp.cause());
 		}
 	}
 
@@ -422,8 +415,8 @@ public class Connection implements java.sql.Connection {
 		return ss;
 	}
 
-	ChannelFuture submitCommand(Any cmd) {
-		return ch.writeAndFlush(cmd);
+	ChannelFuture dicito(Dictum dct) {
+		return ch.writeAndFlush(dct);
 	}
 
 	private synchronized void closeAllStatements() {

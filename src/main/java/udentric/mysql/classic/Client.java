@@ -129,14 +129,21 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <T extends Throwable> void throwAny(
+		Throwable t
+	) throws T {
+		throw (T)t;
+	}
+
 	public final static AttributeKey<Session> SESSION = AttributeKey.valueOf(
 		"udentric.mysql.classic.Session"
 	);
 
-	final static CommandOutHandler COMMAND_OUT_HANDLER
-	= new CommandOutHandler();
-	final static ResponseInHandler RESPONSE_IN_HANDLER
-	= new ResponseInHandler();
+	final static OutboundMessageHandler COMMAND_OUT_HANDLER
+	= new OutboundMessageHandler();
+	final static InboundMessageHandler RESPONSE_IN_HANDLER
+	= new InboundMessageHandler();
 
 	private final Config config;
 	final ImmutableMap<String, String> connAttributes;
