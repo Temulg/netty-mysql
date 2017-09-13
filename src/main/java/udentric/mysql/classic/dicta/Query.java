@@ -34,7 +34,6 @@ import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
-import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 
 
@@ -70,14 +69,14 @@ public class Query implements Dictum {
 	public void handleReply(
 		ByteBuf src, Session ss, ChannelHandlerContext ctx
 	) {
-		int nextSeqNum = Packet.getSeqNum(src);
+		int seqNum = Packet.getSeqNum(src);
 		src.skipBytes(Packet.HEADER_SIZE);
 
 		int type = src.getByte(src.readerIndex()) & 0xff;
 
 		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {
-		case ResponseType.OK:
+		case Packet.OK:
 			src.skipBytes(1);
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
@@ -92,16 +91,14 @@ public class Query implements Dictum {
 				ss.discardCommand(e);
 			}
 			break;
-		case ResponseType.ERR:
+		case Packet.ERR:
 			src.skipBytes(1);
 			ss.discardCommand(Packet.parseError(src, charset));
 			return;
 		default:
-			StringBuilder sb = new StringBuilder(
-				"-a7- resultset\n"
+			ss.receiveTextResultSet(
+				seqNum, Packet.readIntLenenc(src), rc, chp
 			);
-			ByteBufUtil.appendPrettyHexDump(sb, src);
-			System.err.println(sb);
 			return;
 		}
 	}

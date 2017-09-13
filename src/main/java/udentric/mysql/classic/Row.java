@@ -27,14 +27,6 @@
 
 package udentric.mysql.classic;
 
-import java.util.List;
-
-public interface ResponseConsumer {
-	void onMetadata(ColumnDefinition colDef);
-
-	void onData(Row row);
-
-	void onFailure(Throwable cause);
-
-	void onSuccess(Packet.ServerAck ack);
+public abstract class Row {
+	
 }

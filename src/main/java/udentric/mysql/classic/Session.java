@@ -29,6 +29,7 @@ package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 
 import java.util.Arrays;
@@ -42,6 +43,8 @@ import udentric.mysql.classic.dicta.Dictum;
 import udentric.mysql.classic.dicta.InitDb;
 import udentric.mysql.classic.dicta.MysqlNativePasswordAuth;
 import udentric.mysql.classic.dicta.Query;
+import udentric.mysql.classic.dicta.TextResultSet;
+import udentric.mysql.classic.dicta.ResultSet;
 
 public class Session {
 	Session(Client cl_) {
@@ -89,14 +92,14 @@ public class Session {
 		}
 
 		currentDictum = dct;
-		lock.unlock(stamp);
+		lock.unlockWrite(stamp);
 		return null;
 	}
 
 	public void discardCommand() {
 		long stamp = lock.writeLock();
 		currentDictum = null;
-		lock.unlock(stamp);
+		lock.unlockWrite(stamp);
 	}
 
 	public void discardCommand(Throwable cause) {
@@ -104,7 +107,7 @@ public class Session {
 		long stamp = lock.writeLock();
 		dct = currentDictum;
 		currentDictum = null;
-		lock.unlock(stamp);
+		lock.unlockWrite(stamp);
 
 		if (dct != null) {
 			dct.handleFailure(cause);
@@ -118,9 +121,26 @@ public class Session {
 		if (!lock.validate(stamp)) {
 			stamp = lock.readLock();
 			dct = currentDictum;
-			lock.unlock(stamp);
+			lock.unlockRead(stamp);
 		}
 		return dct;
+	}
+
+	public void receiveTextResultSet(
+		int seqNum, int columnCount, ResponseConsumer rc,
+		ChannelPromise chp
+	) {
+		long stamp = lock.writeLock();
+		currentDictum = new TextResultSet(
+			columnCount,
+			!ClientCapability.DEPRECATE_EOF.get(clientCaps),
+			seqNum, serverCharset
+		).withChannelPromise(
+			chp
+		).withResponseConsumer(
+			rc
+		);
+		lock.unlockWrite(stamp);
 	}
 
 	public Dictum handleInitialHandshake(
@@ -133,7 +153,7 @@ public class Session {
 			int seqNum = Packet.getSeqNum(msg);
 			msg.skipBytes(Packet.HEADER_SIZE);
 
-			int protoVers = Fields.readInt1(msg);
+			int protoVers = Packet.readInt1(msg);
 			if (PROTOCOL_VERSION != protoVers) {
 				throw new DecoderException(
 					"unsupported protocol version "
@@ -144,7 +164,7 @@ public class Session {
 			String authPluginName
 			= MysqlNativePasswordAuth.AUTH_PLUGIN_NAME;
 
-			serverVersion = new ServerVersion(Fields.readStringNT(
+			serverVersion = new ServerVersion(Packet.readStringNT(
 				msg, serverCharset.javaCharset
 			));
 			srvConnId = msg.readIntLE();
@@ -153,7 +173,8 @@ public class Session {
 				serverVersion
 			);
 
-			byte[] secret = Fields.readBytes(msg, 8);
+			byte[] secret = new byte[8];
+			msg.readBytes(secret);
 			msg.skipBytes(1);
 
 			if (!msg.isReadable()) {
@@ -162,7 +183,7 @@ public class Session {
 				);
 			}
 
-			serverCaps = Fields.readLong2(msg);
+			serverCaps = Packet.readLong2(msg);
 
 			if (!msg.isReadable()) {
 				updateClientCapabilities();
@@ -172,14 +193,14 @@ public class Session {
 			}
 
 			serverCharset = CharsetInfo.forId(
-				Fields.readInt1(msg)
+				Packet.readInt1(msg)
 			);
 
 			msg.skipBytes(2);//short statusFlags = msg.readShortLE();
 
-			serverCaps |= Fields.readLong2(msg) << 16;
+			serverCaps |= Packet.readLong2(msg) << 16;
 			updateClientCapabilities();
-			int s2Len = Fields.readInt1(msg);
+			int s2Len = Packet.readInt1(msg);
 			msg.skipBytes(10);
 
 			if (ClientCapability.PLUGIN_AUTH.get(serverCaps)) {
@@ -189,7 +210,7 @@ public class Session {
 					secret, oldLen, s2Len - oldLen - 1
 				);
 				msg.skipBytes(1);
-				authPluginName = Fields.readStringNT(
+				authPluginName = Packet.readStringNT(
 					msg, serverCharset.javaCharset
 				);
 			} else {
@@ -203,7 +224,7 @@ public class Session {
 				authPluginName, secret, seqNum, ctx
 			);
 		} finally {
-			lock.unlock(stamp);
+			lock.unlockWrite(stamp);
 		}
 	}
 
@@ -244,10 +265,10 @@ public class Session {
 		ByteBuf buf = ctx.alloc().buffer();
 		cl.connAttributes.forEach((k, v) -> {
 			byte[] b = k.getBytes(serverCharset.javaCharset);
-			Fields.writeIntLenenc(buf, b.length);
+			Packet.writeIntLenenc(buf, b.length);
 			buf.writeBytes(b);
 			b = v.getBytes(serverCharset.javaCharset);
-			Fields.writeIntLenenc(buf, b.length);
+			Packet.writeIntLenenc(buf, b.length);
 			buf.writeBytes(b);
 		});
 		return buf;

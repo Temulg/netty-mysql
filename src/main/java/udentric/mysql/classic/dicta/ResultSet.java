@@ -32,10 +32,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.ColumnDefinition;
-import udentric.mysql.classic.Fields;
+import udentric.mysql.classic.Field;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
-import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 import udentric.mysql.exceptions.MysqlErrorNumbers;
 
@@ -44,10 +43,10 @@ public abstract class ResultSet implements Dictum {
 		int columnCount, boolean expectEof_, int lastSeqNum_,
 		CharsetInfo.Entry charset_
 	) {
-		columns = new ColumnDefinition[columnCount];
 		expectEof = expectEof_;
 		lastSeqNum = lastSeqNum_;
 		charset = charset_;
+		colDef = new ColumnDefinition(columnCount);
 	}
 
 	public ResultSet withResponseConsumer(ResponseConsumer rc_) {
@@ -85,7 +84,7 @@ public abstract class ResultSet implements Dictum {
 		src.skipBytes(Packet.HEADER_SIZE);
 
 		if (hasMeta)
-			handleRowData(src, ss, ctx);
+			handleRowDataOrEof(src, ss, ctx);
 		else
 			handleColumnMeta(src, ss, ctx);
 	}
@@ -93,10 +92,10 @@ public abstract class ResultSet implements Dictum {
 	protected void handleColumnMeta(
 		ByteBuf src, Session ss, ChannelHandlerContext ctx
 	) {
-		if (receivedColumns >= columns.length) {
+		if (colDef.hasAllFields()) {
 			if (expectEof) {
 				if ((
-					ResponseType.EOF != Fields.readInt1(src)
+					Packet.EOF != Packet.readInt1(src)
 				) || (src.readableBytes() != 4)) {
 					ss.discardCommand(Packet.makeError(
 						MysqlErrorNumbers.ER_MALFORMED_PACKET
@@ -105,19 +104,50 @@ public abstract class ResultSet implements Dictum {
 					hasMeta = true;
 			} else {
 				hasMeta = true;
-				handleRowData(src, ss, ctx);
+				handleRowDataOrEof(src, ss, ctx);
+			}
+
+			if (hasMeta) {
+				if (rc != null)
+					rc.onMetadata(colDef);
 			}
 			return;
 		}
 
 		try {
-			columns[receivedColumns] = new ColumnDefinition(
-				src, charset
-			);
+			colDef.appendField(new Field(src, charset));
 		} catch (Exception e) {
 			ss.discardCommand(e);
 		}
-		receivedColumns++;
+
+	}
+
+	private void handleRowDataOrEof(
+		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	) {
+		int type = src.getByte(src.readerIndex()) & 0xff;
+
+		switch (type) {
+		case Packet.ERR:
+			src.skipBytes(1);
+			ss.discardCommand(Packet.parseError(src, charset));
+			return;
+		case Packet.EOF:
+			if (src.readableBytes() < 0xffffff) {
+				src.skipBytes(1);
+				Packet.ServerAck ack = new Packet.ServerAck(
+					src, !expectEof, charset
+				);
+				ss.discardCommand();
+				if (rc != null)
+					rc.onSuccess(ack);
+				if (chp != null)
+					chp.setSuccess();
+				return;
+			}
+		}
+
+		handleRowData(src, ss, ctx);
 	}
 
 	protected abstract void handleRowData(
@@ -132,12 +162,11 @@ public abstract class ResultSet implements Dictum {
 			chp.setFailure(cause);
 	}
 
-	protected final ColumnDefinition[] columns;
 	protected final boolean expectEof;
 	protected final CharsetInfo.Entry charset;
+	protected final ColumnDefinition colDef;
 	protected ResponseConsumer rc;
 	protected ChannelPromise chp;
 	protected int lastSeqNum;
 	protected boolean hasMeta = false;
-	protected int receivedColumns = 0;
 }

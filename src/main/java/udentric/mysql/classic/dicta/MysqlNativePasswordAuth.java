@@ -36,9 +36,7 @@ import io.netty.handler.codec.DecoderException;
 import udentric.mysql.Config;
 import udentric.mysql.classic.CharsetInfo;
 import udentric.mysql.classic.ClientCapability;
-import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 import udentric.mysql.util.Scramble411;
 
@@ -91,7 +89,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		dst.writeByte(0);
 
 		if (attrBuf != null) {
-			Fields.writeIntLenenc(dst, attrBuf.readableBytes());
+			Packet.writeIntLenenc(dst, attrBuf.readableBytes());
 			dst.writeBytes(attrBuf);
 			attrBuf.release();
 		}
@@ -103,11 +101,11 @@ public class MysqlNativePasswordAuth implements Dictum {
 		int nextSeqNum = Packet.getSeqNum(src);
 		src.skipBytes(Packet.HEADER_SIZE);
 
-		int type = Fields.readInt1(src);
+		int type = Packet.readInt1(src);
 
 		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {
-		case ResponseType.OK:
+		case Packet.OK:
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
 					src, true, charset
@@ -122,10 +120,10 @@ public class MysqlNativePasswordAuth implements Dictum {
 				ss.discardCommand(e);
 			}
 			break;
-		case ResponseType.EOF:
+		case Packet.EOF:
 			authSwitch(src, ss);
 			break;
-		case ResponseType.ERR:
+		case Packet.ERR:
 			ss.discardCommand(Packet.parseError(src, charset));
 			return;
 		default:
@@ -146,10 +144,12 @@ public class MysqlNativePasswordAuth implements Dictum {
 			return;
 		}
 
-		String authPluginName = Fields.readStringNT(
+		String authPluginName = Packet.readStringNT(
 			src, charset.javaCharset
 		);
-		byte[] pluginData = Fields.readBytes(src, src.readableBytes());
+		byte[] pluginData = new byte[src.readableBytes()];
+		src.readBytes(pluginData);
+
 		handleFailure(new DecoderException(String.format(
 			"%s auth method not supported (data: %s)",
 			authPluginName, Arrays.toString(pluginData)

@@ -32,9 +32,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.classic.CharsetInfo;
-import udentric.mysql.classic.Fields;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.ResponseType;
 import udentric.mysql.classic.Session;
 
 public class InitDb implements Dictum {
@@ -63,9 +61,9 @@ public class InitDb implements Dictum {
 
 		src.skipBytes(Packet.HEADER_SIZE);
 
-		int type = Fields.readInt1(src);
+		int type = Packet.readInt1(src);
 		switch (type) {
-		case ResponseType.OK:
+		case Packet.OK:
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
 					src, true, charset
@@ -81,7 +79,7 @@ public class InitDb implements Dictum {
 				ss.discardCommand(e);
 			}
 			break;
-		case ResponseType.ERR:
+		case Packet.ERR:
 			ss.discardCommand(Packet.parseError(src, charset));
 			return;
 		default:

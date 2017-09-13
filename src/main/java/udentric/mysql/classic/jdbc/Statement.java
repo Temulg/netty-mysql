@@ -31,7 +31,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.concurrent.Phaser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,6 +38,7 @@ import udentric.mysql.classic.Client;
 import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResponseConsumer;
+import udentric.mysql.classic.Row;
 import udentric.mysql.classic.dicta.Dictum;
 
 public class Statement implements java.sql.Statement {
@@ -366,15 +366,12 @@ public class Statement implements java.sql.Statement {
 	}
 
 	private class SimpleResponseConsumer implements ResponseConsumer {
-
 		@Override
-		public void onMetadata(List<ColumnDefinition> colDef) {
-
+		public void onMetadata(ColumnDefinition colDef) {			
 		}
 
 		@Override
-		public void onData() {
-
+		public void onData(Row row) {
 		}
 
 		@Override
@@ -394,15 +391,12 @@ public class Statement implements java.sql.Statement {
 	}
 
 	private class ResultSetResponseConsumer implements ResponseConsumer {
-
 		@Override
-		public void onMetadata(List<ColumnDefinition> colDef) {
-
+		public void onMetadata(ColumnDefinition colDef) {	
 		}
 
 		@Override
-		public void onData() {
-
+		public void onData(Row row) {
 		}
 
 		@Override

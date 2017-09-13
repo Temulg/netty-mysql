@@ -27,14 +27,14 @@
 
 package udentric.mysql.classic;
 
-import java.util.List;
+public class TextRow extends Row {
+	TextRow(int columnCount) {
+		columns = new String[columnCount];
+	}
 
-public interface ResponseConsumer {
-	void onMetadata(ColumnDefinition colDef);
+	void setValue(int columnPos, String val) {
+		columns[columnPos] = val;
+	}
 
-	void onData(Row row);
-
-	void onFailure(Throwable cause);
-
-	void onSuccess(Packet.ServerAck ack);
+	private final String[] columns;
 }

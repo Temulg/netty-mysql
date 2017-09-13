@@ -31,6 +31,7 @@ import java.sql.SQLException;
 
 import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
+import java.nio.charset.Charset;
 import udentric.mysql.exceptions.MysqlErrorNumbers;
 
 public class Packet {
@@ -44,6 +45,165 @@ public class Packet {
 		return 0xff & in.getByte(in.readerIndex() + 3);
 	}
 
+	public static int readInt1(ByteBuf in) {
+		byte v = in.readByte();
+		return (int)v & 0xff;
+	}
+
+	public static int readInt2(ByteBuf in) {
+		short v = in.readShortLE();
+		return (int)v & 0xffff;
+	}
+
+	public static int readIntLenenc(ByteBuf in) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			return len;
+		}
+
+		switch (len) {
+		case 0xfb:
+			return 0;
+		case 0xfc:
+			return readInt2(in);
+		case 0xfd:
+			return in.readMediumLE();
+		case 0xfe:
+			long llen = in.readLongLE();
+			if (llen <= Integer.MAX_VALUE) {
+				return (int)llen;
+			}
+		default:
+			Client.throwAny(makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
+			return 0;
+		}
+	}
+
+	public static long readLong2(ByteBuf in) {
+		short v = in.readShortLE();
+		return (long)v & 0xffff;
+	}
+
+	public static long readLongLenenc(ByteBuf in) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			return len;
+		}
+
+		switch (len) {
+		case 0xfb:
+			return 0;
+		case 0xfc:
+			return readLong2(in);
+		case 0xfd:
+			return in.readMediumLE();
+		case 0xfe:
+			return in.readLongLE();
+		default:
+			Client.throwAny(makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
+			return 0;
+		}
+	}
+
+	public static String readStringNT(ByteBuf in, Charset cs) {
+		int len = in.bytesBefore((byte)0);
+		if (len < 0)
+			Client.throwAny(makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
+
+		String rv = in.readCharSequence(len, cs).toString();
+		in.skipBytes(1);
+		return rv;
+        }
+
+	public static String readStringLenenc(ByteBuf in, Charset cs) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			return in.readCharSequence(len, cs).toString();
+		}
+
+		switch (len) {
+		case 0xfb:
+			return "";
+		case 0xfc:
+			return in.readCharSequence(
+				readInt2(in), cs
+			).toString();
+		case 0xfd:
+			return in.readCharSequence(
+				in.readMediumLE(), cs
+			).toString();
+		case 0xfe:
+			long llen = in.readLongLE();
+			if (llen <= Integer.MAX_VALUE) {
+				return in.readCharSequence(
+					(int)llen, cs
+				).toString();
+			}
+		default:
+			Client.throwAny(makeError(
+				MysqlErrorNumbers.ER_MALFORMED_PACKET
+			));
+			return "";
+		}
+	}
+
+	public static void skipBytesLenenc(ByteBuf in) {
+		int len = readInt1(in);
+		if (len < 0xfb) {
+			in.skipBytes(len);
+			return;
+		}
+
+		switch (len) {
+		case 0xfb:
+			return;
+		case 0xfc:
+			in.skipBytes(readInt2(in));
+			return;
+		case 0xfd:
+			in.skipBytes(in.readMediumLE());
+			return;
+		case 0xfe:
+			long llen = in.readLongLE();
+			if (llen <= Integer.MAX_VALUE) {
+				in.skipBytes((int)llen);
+				return;
+			}
+		}
+		Client.throwAny(makeError(
+			MysqlErrorNumbers.ER_MALFORMED_PACKET
+		));
+	}
+
+	public static int writeIntLenenc(ByteBuf out, int val) {
+		/* 251 is reserved for NULL */
+
+		if (val == (val & 0xffffff)) {
+			if (val < 0xfb) {
+				out.writeByte(val);
+				return 1;
+			} else if (val < 0x10000) {
+				out.writeByte(0xfc);
+				out.writeShortLE(val);
+				return 3;
+			} else {
+				out.writeByte(0xfd);
+				out.writeMediumLE(val);
+				return 4;
+			}
+		} else {
+			out.writeByte(0xfe);
+			out.writeLongLE((long)val & 0xffffffffL);
+			return 9;
+		}
+	}
+
 	public static SQLException makeError(int errno) {
 		String xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
 		return new SQLException(
@@ -54,7 +214,7 @@ public class Packet {
 	public static SQLException parseError(
 		ByteBuf msg, CharsetInfo.Entry charset
 	) {
-		int errno = Fields.readInt2(msg);
+		int errno = readInt2(msg);
 		String srvErrMsg = msg.readCharSequence(
 			msg.readableBytes(), charset.javaCharset
 		).toString();
@@ -83,10 +243,10 @@ public class Packet {
 			ByteBuf msg, boolean okPacket,
 			CharsetInfo.Entry charset
 		) {
-			rows = okPacket ? Fields.readLongLenenc(msg) : 0;
-			insertId = okPacket ? Fields.readLongLenenc(msg) : 0;
+			rows = okPacket ? readLongLenenc(msg) : 0;
+			insertId = okPacket ? readLongLenenc(msg) : 0;
 			srvStatus = msg.readShortLE();
-			warnCount = Fields.readInt2(msg);
+			warnCount = readInt2(msg);
 
 			info = okPacket ? msg.readCharSequence(
 				msg.readableBytes(), charset.javaCharset
@@ -116,4 +276,8 @@ public class Packet {
 	}
 
 	public static final int HEADER_SIZE = 4;
+	public static final int OK = 0;
+	public static final int FILE_REQUEST = 0xfb;
+	public static final int EOF = 0xfe;
+	public static final int ERR = 0xff;
 }

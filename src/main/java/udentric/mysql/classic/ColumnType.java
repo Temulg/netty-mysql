@@ -17,18 +17,54 @@
 package udentric.mysql.classic;
 
 import com.google.common.collect.ImmutableMap;
+import io.netty.buffer.ByteBuf;
 
 public enum ColumnType {
 	DECIMAL,
-	TINY,
-	SHORT,
-	LONG,
-	FLOAT,
-	DOUBLE,
+	TINY {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return src.readByte();
+		}		
+	},
+	SHORT {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return src.readShortLE();
+		}
+	},
+	LONG {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return src.readIntLE();
+		}
+	},
+	FLOAT {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return Float.intBitsToFloat(src.readIntLE());
+		}
+	},
+	DOUBLE {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return Double.longBitsToDouble(src.readLongLE());
+		}
+	},
 	NULL,
 	TIMESTAMP,
-	LONGLONG,
-	INT24,
+	LONGLONG {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return src.readLongLE();
+		}
+	},
+	INT24 {
+		@Override
+		public Object readObject(ByteBuf src) {
+			return src.readIntLE();
+		}
+	},
 	DATE,
 	TIME,
 	DATETIME,
@@ -57,6 +93,10 @@ public enum ColumnType {
 
 	private ColumnType(int id_) {
 		id = id_;
+	}
+
+	public Object readObject(ByteBuf src) {
+		throw new UnsupportedOperationException("unsupported object type");
 	}
 
 	public static ColumnType forId(int id) {

@@ -98,7 +98,7 @@ public abstract class TestCase {
 				return c;
 			} catch (Exception e) {
 				System.err.format("-- sql error %s\n", e);
-				Connection.throwAny(e);
+				Client.throwAny(e);
 			}
 			return null;
 		});
@@ -113,7 +113,7 @@ public abstract class TestCase {
 				closeableObjects.offerFirst(stmt);
 				return stmt;
 			} catch (SQLException e) {
-				Connection.throwAny(e);
+				Client.throwAny(e);
 			}
 			return null;
 		});

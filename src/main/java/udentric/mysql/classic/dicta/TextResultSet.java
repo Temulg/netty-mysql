@@ -44,7 +44,12 @@ public class TextResultSet extends ResultSet {
 	protected void handleRowData(
 		ByteBuf src, Session ss, ChannelHandlerContext ctx
 	) {
-		
+		if (rc != null)
+			rc.onData(
+				colDef.parseTextRow(src, charset.javaCharset)
+			);
+		else
+			src.skipBytes(src.readableBytes());
 	}
 
 }

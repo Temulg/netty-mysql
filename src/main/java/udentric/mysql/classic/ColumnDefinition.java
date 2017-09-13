@@ -16,80 +16,31 @@
 
 package udentric.mysql.classic;
 
-import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
-import udentric.mysql.exceptions.MysqlErrorNumbers;
+import java.nio.charset.Charset;
 
 public class ColumnDefinition {
-	public ColumnDefinition(ByteBuf src, CharsetInfo.Entry charset_) {
-		if (!"def".equals(Fields.readStringLenenc(
-			src, charset_.javaCharset
-		)))
-			Packet.makeError(MysqlErrorNumbers.ER_MALFORMED_PACKET);
-			
-		schema = Fields.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		tableAlias = Fields.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		String s = Fields.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		table = s.equals(tableAlias) ? tableAlias : s;
-		columnAlias = Fields.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		s = Fields.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		column = s.equals(columnAlias) ? columnAlias : s;
-
-		fixedColumnSize = Fields.readLongLenenc(src);
-		charset = CharsetInfo.forId(Fields.readInt2(src));
-		maxColumnSize = src.readIntLE();
-		type = ColumnType.forId(Fields.readInt1(src));
-		flags = src.readShortLE();
-		decimalDigits = Fields.readInt1(src);
-		src.skipBytes(2);
+	public ColumnDefinition(int fieldCount) {
+		fields = new Field[fieldCount];
 	}
 
-	@Override
-	public String toString() {
-		return MoreObjects.toStringHelper(this).add(
-			"schema", schema
-		).add(
-			"tableAlias", tableAlias
-		).add(
-			"table", table
-		).add(
-			"columnAlias", columnAlias
-		).add(
-			"column", column
-		).add(
-			"fixedColumnSize", fixedColumnSize
-		).add(
-			"charset", charset
-		).add(
-			"maxColumnSize", maxColumnSize
-		).add(
-			"type", type
-		).add(
-			"flags", flags
-		).add(
-			"decimalDigits", decimalDigits
-		).toString();
+	public boolean hasAllFields() {
+		return fieldPos == fields.length;
 	}
 
-	public final String schema;
-	public final String tableAlias;
-	public final String table;
-	public final String columnAlias;
-	public final String column;
-	public final long fixedColumnSize;
-	public final CharsetInfo.Entry charset;
-	public final int maxColumnSize;
-	public final ColumnType type;
-	public final short flags;
-	public final int decimalDigits;
+	public void appendField(Field f) {
+		fields[fieldPos] = f;
+		fieldPos++;
+	}
+
+	public Row parseTextRow(ByteBuf src, Charset cs) {
+		TextRow row = new TextRow(fields.length);
+		for (int pos = 0; pos < fields.length; ++pos)
+			row.setValue(pos, Packet.readStringLenenc(src, cs));
+
+		return row;
+	}
+
+	private final Field[] fields;
+	private int fieldPos = 0;
 }
