@@ -27,19 +27,18 @@
 
 package udentric.mysql.classic.jdbc;
 
+import io.netty.channel.Channel;
+import io.netty.util.concurrent.Promise;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.util.IdentityHashMap;
-import java.util.concurrent.Phaser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.Client;
-import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.ResponseConsumer;
-import udentric.mysql.classic.Row;
-import udentric.mysql.classic.dicta.Dictum;
+import udentric.mysql.classic.dicta.Query;
+import udentric.mysql.classic.dicta.UpdateQuery;
 
 public class Statement implements java.sql.Statement {
 	Statement(Connection conn_) {
@@ -48,52 +47,55 @@ public class Statement implements java.sql.Statement {
 
 	@Override
 	public ResultSet executeQuery(String sql) throws SQLException {
-		int phase = responseWaiter.getPhase();
-
-		ResultSetResponseConsumer rc = new ResultSetResponseConsumer();
-		Dictum dct = conn.getSession().newQuery(sql).withResponseConsumer(
-			rc
+		ResultSet rs = new ResultSet(this);
+		Channel ch = conn.getChannel();
+		
+		ch.writeAndFlush(new Query(sql, rs)).addListener(
+			Client::defaultSendListener
 		);
 
-		conn.dicito(dct).addListener(chf -> {
-			if (!chf.isSuccess())
-				conn.getSession().discardCommand(chf.cause());
-		});
-
-		responseWaiter.awaitAdvance(phase);
-
-		if (rc.error != null) {
-			System.err.format("-a5- error %s\n", rc.error);
-			Client.throwAny(rc.error);
+		try {
+			rs.resultSetActive.await();
+		} catch (InterruptedException e) {
+			Client.discardActiveDictum(ch, e);
 		}
 
-		return rc.value();
+		if (!rs.resultSetActive.isSuccess()) {
+			rs.close();
+			Client.throwAny(rs.resultSetActive.cause());
+			return null;
+		} else
+			return rs;
 	}
 
 	@Override
 	public int executeUpdate(String sql) throws SQLException {
-		int phase = responseWaiter.getPhase();
+		Channel ch = conn.getChannel();
 
-		System.err.format("-s5- %d sql %s\n", phase, sql);
-		SimpleResponseConsumer rc = new SimpleResponseConsumer();
-		Dictum dct = conn.getSession().newQuery(sql).withResponseConsumer(
-			rc
+		Promise<Packet.ServerAck> sp = Client.newServerPromise(ch);
+
+		ch.writeAndFlush(new UpdateQuery(sql, sp)).addListener(
+			Client::defaultSendListener
 		);
 
-		conn.dicito(dct).addListener(chf -> {
-			if (!chf.isSuccess())
-				conn.getSession().discardCommand(chf.cause());
-		});
-
-		System.err.format("-t5- %d - %d\n", phase, responseWaiter.awaitAdvance(phase));
-
-		if (rc.error != null) {
-			System.err.format("-b5- error %s\n", rc.error);
-			Client.throwAny(rc.error);
+		try {
+			sp.await();
+		} catch (InterruptedException e) {
+			Client.discardActiveDictum(ch, e);
 		}
 
-		System.err.format("-c5- ack %s\n", rc.ack);
-		return Math.toIntExact(rc.ack.rows);
+		if (!sp.isSuccess()) {
+			Client.throwAny(sp.cause());
+			return 0;
+		} else {
+			Packet.ServerAck ack = sp.getNow();
+			if (ack.warnCount > 0)
+				LOGGER.warn(
+					"{} warning(s) raised", ack.warnCount
+				);
+
+			return Math.toIntExact(ack.rows);
+		}		
 	}
 
 	@Override
@@ -211,7 +213,7 @@ public class Statement implements java.sql.Statement {
 	}
 
 	@Override
-	public java.sql.Connection getConnection() throws SQLException {
+	public Connection getConnection() {
 		return conn;
 	}
 
@@ -365,59 +367,6 @@ public class Statement implements java.sql.Statement {
 		return false;
 	}
 
-	private class SimpleResponseConsumer implements ResponseConsumer {
-		@Override
-		public void onMetadata(ColumnDefinition colDef) {			
-		}
-
-		@Override
-		public void onData(Row row) {
-		}
-
-		@Override
-		public void onFailure(Throwable cause) {
-			error = cause;
-			responseWaiter.arrive();
-		}
-
-		@Override
-		public void onSuccess(Packet.ServerAck ack_) {
-			ack = ack_;
-			responseWaiter.arrive();
-		}
-
-		Throwable error;
-		Packet.ServerAck ack;
-	}
-
-	private class ResultSetResponseConsumer implements ResponseConsumer {
-		@Override
-		public void onMetadata(ColumnDefinition colDef) {	
-		}
-
-		@Override
-		public void onData(Row row) {
-		}
-
-		@Override
-		public void onFailure(Throwable cause) {
-			error = cause;
-			responseWaiter.arrive();
-		}
-
-		@Override
-		public void onSuccess(Packet.ServerAck ack) {
-
-		}
-
-		
-		ResultSet value() {
-			return null;
-		}
-
-		Throwable error;
-	}
-
 	synchronized void releaseResult(ResultSet rs) {
 		results.remove(rs);
 	}
@@ -427,7 +376,6 @@ public class Statement implements java.sql.Statement {
 	);
 
 	private final Connection conn;
-	private final Phaser responseWaiter = new Phaser(1);
 	private final IdentityHashMap<
 		ResultSet, Boolean
 	> results = new IdentityHashMap<>();

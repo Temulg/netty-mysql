@@ -45,22 +45,17 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 		SocketAddress localAddress, ChannelPromise promise
 	) throws Exception {
 		Channel ch = ctx.channel();
-		Session ss = ch.attr(Client.SESSION).get();
 
-		{
-			Throwable t = ss.beginRequest(
-				new Handshake().withChannelPromise(promise)
-			);
-			if (t != null) {
-				promise.setFailure(t);
-				return;
-			}
-		}
+		InitialSessionInfo si = ch.attr(
+			Client.INITIAL_SESSION_INFO
+		).get();
 
 		ChannelPromise nextPromise = ch.newPromise();
+		ch.attr(Client.ACTIVE_DICTUM).set(new Handshake(si, promise));
+
 		nextPromise.addListener(chf -> {
 			if (!chf.isSuccess()) {
-				ss.discardCommand(chf.cause());
+				Client.discardActiveDictum(ch, chf.cause());
 			}
 		});
 
@@ -77,14 +72,14 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 		}
 
 		Dictum dct = (Dictum)dct_;
-		Session ss = ctx.channel().attr(Client.SESSION).get();
 
-		{
-			Throwable t = ss.beginRequest(dct);
-			if (t != null) {
-				promise.setFailure(t);
-				return;
-			}
+		if (null != ctx.channel().attr(
+			Client.ACTIVE_DICTUM
+		).setIfAbsent(dct)) {
+			promise.setFailure(new IllegalStateException(
+				"channel busy"
+			));
+			return;
 		}
 
 		try {
@@ -93,12 +88,13 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 
 			dst.writeMediumLE(0);
 			dst.writeByte(dct.getSeqNum());
-			dct.encode(dst, ss);
+			dct.emitClientMessage(dst, ctx);
+
 			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
 			dst.setMediumLE(wpos, len);
 			super.write(ctx, dst, promise);
-		} catch (Throwable t) {
-			promise.setFailure(t);
+		} catch (Exception e) {
+			promise.setFailure(e);
 		}
 	}
 }

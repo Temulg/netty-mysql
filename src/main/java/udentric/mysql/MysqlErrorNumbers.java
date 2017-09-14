@@ -24,14 +24,13 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
-package udentric.mysql.exceptions;
+package udentric.mysql;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
-import udentric.mysql.Messages;
 
 public final class MysqlErrorNumbers {
 	private MysqlErrorNumbers() {

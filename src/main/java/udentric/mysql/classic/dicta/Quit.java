@@ -29,26 +29,25 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.classic.Session;
 
 public class Quit implements Dictum {
 	private Quit() {
 	}
 
 	@Override
-	public void encode(ByteBuf dst, Session ss) {
+	public void emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
 		dst.writeByte(OPCODE);
 	}
 
 	@Override
-	public void handleReply(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
-	) {
-	}
+	public void acceptServerMessage(
+		ByteBuf src, ChannelHandlerContext ctx
+	) {}
 
 	@Override
 	public void handleFailure(Throwable cause) {
-
 	}
 
 	public static final Quit INSTANCE = new Quit();

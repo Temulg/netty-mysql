@@ -17,7 +17,6 @@
 package udentric.mysql.classic;
 
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPromise;
 import io.netty.util.AttributeKey;
 import io.netty.channel.socket.SocketChannel;
 import java.lang.invoke.MethodType;
@@ -29,8 +28,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.util.concurrent.DefaultPromise;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.Promise;
 
 import udentric.mysql.Config;
+import udentric.mysql.classic.dicta.Dictum;
 
 public class Client extends ChannelInitializer<SocketChannel> {
 	public static class Builder {
@@ -87,13 +92,17 @@ public class Client extends ChannelInitializer<SocketChannel> {
 
 	@Override
 	protected void initChannel(SocketChannel ch) throws Exception {
-		ch.attr(SESSION).set(new Session(this));
+		ch.attr(INITIAL_SESSION_INFO).set(new InitialSessionInfo(this));
+
 		ch.pipeline().addLast(
-			"mysql.packet.in", new InboundPacketFramer()
+			"udentric.mysql.classic.InboundPacketFramer",
+			new InboundPacketFramer()
 		).addLast(
-			"mysql.command.out", COMMAND_OUT_HANDLER
+			"udentric.mysql.classic.OutboundMessageHandler",
+			OUTBOUND_MESSAGE_HANDLER
 		).addLast(
-			"mysql.response.in", RESPONSE_IN_HANDLER
+			"udentric.mysql.classic.InboundMessageHandler",
+			INBOUND_MESSAGE_HANDLER
 		);
 	}
 
@@ -136,13 +145,52 @@ public class Client extends ChannelInitializer<SocketChannel> {
 		throw (T)t;
 	}
 
-	public final static AttributeKey<Session> SESSION = AttributeKey.valueOf(
-		"udentric.mysql.classic.Session"
+	public static Promise<Packet.ServerAck> newServerPromise(Channel ch) {
+		return new DefaultPromise<Packet.ServerAck>(ch.eventLoop());
+	}
+
+	public static void discardActiveDictum(Channel ch, Throwable cause) {
+		Dictum dct = ch.attr(ACTIVE_DICTUM).getAndSet(null);
+		if (dct != null)
+			dct.handleFailure(cause);
+	}
+
+	public static void discardActiveDictum(Channel ch) {
+		ch.attr(ACTIVE_DICTUM).set(null);
+	}
+
+	public static SessionInfo sessionInfo(Channel ch) {
+		return ch.attr(SESSION_INFO).get();
+	}
+
+	public static void defaultSendListener(Future chf) {
+		if (!chf.isSuccess())
+			discardActiveDictum(
+				((ChannelFuture)chf).channel(), chf.cause()
+			);
+	}
+
+	public static final int MYSQL_PROTOCOL_VERSION = 10;
+
+	public static final AttributeKey<
+		SessionInfo
+	> SESSION_INFO = AttributeKey.valueOf(
+		"udentric.mysql.classic.SessionInfo"
+	);
+	public static final AttributeKey<
+		InitialSessionInfo
+	> INITIAL_SESSION_INFO = AttributeKey.valueOf(
+		"udentric.mysql.classic.InitialSessionInfo"
+	);
+	public static final AttributeKey<
+		Dictum
+	> ACTIVE_DICTUM = AttributeKey.valueOf(
+		"udentric.mysql.classic.dicta.Dictum"
 	);
 
-	final static OutboundMessageHandler COMMAND_OUT_HANDLER
+	static final OutboundMessageHandler OUTBOUND_MESSAGE_HANDLER
 	= new OutboundMessageHandler();
-	final static InboundMessageHandler RESPONSE_IN_HANDLER
+	static final InboundMessageHandler INBOUND_MESSAGE_HANDLER
 	= new InboundMessageHandler();
 
 	private final Config config;

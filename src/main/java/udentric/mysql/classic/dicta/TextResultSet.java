@@ -29,27 +29,20 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.classic.CharsetInfo;
-import udentric.mysql.classic.Session;
+import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.SessionInfo;
 
 public class TextResultSet extends ResultSet {
 	public TextResultSet(
-		int columnCount_, boolean expectEof_, int lastSeqNum_,
-		CharsetInfo.Entry charset_
+		int columnCount_, int lastSeqNum_, ResultSetConsumer rsc_
 	) {
-		super(columnCount_, expectEof_, lastSeqNum_, charset_);
+		super(columnCount_, lastSeqNum_, rsc_);
 	}
 
 	@Override
 	protected void handleRowData(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
-		if (rc != null)
-			rc.onData(
-				colDef.parseTextRow(src, charset.javaCharset)
-			);
-		else
-			src.skipBytes(src.readableBytes());
+		rsc.acceptRow(colDef.parseTextRow(src, si.charset));
 	}
-
 }

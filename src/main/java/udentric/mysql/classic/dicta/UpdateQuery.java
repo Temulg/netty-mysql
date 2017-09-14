@@ -27,19 +27,20 @@
 
 package udentric.mysql.classic.dicta;
 
+import com.mysql.cj.api.Session;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.DecoderException;
+import io.netty.util.concurrent.Promise;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.SessionInfo;
 
-
-public class Query implements Dictum {
-	public Query(String sql_, ResultSetConsumer rsc_) {
+public class UpdateQuery implements Dictum {
+	public UpdateQuery(String sql_, Promise<Packet.ServerAck> sp_) {
 		sql = sql_;
-		rsc = rsc_;
+		sp = sp_;
 	}
 
 	@Override
@@ -55,7 +56,6 @@ public class Query implements Dictum {
 		if (Packet.invalidSeqNum(ctx.channel(), src, 1))
 			return;
 
-		int seqNum = Packet.getSeqNum(src);
 		src.skipBytes(Packet.HEADER_SIZE);
 		Channel ch = ctx.channel();
 		SessionInfo si = Client.sessionInfo(ch);
@@ -70,7 +70,7 @@ public class Query implements Dictum {
 					src, true, si.charset
 				);
 				Client.discardActiveDictum(ch);
-				rsc.onSuccess(ack);
+				sp.setSuccess(ack);
 			} catch (Exception e) {
 				Client.discardActiveDictum(ch, e);
 			}
@@ -82,19 +82,20 @@ public class Query implements Dictum {
 			);
 			return;
 		default:
-			ch.attr(Client.ACTIVE_DICTUM).set(new TextResultSet(
-				Packet.readIntLenenc(src), seqNum, rsc
+			Client.discardActiveDictum(ch, new DecoderException(
+				"unsupported packet type "
+				+ Integer.toString(type)
 			));
 		}
 	}
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		rsc.onFailure(cause);
+		sp.setFailure(cause);
 	}
 
 	public static final int OPCODE = 3;
 
 	private final String sql;
-	private final ResultSetConsumer rsc;
+	private final Promise<Packet.ServerAck> sp;
 }

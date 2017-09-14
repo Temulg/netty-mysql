@@ -29,25 +29,15 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import udentric.mysql.classic.Session;
 
 public interface Dictum {
-	void encode(ByteBuf dst, Session ss);
+	void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx);
 
-	void handleReply(ByteBuf src, Session ss, ChannelHandlerContext ctx);
+	void acceptServerMessage(ByteBuf src, ChannelHandlerContext ctx);
 
 	void handleFailure(Throwable cause);
 
 	default int getSeqNum() {
 		return 0;
-	}
-
-	default ChannelPromise channelPromise() {
-		return null;
-	}
-
-	default Dictum withChannelPromise(ChannelPromise chp_) {
-		throw new UnsupportedOperationException("not implemented");
 	}
 }

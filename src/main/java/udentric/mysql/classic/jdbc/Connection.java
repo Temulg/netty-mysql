@@ -47,7 +47,7 @@ import java.util.concurrent.Executor;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelPromise;
+import io.netty.util.concurrent.Promise;
 
 import java.util.IdentityHashMap;
 import org.apache.logging.log4j.LogManager;
@@ -55,8 +55,11 @@ import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.Client;
-import udentric.mysql.classic.Session;
+import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.SessionInfo;
 import udentric.mysql.classic.dicta.Dictum;
+import udentric.mysql.classic.dicta.InitDb;
+import udentric.mysql.classic.dicta.Quit;
 import udentric.mysql.util.QueryNormalizer;
 
 public class Connection implements java.sql.Connection {
@@ -72,17 +75,17 @@ public class Connection implements java.sql.Connection {
 		LOGGER.debug("connection established");
 
 		ch = chf.channel();
-		ss = ch.attr(Client.SESSION).get();
+		si = ch.attr(Client.SESSION_INFO).get();
 
-		String catalog = ss.getConfig().getOrDefault(
+		schema = si.cl.getConfig().getOrDefault(
 			Config.Key.DBNAME, ""
 		);
-		if (!catalog.isEmpty())
-			setCatalog(catalog);
+		if (!schema.isEmpty())
+			setCatalog(schema);
 	}
 
 	public ServerVersion getServerVersion() {
-		return ss.getServerVersion();
+		return si.version;
 	}
 
 	@Override
@@ -137,7 +140,10 @@ public class Connection implements java.sql.Connection {
 		closeAllStatements();
 
 		try {
-			ch.close().await();
+			if (ch.isOpen()) {
+				ch.writeAndFlush(Quit.INSTANCE).await();
+				ch.close().await();
+			}
 		} catch (InterruptedException e) {
 			throw new SQLException(e);
 		}
@@ -164,27 +170,38 @@ public class Connection implements java.sql.Connection {
 
 	@Override
 	public void setCatalog(String catalog) throws SQLException {
-		ChannelPromise chp = ch.newPromise();
-		ch.writeAndFlush(
-			ss.newInitDb(catalog).withChannelPromise(chp)
-		).addListener(chf -> {
-			if (!chf.isSuccess())
-				ss.discardCommand(chf.cause());
-		});
+		Promise<Packet.ServerAck> sp = Client.newServerPromise(ch);
+
+		ch.writeAndFlush(new InitDb(catalog, sp)).addListener(
+			Client::defaultSendListener
+		);
 
 		try {
-			chp.await();
+			sp.await();
 		} catch (InterruptedException e) {
-			ss.discardCommand(e);
+			Client.discardActiveDictum(ch, e);
 		}
 
-		if (!chp.isSuccess()) {
-			Client.throwAny(chp.cause());
+		if (!sp.isSuccess()) {
+			Client.throwAny(sp.cause());
+		} else {
+			Packet.ServerAck ack = sp.getNow();
+			if (ack.warnCount > 0)
+				LOGGER.warn(
+					"{} warning(s) raised", ack.warnCount
+				);
+
+			schema = catalog;
 		}
 	}
 
-	public String getCatalog() throws SQLException {
-		return ss.getCatalog();
+	@Override
+	public String getCatalog() {
+		return schema;
+	}
+
+	public Channel getChannel() {
+		return ch;
 	}
 
 	@Override
@@ -408,15 +425,7 @@ public class Connection implements java.sql.Connection {
 	}
 
 	public Config getConfig() {
-		return ss.getConfig();
-	}
-
-	public Session getSession() {
-		return ss;
-	}
-
-	ChannelFuture dicito(Dictum dct) {
-		return ch.writeAndFlush(dct);
+		return si.cl.getConfig();
 	}
 
 	private synchronized void closeAllStatements() {
@@ -438,8 +447,9 @@ public class Connection implements java.sql.Connection {
 	);
 
 	private final Channel ch;
-	private final Session ss;
+	private final SessionInfo si;
 	private final IdentityHashMap<
 		Statement, Boolean
 	> statements = new IdentityHashMap<>();
+	private String schema;
 }

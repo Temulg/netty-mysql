@@ -18,35 +18,26 @@ package udentric.mysql.classic;
 
 import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 
 public class Field {
 	public Field(
-		ByteBuf src, CharsetInfo.Entry charset_
+		ByteBuf src, Charset cs
 	) throws SQLException {
 		Packet.skipBytesLenenc(src); // catalog
 
-		schema = Packet.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		tableAlias = Packet.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		String s = Packet.readStringLenenc(
-			src, charset_.javaCharset
-		);
+		schema = Packet.readStringLenenc(src, cs);
+		tableAlias = Packet.readStringLenenc(src, cs);
+		String s = Packet.readStringLenenc(src, cs);
 		tableName = s.equals(tableAlias) ? tableAlias : s;
-		columnAlias = Packet.readStringLenenc(
-			src, charset_.javaCharset
-		);
-		s = Packet.readStringLenenc(
-			src, charset_.javaCharset
-		);
+		columnAlias = Packet.readStringLenenc(src, cs);
+		s = Packet.readStringLenenc(src, cs);
 		columnName = s.equals(columnAlias) ? columnAlias : s;
 
 		src.skipBytes(1);
 
-		charset = CharsetInfo.forId(Packet.readInt2(src));
+		charsetInfo = CharsetInfo.forId(Packet.readInt2(src));
 		length = src.readIntLE();
 		type = ColumnType.forId(Packet.readInt1(src));
 		flags = src.readShortLE();
@@ -67,7 +58,7 @@ public class Field {
 		).add(
 			"columnName", columnName
 		).add(
-			"charset", charset.javaCharset
+			"charset", charsetInfo.javaCharset
 		).add(
 			"length", length
 		).add(
@@ -84,7 +75,7 @@ public class Field {
 	public final String tableName;
 	public final String columnAlias;
 	public final String columnName;
-	public final CharsetInfo.Entry charset;
+	public final CharsetInfo.Entry charsetInfo;
 	public final int length;
 	public final ColumnType type;
 	public final short flags;

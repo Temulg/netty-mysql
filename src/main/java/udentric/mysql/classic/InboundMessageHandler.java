@@ -31,6 +31,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.dicta.Dictum;
 
 @Sharable
@@ -39,15 +41,13 @@ class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 	public void channelRead(
 		ChannelHandlerContext ctx, Object msg_
 	) throws Exception {
-		System.err.format("--8- msg in %s, %s\n", msg_.getClass(), msg_);
 		if (!(msg_ instanceof ByteBuf)) {
 			super.channelRead(ctx, msg_);
 			return;
 		}
 
-		ByteBuf msg = (ByteBuf) msg_;
-		Session ss = ctx.channel().attr(Client.SESSION).get();
-		Dictum dct = ss.getCurrentCommand();
+		ByteBuf msg = (ByteBuf)msg_;
+		Dictum dct = ctx.channel().attr(Client.ACTIVE_DICTUM).get();
 
 		if (dct == null) {
 			super.channelRead(ctx, msg);
@@ -55,11 +55,11 @@ class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 		}
 
 		try {
-			dct.handleReply(msg, ss, ctx);
+			dct.acceptServerMessage(msg, ctx);
 		} finally {
 			int remaining = msg.readableBytes();
 			if (remaining > 0) {
-				Session.LOGGER.warn(
+				LOGGER.warn(
 					"{} bytes left in incoming packet",
 					remaining
 				);
@@ -67,4 +67,8 @@ class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 			msg.release();
 		}
 	}
+
+	private static final Logger LOGGER = LogManager.getLogger(
+		InboundMessageHandler.class
+	);
 }

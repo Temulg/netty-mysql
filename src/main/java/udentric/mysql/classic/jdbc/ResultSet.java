@@ -27,6 +27,7 @@
 
 package udentric.mysql.classic.jdbc;
 
+import io.netty.channel.ChannelPromise;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -41,10 +42,18 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.util.Calendar;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.Row;
 
-public class ResultSet implements java.sql.ResultSet {
+public class ResultSet implements java.sql.ResultSet, ResultSetConsumer {
 	ResultSet(Statement stmt_) {
 		stmt = stmt_;
+		resultSetActive = stmt.getConnection().getChannel().newPromise();
 	}
 
 	@Override
@@ -1117,5 +1126,44 @@ public class ResultSet implements java.sql.ResultSet {
 		return false;
 	}
 
+	@Override
+	public void acceptMetadata(ColumnDefinition colDef_) {
+		colDef = colDef_;
+		resultSetActive.setSuccess();
+	}
+
+	@Override
+	public void acceptRow(Row row) {
+		incomingRows.offer(row);
+		cond.signal();
+	}
+
+	@Override
+	public void onFailure(Throwable cause) {
+		if (colDef == null)
+			resultSetActive.setFailure(cause);
+		else {
+			error = cause;
+			cond.signalAll();
+		}
+	}
+
+	@Override
+	public void onSuccess(Packet.ServerAck ack) {
+		expectMoreRows = false;
+		cond.signalAll();
+	}
+
 	private final Statement stmt;
+	private final LinkedTransferQueue<
+		Row
+	> incomingRows = new LinkedTransferQueue<>();
+	final ChannelPromise resultSetActive;
+	private volatile ColumnDefinition colDef;
+
+	private final ReentrantLock lock = new ReentrantLock();
+	private final Condition cond = lock.newCondition();
+	private volatile Throwable error;
+	private volatile boolean expectMoreRows;
+	private Row current;
 }

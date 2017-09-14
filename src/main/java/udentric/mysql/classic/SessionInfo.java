@@ -25,8 +25,31 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.exceptions;
+package udentric.mysql.classic;
 
-public interface StreamingNotifiable {
-	void setWasStreamingResults();
+import java.nio.charset.Charset;
+import udentric.mysql.ServerVersion;
+
+public class SessionInfo {
+	SessionInfo(InitialSessionInfo si) {
+		cl = si.cl;
+		version = si.version;
+		charsetInfo = si.charsetInfo;
+		charset = si.charsetInfo.javaCharset;
+		serverCaps = si.serverCaps;
+		clientCaps = si.clientCaps;
+		srvConnId = si.srvConnId;
+	}
+
+	public boolean expectEof() {
+		return !ClientCapability.DEPRECATE_EOF.get(clientCaps);
+	}
+
+	public final Client cl;
+	public final ServerVersion version;
+	public final CharsetInfo.Entry charsetInfo;
+	public final Charset charset;
+	public final long serverCaps;
+	public final long clientCaps;
+	public final int srvConnId;
 }

@@ -65,7 +65,7 @@ public class NumbersTest extends TestCase {
 			"SELECT * from number_test"
 		)) {
 			System.err.format("--3- result %s\n", rs);
-			/*
+
 			while (rs.next()) {
 				long minBigInt = rs.getLong(1);
 				long maxBigInt = rs.getLong(2);
@@ -76,7 +76,6 @@ public class NumbersTest extends TestCase {
 					testBigInt, TEST_BIGINT_VALUE
 				);
 			}
-			*/
 		}
 	}
 

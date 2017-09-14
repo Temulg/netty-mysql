@@ -27,64 +27,64 @@
 
 package udentric.mysql.classic.dicta;
 
-import java.util.Arrays;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.Config;
-import udentric.mysql.classic.CharsetInfo;
+import udentric.mysql.MysqlErrorNumbers;
+import udentric.mysql.classic.Client;
 import udentric.mysql.classic.ClientCapability;
+import udentric.mysql.classic.InitialSessionInfo;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.Session;
 import udentric.mysql.util.Scramble411;
 
 public class MysqlNativePasswordAuth implements Dictum {
 	public MysqlNativePasswordAuth(
-		int seqNum_, long caps_,
-		byte[] secret_,
-		int maxPacketSize_,
-		CharsetInfo.Entry charset_,
+		InitialSessionInfo si_, int seqNum_, ChannelPromise chp_,
 		ByteBuf attrBuf_
 	) {
+		si = si_;
 		seqNum = seqNum_;
-		caps = caps_;
-		secret = secret_;
-		maxPacketSize = maxPacketSize_;
-		charset = charset_;
+		chp = chp_;
 		attrBuf = attrBuf_;
 	}
 
-	public void encode(ByteBuf dst, Session ss) {
-		Config cfg = ss.getConfig();
+	@Override
+	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+		Config cfg = si.cl.getConfig();
 		dst.writeIntLE(
-			(int)(caps & 0xffffffff)
+			(int)(si.clientCaps & 0xffffffff)
 		);
 
-		dst.writeIntLE(maxPacketSize);
-		dst.writeByte(charset.id);
+		dst.writeIntLE(si.cl.getConfig().getOrDefault(
+			Config.Key.maxPacketSize, 0xffffff
+		));
+		dst.writeByte(si.charsetInfo.id);
 		dst.writeZero(23);
 
 		dst.writeBytes(cfg.getOrDefault(Config.Key.user, "").getBytes(
-			charset.javaCharset
+			si.charsetInfo.javaCharset
 		));
 		dst.writeByte(0);
 
 		if (
 			ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
-				caps
-			) || ClientCapability.SECURE_CONNECTION.get(caps)
+				si.clientCaps
+			) || ClientCapability.SECURE_CONNECTION.get(
+				si.clientCaps
+			)
 		) {
 			dst.writeByte(20);
 			Scramble411.encode(dst, cfg.getOrDefault(
 				Config.Key.password, ""
-			).getBytes(charset.javaCharset), secret);
+			).getBytes(si.charsetInfo.javaCharset), si.secret);
 		} else
 			dst.writeByte(0);
 
 		dst.writeBytes(AUTH_PLUGIN_NAME.getBytes(
-			charset.javaCharset
+			si.charsetInfo.javaCharset
 		));
 		dst.writeByte(0);
 
@@ -93,72 +93,80 @@ public class MysqlNativePasswordAuth implements Dictum {
 			dst.writeBytes(attrBuf);
 			attrBuf.release();
 		}
+		
 	}
 
-	public void handleReply(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	@Override
+	public void acceptServerMessage(
+		ByteBuf src, ChannelHandlerContext ctx
 	) {
-		int nextSeqNum = Packet.getSeqNum(src);
+		int lastSeqNum = Packet.getSeqNum(src);
 		src.skipBytes(Packet.HEADER_SIZE);
 
 		int type = Packet.readInt1(src);
 
-		System.err.format("--7- resp reply type %x\n", type);
 		switch (type) {
 		case Packet.OK:
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, true, charset
+					src, true, si.charsetInfo.javaCharset
 				);
-				Session.LOGGER.debug(
-					"authenticated: {}", ack.info
-				);
-				ss.discardCommand();
-				if (chp != null)
-					chp.setSuccess();
+				si.onAuth(ack, ctx, chp);
 			} catch (Exception e) {
-				ss.discardCommand(e);
+				Client.discardActiveDictum(
+					ctx.channel(), e
+				);
 			}
 			break;
 		case Packet.EOF:
-			authSwitch(src, ss);
+			authSwitch(src, ctx, lastSeqNum);
 			break;
 		case Packet.ERR:
-			ss.discardCommand(Packet.parseError(src, charset));
+			Client.discardActiveDictum(
+				ctx.channel(),
+				Packet.parseError(
+					src, si.charsetInfo.javaCharset
+				)
+			);
 			return;
 		default:
-			ss.discardCommand(new DecoderException(
-				"unsupported packet type "
-				+ Integer.toString(type)
-			));
-			return;
+			Client.discardActiveDictum(
+				ctx.channel(),
+				new DecoderException(
+					"unsupported packet type "
+					+ Integer.toString(type)
+				)
+			);
 		}
 	}
 
-	private void authSwitch(ByteBuf src, Session ss) {
-		ss.discardCommand();
-		if (!src.isReadable()) {
-			handleFailure(new DecoderException(
-				"mysql_old_password auth method not supported"
-			));
-			return;
+	private void authSwitch(
+		ByteBuf src, ChannelHandlerContext ctx, int lastSeqNum
+	) {
+		String authPluginName;
+		byte[] pluginData = null;
+
+		if (!src.isReadable())
+			authPluginName = "mysql_old_password";
+		else {
+			authPluginName = Packet.readStringNT(
+				src, si.charsetInfo.javaCharset
+			);
+			pluginData = new byte[src.readableBytes()];
+			src.readBytes(pluginData);
 		}
 
-		String authPluginName = Packet.readStringNT(
-			src, charset.javaCharset
+		Client.discardActiveDictum(
+			ctx.channel(),
+			Packet.makeError(
+				MysqlErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
+				authPluginName
+			)
 		);
-		byte[] pluginData = new byte[src.readableBytes()];
-		src.readBytes(pluginData);
-
-		handleFailure(new DecoderException(String.format(
-			"%s auth method not supported (data: %s)",
-			authPluginName, Arrays.toString(pluginData)
-		)));
 	}
 
 	public void handleFailure(Throwable cause) {
-		if (chp != null)
-			chp.setFailure(cause);
+		chp.setFailure(cause);
 	}
 
 	@Override
@@ -166,26 +174,10 @@ public class MysqlNativePasswordAuth implements Dictum {
 		return seqNum;
 	}
 
-	@Override
-	public ChannelPromise channelPromise() {
-		return chp;
-	}
-
-	@Override
-	public MysqlNativePasswordAuth withChannelPromise(
-		ChannelPromise chp_
-	) {
-		chp = chp_;
-		return this;
-	}
-
 	public static String AUTH_PLUGIN_NAME = "mysql_native_password";
 
+	private final InitialSessionInfo si;
 	private final int seqNum;
-	private final long caps;
-	private final byte[] secret;
-	private final int maxPacketSize;
-	private final CharsetInfo.Entry charset;
 	private final ByteBuf attrBuf;
 	private ChannelPromise chp;
 }

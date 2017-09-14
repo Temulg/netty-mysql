@@ -31,8 +31,9 @@ import java.sql.SQLException;
 
 import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import java.nio.charset.Charset;
-import udentric.mysql.exceptions.MysqlErrorNumbers;
+import udentric.mysql.MysqlErrorNumbers;
 
 public class Packet {
 	private Packet() {}
@@ -204,6 +205,18 @@ public class Packet {
 		}
 	}
 
+	public static boolean invalidSeqNum(
+		Channel ch, ByteBuf src, int expected
+	) {
+		if (getSeqNum(src) != expected) {
+			Client.discardActiveDictum(ch, makeError(
+				MysqlErrorNumbers.ER_NET_PACKETS_OUT_OF_ORDER
+			));
+			return true;
+		} else
+			return false;
+	}
+
 	public static SQLException makeError(int errno) {
 		String xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
 		return new SQLException(
@@ -211,12 +224,21 @@ public class Packet {
 		);
 	}
 
+	public static SQLException makeError(int errno, String extra) {
+		String xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
+		return new SQLException(
+			String.format(
+				"%s (%s)", MysqlErrorNumbers.get(xOpen), extra
+			), xOpen, errno
+		);
+	}
+
 	public static SQLException parseError(
-		ByteBuf msg, CharsetInfo.Entry charset
+		ByteBuf msg, Charset cs
 	) {
 		int errno = readInt2(msg);
 		String srvErrMsg = msg.readCharSequence(
-			msg.readableBytes(), charset.javaCharset
+			msg.readableBytes(), cs
 		).toString();
 		String xOpen;
 
@@ -239,17 +261,14 @@ public class Packet {
 	}
 
 	public static class ServerAck	{
-		public ServerAck(
-			ByteBuf msg, boolean okPacket,
-			CharsetInfo.Entry charset
-		) {
+		public ServerAck(ByteBuf msg, boolean okPacket, Charset cs) {
 			rows = okPacket ? readLongLenenc(msg) : 0;
 			insertId = okPacket ? readLongLenenc(msg) : 0;
 			srvStatus = msg.readShortLE();
 			warnCount = readInt2(msg);
 
 			info = okPacket ? msg.readCharSequence(
-				msg.readableBytes(), charset.javaCharset
+				msg.readableBytes(), cs
 			).toString() : "";
 		}
 

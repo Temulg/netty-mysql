@@ -30,33 +30,24 @@ package udentric.mysql.classic.dicta;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import udentric.mysql.classic.Session;
+import udentric.mysql.classic.InitialSessionInfo;
 
 public class Handshake implements Dictum {
-	public Handshake() {
+	public Handshake(InitialSessionInfo si_, ChannelPromise chp_) {
+		si = si_;
+		chp = chp_;
 	}
 
 	@Override
-	public void encode(ByteBuf dst, Session ss) {
+	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
 		throw new UnsupportedOperationException("Not supported.");
 	}
 
 	@Override
-	public void handleReply(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
+	public void acceptServerMessage(
+		ByteBuf src, ChannelHandlerContext ctx
 	) {
-		try {
-			Dictum next = ss.handleInitialHandshake(src, ctx);
-			ctx.channel().writeAndFlush(
-				next.withChannelPromise(chp)
-			).addListener(chf -> {
-				if (!chf.isSuccess()) {
-					ss.discardCommand(chf.cause());
-				}
-			});
-		} catch (Exception e) {
-			chp.setFailure(e);
-		}
+		si.processInitialHandshake(src, ctx, chp);
 	}
 
 	@Override
@@ -64,16 +55,6 @@ public class Handshake implements Dictum {
 		chp.setFailure(cause);
 	}
 
-	@Override
-	public ChannelPromise channelPromise() {
-		return chp;
-	}
-
-	@Override
-	public Handshake withChannelPromise(ChannelPromise chp_) {
-		chp = chp_;
-		return this;
-	}
-
-	private ChannelPromise chp;
+	private final InitialSessionInfo si;
+	private final ChannelPromise chp;
 }

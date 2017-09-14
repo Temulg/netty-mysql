@@ -27,90 +27,71 @@
 
 package udentric.mysql.classic.dicta;
 
+import com.mysql.cj.core.exceptions.MysqlErrorNumbers;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
-import udentric.mysql.classic.CharsetInfo;
+import io.netty.util.concurrent.Promise;
+import udentric.mysql.classic.Client;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.Session;
+import udentric.mysql.classic.SessionInfo;
 
 public class InitDb implements Dictum {
-	public InitDb(String catalog_, CharsetInfo.Entry charset_) {
-		catalog = catalog_;
-		charset = charset_;
+	public InitDb(String schema_, Promise<Packet.ServerAck> sp_) {
+		schema = schema_;
+		sp = sp_;
 	}
 
 	@Override
-	public void encode(ByteBuf dst, Session ss) {
+	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+		SessionInfo si = Client.sessionInfo(ctx.channel());
 		dst.writeByte(OPCODE);
-		dst.writeCharSequence(catalog, charset.javaCharset);
+		dst.writeCharSequence(schema, si.charset);
 	}
 
 	@Override
-	public void handleReply(
-		ByteBuf src, Session ss, ChannelHandlerContext ctx
-	) {
-		int nextSeqNum = Packet.getSeqNum(src);
-		if (nextSeqNum != 1) {
-			ss.discardCommand(new DecoderException(
-				"unexpected seqNum"
-			));
+	public void acceptServerMessage(ByteBuf src, ChannelHandlerContext ctx) {
+		if (Packet.invalidSeqNum(ctx.channel(), src, 1))
 			return;
-		}
 
 		src.skipBytes(Packet.HEADER_SIZE);
+		Channel ch = ctx.channel();
+		SessionInfo si = Client.sessionInfo(ch);
 
 		int type = Packet.readInt1(src);
 		switch (type) {
 		case Packet.OK:
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, true, charset
+					src, true, si.charset
 				);
-				Session.LOGGER.debug(
-					"catalog changed: {}", ack.info
-				);
-				ss.setCatalog(catalog);
-				ss.discardCommand();
-				if (chp != null)
-					chp.setSuccess();
+				Client.discardActiveDictum(ch);
+				sp.setSuccess(ack);
 			} catch (Exception e) {
-				ss.discardCommand(e);
+				Client.discardActiveDictum(ch, e);
 			}
 			break;
 		case Packet.ERR:
-			ss.discardCommand(Packet.parseError(src, charset));
+			Client.discardActiveDictum(
+				ch, Packet.parseError(src, si.charset)
+			);
 			return;
 		default:
-			ss.discardCommand(new DecoderException(
+			Client.discardActiveDictum(ch, new DecoderException(
 				"unsupported packet type "
 				+ Integer.toString(type)
 			));
-			return;
 		}
 	}
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		if (chp != null)
-			chp.setFailure(cause);
-	}
-
-	@Override
-	public ChannelPromise channelPromise() {
-		return chp;
-	}
-
-	@Override
-	public InitDb withChannelPromise(ChannelPromise chp_) {
-		chp = chp_;
-		return this;
+		sp.setFailure(cause);
 	}
 
 	public static final int OPCODE = 2;
 
-	private final String catalog;
-	private final CharsetInfo.Entry charset;
-	private ChannelPromise chp;
+	private final String schema;
+	private final Promise<Packet.ServerAck> sp;
 }
