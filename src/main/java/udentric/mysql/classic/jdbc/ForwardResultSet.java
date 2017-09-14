@@ -41,28 +41,56 @@ import java.sql.RowId;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
+import java.util.ArrayDeque;
 import java.util.Calendar;
-import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+
+import udentric.mysql.classic.Client;
 import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.ColumnType;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.Row;
 
-public class ResultSet implements java.sql.ResultSet, ResultSetConsumer {
-	ResultSet(Statement stmt_) {
+public class ForwardResultSet implements java.sql.ResultSet, ResultSetConsumer {
+	ForwardResultSet(Statement stmt_) {
 		stmt = stmt_;
 		resultSetActive = stmt.getConnection().getChannel().newPromise();
 	}
 
 	@Override
-	public boolean next() throws SQLException {
-		return false;
+	public synchronized boolean next() throws SQLException {
+		while (true) {
+			if (!incomingRows.isEmpty()) {
+				currentRow = incomingRows.pollFirst();
+				return true;
+			}
+
+			if (!expectMoreRows) {
+				currentRow = null;
+				if (error != null)
+					Client.throwAny(error);
+
+				return false;
+			}
+
+			try {
+				wait();
+			} catch (InterruptedException e) {
+				return false;
+			}
+		}
 	}
 
 	@Override
-	public void close() throws SQLException {
+	public synchronized void close() throws SQLException {
+		while (expectMoreRows) {
+			try {
+				wait();
+			} catch (InterruptedException e) {
+				break;
+			}
+		}
+
 		stmt.releaseResult(this);
 	}
 
@@ -98,7 +126,11 @@ public class ResultSet implements java.sql.ResultSet, ResultSetConsumer {
 
 	@Override
 	public long getLong(int columnIndex) throws SQLException {
-		return 0;
+		return (long)currentRow.asJavaObject(
+			columnIndex - 1,
+			colDef.getField(columnIndex - 1),
+			Long.class
+		);
 	}
 
 	@Override
@@ -393,7 +425,7 @@ public class ResultSet implements java.sql.ResultSet, ResultSetConsumer {
 
 	@Override
 	public int getType() throws SQLException {
-		return 0;
+		return java.sql.ResultSet.TYPE_FORWARD_ONLY;
 	}
 
 	@Override
@@ -1133,37 +1165,36 @@ public class ResultSet implements java.sql.ResultSet, ResultSetConsumer {
 	}
 
 	@Override
-	public void acceptRow(Row row) {
+	public synchronized void acceptRow(Row row) {
 		incomingRows.offer(row);
-		cond.signal();
+		notifyAll();
 	}
 
 	@Override
-	public void onFailure(Throwable cause) {
+	public synchronized void onFailure(Throwable cause) {
+		expectMoreRows = false;
+
 		if (colDef == null)
 			resultSetActive.setFailure(cause);
 		else {
-			error = cause;
-			cond.signalAll();
+			error = cause;			
+			notifyAll();
 		}
 	}
 
 	@Override
-	public void onSuccess(Packet.ServerAck ack) {
+	public synchronized void onSuccess(Packet.ServerAck ack) {
 		expectMoreRows = false;
-		cond.signalAll();
+		notifyAll();
 	}
 
-	private final Statement stmt;
-	private final LinkedTransferQueue<
-		Row
-	> incomingRows = new LinkedTransferQueue<>();
 	final ChannelPromise resultSetActive;
+	private final Statement stmt;
+	private final ArrayDeque<
+		Row
+	> incomingRows = new ArrayDeque<>();
+	private volatile Row currentRow;
 	private volatile ColumnDefinition colDef;
-
-	private final ReentrantLock lock = new ReentrantLock();
-	private final Condition cond = lock.newCondition();
-	private volatile Throwable error;
-	private volatile boolean expectMoreRows;
-	private Row current;
+	private Throwable error;
+	private boolean expectMoreRows;
 }

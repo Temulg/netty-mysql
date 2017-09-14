@@ -36,5 +36,16 @@ public class TextRow extends Row {
 		columns[columnPos] = val;
 	}
 
+	public String rawValue(int pos) {
+		return columns[pos];
+	}
+
+	@Override
+	public Object asJavaObject(int pos, Field fld, Class cls) {
+		return ColumnType.adapterForClass(cls).convertTextValue(
+			columns[pos], fld
+		);
+	}
+
 	private final String[] columns;
 }

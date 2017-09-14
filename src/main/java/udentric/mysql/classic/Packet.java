@@ -233,6 +233,12 @@ public class Packet {
 		);
 	}
 
+	public static SQLException makeErrorFromState(String state) {
+		return new SQLException(
+			MysqlErrorNumbers.get(state), state
+		);
+	}
+
 	public static SQLException parseError(
 		ByteBuf msg, Charset cs
 	) {

@@ -35,6 +35,7 @@ import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -57,7 +58,6 @@ import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.Client;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.SessionInfo;
-import udentric.mysql.classic.dicta.Dictum;
 import udentric.mysql.classic.dicta.InitDb;
 import udentric.mysql.classic.dicta.Quit;
 import udentric.mysql.util.QueryNormalizer;
@@ -89,10 +89,10 @@ public class Connection implements java.sql.Connection {
 	}
 
 	@Override
-	public synchronized Statement createStatement() throws SQLException {
-		Statement stmt = new Statement(this);
-		statements.put(stmt, Boolean.TRUE);
-		return stmt;
+	public Statement createStatement() throws SQLException {
+		return createStatement(
+			ResultSet.FETCH_FORWARD, ResultSet.CONCUR_READ_ONLY
+		);
 	}
 
 	@Override
@@ -223,10 +223,14 @@ public class Connection implements java.sql.Connection {
 	}
 
 	@Override
-	public Statement createStatement(
+	public synchronized Statement createStatement(
 		int resultSetType, int resultSetConcurrency
 	) throws SQLException {
-		return null;
+		Statement stmt = new Statement(
+			this, resultSetType, resultSetConcurrency
+		);
+		statements.put(stmt, Boolean.TRUE);
+		return stmt;
 	}
 
 	@Override

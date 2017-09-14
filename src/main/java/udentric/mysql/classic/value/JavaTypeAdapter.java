@@ -25,13 +25,12 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.value;
 
-import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.Field;
 
-public class CompressedPacket {
-	public int length;
-	public int seqNum;
-	public int rawLength;
-	public ByteBuf body;
+public interface JavaTypeAdapter {
+	default Object convertTextValue(String value, Field fld) {
+		return null;
+	}
 }

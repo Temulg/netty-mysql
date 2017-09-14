@@ -29,6 +29,8 @@ package udentric.mysql.classic.jdbc;
 
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Promise;
+
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
@@ -41,13 +43,20 @@ import udentric.mysql.classic.dicta.Query;
 import udentric.mysql.classic.dicta.UpdateQuery;
 
 public class Statement implements java.sql.Statement {
-	Statement(Connection conn_) {
+	Statement(Connection conn_, int resultSetType_, int resultSetConc_) {
 		conn = conn_;
+		resultSetType = resultSetType_;
+		resultSetConc = resultSetConc_;
+		if (resultSetType != ResultSet.FETCH_FORWARD)
+			throw new IllegalArgumentException(String.format(
+				"result set type %d not supported",
+				resultSetType
+			));
 	}
 
 	@Override
-	public ResultSet executeQuery(String sql) throws SQLException {
-		ResultSet rs = new ResultSet(this);
+	public ForwardResultSet executeQuery(String sql) throws SQLException {
+		ForwardResultSet rs = new ForwardResultSet(this);
 		Channel ch = conn.getChannel();
 		
 		ch.writeAndFlush(new Query(sql, rs)).addListener(
@@ -157,7 +166,7 @@ public class Statement implements java.sql.Statement {
 	}
 
 	@Override
-	public ResultSet getResultSet() throws SQLException {
+	public ForwardResultSet getResultSet() throws SQLException {
 		return null;
 	}
 
@@ -223,7 +232,7 @@ public class Statement implements java.sql.Statement {
 	}
 
 	@Override
-	public ResultSet getGeneratedKeys() throws SQLException {
+	public ForwardResultSet getGeneratedKeys() throws SQLException {
 		return null;
 	}
 
@@ -367,7 +376,7 @@ public class Statement implements java.sql.Statement {
 		return false;
 	}
 
-	synchronized void releaseResult(ResultSet rs) {
+	synchronized void releaseResult(ForwardResultSet rs) {
 		results.remove(rs);
 	}
 
@@ -376,7 +385,9 @@ public class Statement implements java.sql.Statement {
 	);
 
 	private final Connection conn;
+	private final int resultSetType;
+	private final int resultSetConc;
 	private final IdentityHashMap<
-		ResultSet, Boolean
+		ForwardResultSet, Boolean
 	> results = new IdentityHashMap<>();
 }

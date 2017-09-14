@@ -27,9 +27,7 @@
 
 package udentric.mysql.classic.dicta;
 
-import com.mysql.cj.api.Session;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.MysqlErrorNumbers;
 import udentric.mysql.classic.Client;
