@@ -27,14 +27,25 @@
 
 package testsuite.simple;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Phaser;
+
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
+import io.netty.channel.Channel;
 import testsuite.TestCase;
+import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.Commands;
+import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.Row;
+import udentric.mysql.classic.SyncCommands;
+import udentric.mysql.classic.Packet.ServerAck;
+import udentric.mysql.classic.dicta.Query;
 
 public class NumbersTest extends TestCase {
 	public NumbersTest() {
@@ -49,7 +60,7 @@ public class NumbersTest extends TestCase {
 			"(minBigInt bigint, maxBigInt bigint, testBigInt bigint)"
 		);
 		System.err.format("--2- create table\n");
-		stmt().executeUpdate(String.format(
+		SyncCommands.simpleQuery(channel(), String.format(
 			"INSERT INTO number_test ("
 			+ "minBigInt, maxBigInt, testBigInt"
 			+ ") values (%d, %d, %d)",
@@ -59,24 +70,60 @@ public class NumbersTest extends TestCase {
 	}
 
 	@Test
-	public void numbers() throws SQLException {
+	public void numbers() throws Exception {
 		System.err.format("--3- execute query\n");
-		try (ResultSet rs = stmt().executeQuery(
-			"SELECT * from number_test"
-		)) {
-			System.err.format("--3- result %s\n", rs);
+		CountDownLatch latch = new CountDownLatch(1);
 
-			while (rs.next()) {
-				long minBigInt = rs.getLong(1);
-				long maxBigInt = rs.getLong(2);
-				long testBigInt = rs.getLong(3);
-				Assert.assertEquals(Long.MIN_VALUE, minBigInt);
-				Assert.assertEquals(Long.MAX_VALUE, maxBigInt);
-				Assert.assertEquals(
-					testBigInt, TEST_BIGINT_VALUE
-				);
+		channel().writeAndFlush(new Query(
+			"SELECT * from number_test",
+			new ResultSetConsumer(){
+				@Override
+				public void acceptRow(Row row) {
+					Assert.assertEquals(
+						colDef.getFieldValue(
+							row, 0, Long.class
+						),
+						Long.MIN_VALUE
+					);
+					Assert.assertEquals(
+						colDef.getFieldValue(
+							row, 1, Long.class
+						),
+						Long.MAX_VALUE
+					);
+					Assert.assertEquals(
+						colDef.getFieldValue(
+							row, 2, Long.class
+						),
+						TEST_BIGINT_VALUE
+					);
+				}
+
+				@Override
+				public void acceptMetadata(
+					ColumnDefinition colDef_
+				) {
+					colDef = colDef_;
+				}
+			
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+					latch.countDown();
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					latch.countDown();
+				}
+
+				ColumnDefinition colDef;
 			}
-		}
+		)).addListener(Channels::defaultSendListener);
+		latch.await();
 	}
 
 	private static final long TEST_BIGINT_VALUE = 6147483647L;

@@ -47,19 +47,35 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 		Channel ch = ctx.channel();
 
 		InitialSessionInfo si = ch.attr(
-			Client.INITIAL_SESSION_INFO
+			Channels.INITIAL_SESSION_INFO
 		).get();
 
 		ChannelPromise nextPromise = ch.newPromise();
-		ch.attr(Client.ACTIVE_DICTUM).set(new Handshake(si, promise));
+		ch.attr(Channels.ACTIVE_DICTUM).set(new Handshake(si, promise));
 
 		nextPromise.addListener(chf -> {
 			if (!chf.isSuccess()) {
-				Client.discardActiveDictum(ch, chf.cause());
+				Channels.discardActiveDictum(ch, chf.cause());
 			}
 		});
 
 		ctx.connect(remoteAddress, localAddress, nextPromise);
+	}
+
+	@Override
+	public void disconnect(
+		ChannelHandlerContext ctx, ChannelPromise promise
+	) throws Exception {
+		System.err.format("-- disconnect --\n");
+		super.disconnect(ctx, promise);
+	}
+
+	@Override
+	public void close(
+		ChannelHandlerContext ctx, ChannelPromise promise
+	) throws Exception {
+		System.err.format("-- close --\n");
+		super.close(ctx, promise);
 	}
 
 	@Override
@@ -74,7 +90,7 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 		Dictum dct = (Dictum)dct_;
 
 		if (null != ctx.channel().attr(
-			Client.ACTIVE_DICTUM
+			Channels.ACTIVE_DICTUM
 		).setIfAbsent(dct)) {
 			promise.setFailure(new IllegalStateException(
 				"channel busy"

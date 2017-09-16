@@ -32,7 +32,7 @@ public interface ResultSetConsumer {
 
 	void acceptRow(Row row);
 
-	void onFailure(Throwable cause);
+	void acceptAck(Packet.ServerAck ack, boolean terminal);
 
-	void onSuccess(Packet.ServerAck ack);
+	void acceptFailure(Throwable cause);
 }

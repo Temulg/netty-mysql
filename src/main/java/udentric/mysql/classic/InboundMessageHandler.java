@@ -47,7 +47,7 @@ class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 		}
 
 		ByteBuf msg = (ByteBuf)msg_;
-		Dictum dct = ctx.channel().attr(Client.ACTIVE_DICTUM).get();
+		Dictum dct = ctx.channel().attr(Channels.ACTIVE_DICTUM).get();
 
 		if (dct == null) {
 			super.channelRead(ctx, msg);

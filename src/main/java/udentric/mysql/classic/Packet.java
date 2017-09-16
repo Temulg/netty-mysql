@@ -46,6 +46,10 @@ public class Packet {
 		return 0xff & in.getByte(in.readerIndex() + 3);
 	}
 
+	public static int nextSeqNum(int seqNum) {
+		return (seqNum + 1) & 0xff;
+	}
+
 	public static int readInt1(ByteBuf in) {
 		byte v = in.readByte();
 		return (int)v & 0xff;
@@ -75,7 +79,7 @@ public class Packet {
 				return (int)llen;
 			}
 		default:
-			Client.throwAny(makeError(
+			Channels.throwAny(makeError(
 				MysqlErrorNumbers.ER_MALFORMED_PACKET
 			));
 			return 0;
@@ -103,7 +107,7 @@ public class Packet {
 		case 0xfe:
 			return in.readLongLE();
 		default:
-			Client.throwAny(makeError(
+			Channels.throwAny(makeError(
 				MysqlErrorNumbers.ER_MALFORMED_PACKET
 			));
 			return 0;
@@ -113,7 +117,7 @@ public class Packet {
 	public static String readStringNT(ByteBuf in, Charset cs) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			Client.throwAny(makeError(
+			Channels.throwAny(makeError(
 				MysqlErrorNumbers.ER_MALFORMED_PACKET
 			));
 
@@ -147,7 +151,7 @@ public class Packet {
 				).toString();
 			}
 		default:
-			Client.throwAny(makeError(
+			Channels.throwAny(makeError(
 				MysqlErrorNumbers.ER_MALFORMED_PACKET
 			));
 			return "";
@@ -177,7 +181,7 @@ public class Packet {
 				return;
 			}
 		}
-		Client.throwAny(makeError(
+		Channels.throwAny(makeError(
 			MysqlErrorNumbers.ER_MALFORMED_PACKET
 		));
 	}
@@ -209,7 +213,7 @@ public class Packet {
 		Channel ch, ByteBuf src, int expected
 	) {
 		if (getSeqNum(src) != expected) {
-			Client.discardActiveDictum(ch, makeError(
+			Channels.discardActiveDictum(ch, makeError(
 				MysqlErrorNumbers.ER_NET_PACKETS_OUT_OF_ORDER
 			));
 			return true;

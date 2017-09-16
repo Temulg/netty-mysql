@@ -25,14 +25,35 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql;
+package udentric.mysql.classic;
 
-public interface ServerCapabilities {
-	int getCapabilityFlags();
+import java.sql.SQLException;
 
-	void setCapabilityFlags(int capabilityFlags);
+import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
 
-	ServerVersion getServerVersion();
+public class SyncCommands {
+	private SyncCommands() {
+	}
 
-	void setServerVersion(ServerVersion serverVersion);
+	public static Packet.ServerAck simpleQuery(
+		Channel ch, String sql
+	) throws SQLException {
+		Future<Packet.ServerAck> sf = null;;
+
+		try {
+			sf = Commands.simpleQuery(
+				ch, sql
+			).await();
+		} catch (InterruptedException e) {
+			Channels.throwAny(e);
+		}
+
+		if (sf.isSuccess())
+			return sf.getNow();
+		else {
+			Channels.throwAny(sf.cause());
+			return null;
+		}
+	}
 }

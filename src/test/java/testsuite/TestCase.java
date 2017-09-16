@@ -37,6 +37,8 @@ import org.testng.ITestContext;
 import org.testng.annotations.AfterMethod;
 import org.testng.log4testng.Logger;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
@@ -45,8 +47,8 @@ import org.testng.TestRunner;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import udentric.mysql.Config;
-import udentric.mysql.classic.Client;
-import udentric.mysql.classic.jdbc.Connection;
+import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.SyncCommands;
 
 public abstract class TestCase {
 	protected TestCase(Logger logger_) {
@@ -75,73 +77,69 @@ public abstract class TestCase {
 	protected boolean versionMeetsMinimum(
 		int major, int minor, int subminor
 	) {
-		return conn().getServerVersion().meetsMinimum(
+		return versionMeetsMinimum(channel(), major, minor, subminor);
+	}
+
+	protected static boolean versionMeetsMinimum(
+		Channel ch, int major, int minor, int subminor
+	) {
+		return Channels.sessionInfo(ch).version.meetsMinimum(
 			major, minor, subminor
 		);
 	}
 
-	protected Connection conn() {
-		return (Connection)testObjects.computeIfAbsent(TestObject.CONN, k -> {
-			Client cl = Client.builder().withConfig(
-				Config.fromEnvironment(true).withValue(
-					Config.Key.DBNAME, "testsuite"
-				).build()
-			).build();
+	protected Channel channel() {
+		if (channel != null) {
+			return channel;
+		}
 
-			try {
-				Connection c = new Connection(
-					(new Bootstrap()).group(grp).channel(
-						NioSocketChannel.class
-					).handler(cl).connect(cl.remoteAddress())
-				);
-				closeableObjects.offerFirst(c);
-				return c;
-			} catch (Exception e) {
-				System.err.format("-- sql error %s\n", e);
-				Client.throwAny(e);
-			}
-			return null;
-		});
-	}
+		ChannelFuture chf = Channels.create(
+			Config.fromEnvironment(true).withValue(
+				Config.Key.DBNAME, "testsuite"
+			).build(),
+			(new Bootstrap()).group(
+				new NioEventLoopGroup()
+			).channel(NioSocketChannel.class)
+		);
 
-	protected Statement stmt() {
-		return (Statement)testObjects.computeIfAbsent(TestObject.STMT, k -> {
-			Connection c = conn();
+		try {
+			chf.await();
+		} catch (InterruptedException e) {
+			Channels.throwAny(e);
+		}
 
-			try {
-				Statement stmt = c.createStatement();
-				closeableObjects.offerFirst(stmt);
-				return stmt;
-			} catch (SQLException e) {
-				Client.throwAny(e);
-			}
-			return null;
-		});
+		if (chf.isSuccess()) {
+			channel = chf.channel();
+			return channel;
+		} else
+			Channels.throwAny(chf.cause());
+
+		return null;
 	}
 
 	protected void createTable(
-		Statement stmt, String tableName, String columnsAndOtherStuff
+		Channel ch, String tableName, String columnsAndOtherStuff
 	) throws SQLException {
 		createSchemaObject(
-			stmt, "TABLE", tableName, columnsAndOtherStuff
+			ch, "TABLE", tableName, columnsAndOtherStuff
 		);
 	}
 
 	protected void createTable(
 		String tableName, String columnsAndOtherStuff
 	) throws SQLException {
-		createTable(stmt(), tableName, columnsAndOtherStuff);
+		createTable(channel(), tableName, columnsAndOtherStuff);
 	}
 
 	protected class SchemaObject {
 		SchemaObject(
-			Statement stmt, String type_, String name_
+			Channel ch, String type_, String name_
 		) throws SQLException {
 			type = type_;
 			name = name_;
 
 			try {
-				drop(stmt);
+				drop(ch);
 			} catch (SQLException e) {
 				if (!e.getMessage().startsWith(
 					"Operation DROP USER failed"
@@ -150,23 +148,21 @@ public abstract class TestCase {
 			}
 		}
 
-		void drop(Statement stmt) throws SQLException {
+		void drop(Channel ch) throws SQLException {
 			if (
 				!type.equalsIgnoreCase("USER")
-				|| (
-					(Connection)stmt.getConnection()
-				).getServerVersion().meetsMinimum(5, 7, 8)
+				|| versionMeetsMinimum(ch, 5, 7, 8)
 			) {
-				stmt.executeUpdate(String.format(
+				SyncCommands.simpleQuery(ch, String.format(
 					"DROP %s IF EXISTS %s",
 					type, name
 				));
 			} else {
-				stmt.executeUpdate(String.format(
+				SyncCommands.simpleQuery(ch, String.format(
 					"DROP %s %s", type, name
 				));
 			}
-			stmt.executeUpdate("flush privileges");
+			SyncCommands.simpleQuery(ch, "flush privileges");
 		}
 
 		final String type;
@@ -174,11 +170,11 @@ public abstract class TestCase {
 	}
 
 	protected void createSchemaObject(
-		Statement stmt, String objectType, String objectName,
+		Channel ch, String objectType, String objectName,
 		String columnsAndOtherStuff
 	) throws SQLException {
 		createdObjects.offerLast(
-			new SchemaObject(stmt, objectType, objectName)
+			new SchemaObject(ch, objectType, objectName)
 		);
 
 		String sql = String.format(
@@ -187,7 +183,7 @@ public abstract class TestCase {
 		);
 
 		try {
-			stmt.executeUpdate(sql);
+			SyncCommands.simpleQuery(ch, sql);
 		} catch (SQLException e) {
 			if ("42S01".equals(e.getSQLState())) {
 				logger.warn(
@@ -195,33 +191,13 @@ public abstract class TestCase {
 					+ "table creation - flushing tables "
 					+ "and trying again"
 				);
-				stmt.executeUpdate("FLUSH TABLES");
-				stmt.executeUpdate(sql);
+				SyncCommands.simpleQuery(ch, "FLUSH TABLES");
+				SyncCommands.simpleQuery(ch, sql);
 			} else {
 				throw e;
 			}
 		}
 	}
-
-/*
-	protected Connection sha256Conn() {
-	}
-
-	protected PreparedStatement pstmt() {
-	}
-
-	protected ResultSet rs() {
-	}
-
-	protected ResultSet sha256Rs() {
-	}
-
-	protected Statement stmt() {
-	}
-
-	protected Statement sha256Stmt() {
-	}
-*/
 
 	/*
 	@BeforeMethod
@@ -307,36 +283,16 @@ public abstract class TestCase {
 			}
 		}
 */
-		closeableObjects.forEach(obj -> {
-			try {
-				obj.close();
-			} catch (Exception e) {
-				logger.warn("exception on close", e);
-			}
-		});
-		closeableObjects.clear();
-		testObjects.clear();
-	}
-
-	protected enum TestObject {
-		CONN,
-		SHA256CONN,
-		PSTMT,
-		RS,
-		SHA256RS,
-		STMT,
-		SHA256STMT;
+		if (channel != null) {
+			channel.close().await();
+			channel = null;
+		}
 	}
 
 	private final ArrayDeque<
 		SchemaObject
 	> createdObjects = new ArrayDeque<>();
-	private final EnumMap<TestObject, Object> testObjects = new EnumMap<>(
-		TestObject.class
-	);
-	private final ArrayDeque<
-		AutoCloseable
-	> closeableObjects = new ArrayDeque<>();
 	protected final Logger logger;
 	protected NioEventLoopGroup grp;
+	protected Channel channel;
 }

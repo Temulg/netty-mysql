@@ -37,7 +37,7 @@ public class EscapeProcessingTest extends TestCase {
 	public EscapeProcessingTest() {
 		super(Logger.getLogger(EscapeProcessingTest.class));
 	}
-
+/*
 	@Test
 	public void escapeProcessing() throws Exception {
 		String results
@@ -69,7 +69,7 @@ public class EscapeProcessingTest extends TestCase {
 			conn().nativeSQL("{fn convert(abcd, INTEGER)}")
 		);
 	}
-/*
+
 	public void timestampConversion() {
 		TimeZone currentTimezone = TimeZone.getDefault();
 		String[] availableIds = TimeZone.getAvailableIDs(

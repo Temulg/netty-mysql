@@ -30,9 +30,10 @@ package udentric.mysql.classic.dicta;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.classic.Client;
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SessionInfo;
 
 
@@ -46,7 +47,7 @@ public class Query implements Dictum {
 	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
 		dst.writeByte(OPCODE);
 		dst.writeCharSequence(
-			sql, Client.sessionInfo(ctx.channel()).charset
+			sql, Channels.sessionInfo(ctx.channel()).charset
 		);
 	}
 
@@ -56,33 +57,46 @@ public class Query implements Dictum {
 			return;
 
 		int seqNum = Packet.getSeqNum(src);
-		src.skipBytes(Packet.HEADER_SIZE);
 		Channel ch = ctx.channel();
-		SessionInfo si = Client.sessionInfo(ch);
+		SessionInfo si = Channels.sessionInfo(ch);
 
-		int type = src.getByte(src.readerIndex()) & 0xff;
+		int type = src.getByte(
+			src.readerIndex() + Packet.HEADER_SIZE
+		) & 0xff;
 
 		switch (type) {
 		case Packet.OK:
-			src.skipBytes(1);
+			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
 					src, true, si.charset
 				);
-				Client.discardActiveDictum(ch);
-				rsc.onSuccess(ack);
+				if (ServerStatus.MORE_RESULTS_EXISTS.get(
+					ack.srvStatus
+				)) {
+					ch.attr(Channels.ACTIVE_DICTUM).set(
+						new TextResultSet(
+							seqNum, rsc
+						)
+					);
+					rsc.acceptAck(ack, false);
+				} else {
+					Channels.discardActiveDictum(ch);
+					rsc.acceptAck(ack, true);
+				}
 			} catch (Exception e) {
-				Client.discardActiveDictum(ch, e);
+				Channels.discardActiveDictum(ch, e);
 			}
 			break;
 		case Packet.ERR:
-			src.skipBytes(1);
-			Client.discardActiveDictum(
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			Channels.discardActiveDictum(
 				ch, Packet.parseError(src, si.charset)
 			);
 			return;
 		default:
-			ch.attr(Client.ACTIVE_DICTUM).set(new TextResultSet(
+			src.skipBytes(Packet.HEADER_SIZE);
+			ch.attr(Channels.ACTIVE_DICTUM).set(new TextResultSet(
 				Packet.readIntLenenc(src), seqNum, rsc
 			));
 		}
@@ -90,7 +104,7 @@ public class Query implements Dictum {
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		rsc.onFailure(cause);
+		rsc.acceptFailure(cause);
 	}
 
 	public static final int OPCODE = 3;

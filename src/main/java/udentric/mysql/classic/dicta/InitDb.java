@@ -32,7 +32,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderException;
 import io.netty.util.concurrent.Promise;
-import udentric.mysql.classic.Client;
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.SessionInfo;
 
@@ -44,7 +44,7 @@ public class InitDb implements Dictum {
 
 	@Override
 	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
-		SessionInfo si = Client.sessionInfo(ctx.channel());
+		SessionInfo si = Channels.sessionInfo(ctx.channel());
 		dst.writeByte(OPCODE);
 		dst.writeCharSequence(schema, si.charset);
 	}
@@ -56,7 +56,7 @@ public class InitDb implements Dictum {
 
 		src.skipBytes(Packet.HEADER_SIZE);
 		Channel ch = ctx.channel();
-		SessionInfo si = Client.sessionInfo(ch);
+		SessionInfo si = Channels.sessionInfo(ch);
 
 		int type = Packet.readInt1(src);
 		switch (type) {
@@ -65,19 +65,19 @@ public class InitDb implements Dictum {
 				Packet.ServerAck ack = new Packet.ServerAck(
 					src, true, si.charset
 				);
-				Client.discardActiveDictum(ch);
+				Channels.discardActiveDictum(ch);
 				sp.setSuccess(ack);
 			} catch (Exception e) {
-				Client.discardActiveDictum(ch, e);
+				Channels.discardActiveDictum(ch, e);
 			}
 			break;
 		case Packet.ERR:
-			Client.discardActiveDictum(
+			Channels.discardActiveDictum(
 				ch, Packet.parseError(src, si.charset)
 			);
 			return;
 		default:
-			Client.discardActiveDictum(ch, new DecoderException(
+			Channels.discardActiveDictum(ch, new DecoderException(
 				"unsupported packet type "
 				+ Integer.toString(type)
 			));

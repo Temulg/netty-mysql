@@ -28,11 +28,13 @@
 package udentric.mysql.classic;
 
 import java.nio.charset.Charset;
+
+import udentric.mysql.Config;
 import udentric.mysql.ServerVersion;
 
 public class SessionInfo {
 	SessionInfo(InitialSessionInfo si) {
-		cl = si.cl;
+		config = si.config;
 		version = si.version;
 		charsetInfo = si.charsetInfo;
 		charset = si.charsetInfo.javaCharset;
@@ -45,7 +47,7 @@ public class SessionInfo {
 		return !ClientCapability.DEPRECATE_EOF.get(clientCaps);
 	}
 
-	public final Client cl;
+	public final Config config;
 	public final ServerVersion version;
 	public final CharsetInfo.Entry charsetInfo;
 	public final Charset charset;

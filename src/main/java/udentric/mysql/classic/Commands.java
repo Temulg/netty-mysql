@@ -27,6 +27,39 @@
 
 package udentric.mysql.classic;
 
-public class Request {
-	
+import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.Promise;
+import udentric.mysql.classic.dicta.Query;
+
+public class Commands {
+	private Commands() {
+	}
+
+	public static Future<Packet.ServerAck> simpleQuery(
+		Channel ch, String sql
+	) {
+		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
+		ch.writeAndFlush(new Query(sql, new ResultSetConsumer(){
+			@Override
+			public void acceptRow(Row row) {}
+		
+			@Override
+			public void acceptMetadata(ColumnDefinition colDef) {}
+		
+			@Override
+			public void acceptFailure(Throwable cause) {
+				sp.setFailure(cause);
+			}
+		
+			@Override
+			public void acceptAck(
+				Packet.ServerAck ack, boolean terminal
+			) {
+				if (terminal)
+					sp.setSuccess(ack);
+			}
+		})).addListener(Channels::defaultSendListener);
+		return sp;
+	}
 }

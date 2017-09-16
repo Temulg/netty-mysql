@@ -28,9 +28,10 @@
 package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.MysqlErrorNumbers;
-import udentric.mysql.classic.Client;
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Field;
 import udentric.mysql.classic.Packet;
@@ -42,9 +43,18 @@ public abstract class ResultSet implements Dictum {
 	protected ResultSet(
 		int columnCount, int lastSeqNum_, ResultSetConsumer rsc_
 	) {
-		colDef = new ColumnDefinition(columnCount);
 		rsc = rsc_;
 		lastSeqNum = lastSeqNum_;
+		state = this::columnCountReceived;
+		colDef = new ColumnDefinition(columnCount);
+	}
+
+	protected ResultSet(
+		int lastSeqNum_, ResultSetConsumer rsc_
+	) {
+		rsc = rsc_;
+		lastSeqNum = lastSeqNum_;
+		state = this::beginNextRs;
 	}
 
 	@Override
@@ -56,70 +66,107 @@ public abstract class ResultSet implements Dictum {
 	public void acceptServerMessage(
 		ByteBuf src, ChannelHandlerContext ctx
 	) {
-		if (Packet.invalidSeqNum(ctx.channel(), src, lastSeqNum + 1))
+		lastSeqNum = Packet.nextSeqNum(lastSeqNum);
+		if (Packet.invalidSeqNum(ctx.channel(), src, lastSeqNum))
 			return;
 
-		lastSeqNum++;
+		SessionInfo si = Channels.sessionInfo(ctx.channel());
 
-		src.skipBytes(Packet.HEADER_SIZE);
-		SessionInfo si = Client.sessionInfo(ctx.channel());
-
-		if (hasMeta)
-			handleRowDataOrEof(src, ctx, si);
-		else
-			handleColumnMeta(src, ctx, si);
+		state.handle(src, ctx, si);
 	}
 
-	protected void handleColumnMeta(
+	private void beginNextRs(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channel ch = ctx.channel();
+		int type = src.getByte(
+			src.readerIndex() + Packet.HEADER_SIZE
+		) & 0xff;
+
+		switch (type) {
+		case Packet.OK:
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			try {
+				Packet.ServerAck ack = new Packet.ServerAck(
+					src, true, si.charset
+				);
+				if (ServerStatus.MORE_RESULTS_EXISTS.get(
+					ack.srvStatus
+				)) {
+					rsc.acceptAck(ack, false);
+				} else {
+					Channels.discardActiveDictum(ch);
+					rsc.acceptAck(ack, true);
+				}
+			} catch (Exception e) {
+				Channels.discardActiveDictum(ch, e);
+			}
+			break;
+		case Packet.ERR:
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			Channels.discardActiveDictum(
+				ch, Packet.parseError(src, si.charset)
+			);
+			return;
+		default:
+			src.skipBytes(Packet.HEADER_SIZE);
+			colDef = new ColumnDefinition(
+				Packet.readIntLenenc(src)
+			);
+			state = this::columnCountReceived;
+		}
+	}
+
+	private void columnCountReceived(
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
 		if (!colDef.hasAllFields()) {
 			try {
+				src.skipBytes(Packet.HEADER_SIZE);
 				colDef.appendField(new Field(src, si.charset));
 			} catch (Exception e) {
-				Client.discardActiveDictum(ctx.channel(), e);
+				Channels.discardActiveDictum(ctx.channel(), e);
 			}
-
-			return;
-		}
-
-		if (si.expectEof()) {
+		} else if (si.expectEof()) {
+			src.skipBytes(Packet.HEADER_SIZE);
 			if ((
 				Packet.EOF != Packet.readInt1(src)
 			) || (src.readableBytes() != 4)) {
-				Client.discardActiveDictum(
+				Channels.discardActiveDictum(
 					ctx.channel(),
 					Packet.makeError(
 						MysqlErrorNumbers.ER_MALFORMED_PACKET
 					)
 				);
 			} else {
-				hasMeta = true;
+				state = this::columnDataReceived;
 				rsc.acceptMetadata(colDef);
 			}
 		} else {
-			hasMeta = true;
+			state = this::columnDataReceived;
 			rsc.acceptMetadata(colDef);
-			handleRowDataOrEof(src, ctx, si);
+			columnDataReceived(src, ctx, si);
 		}
 	}
 
-	private void handleRowDataOrEof(
+	private void columnDataReceived(
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
-		int type = src.getByte(src.readerIndex()) & 0xff;
+		int type = src.getByte(
+			src.readerIndex() + Packet.HEADER_SIZE
+		) & 0xff;
 
 		switch (type) {
 		case Packet.ERR:
-			src.skipBytes(1);
-			Client.discardActiveDictum(
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			Channels.discardActiveDictum(
 				ctx.channel(),
 				Packet.parseError(src, si.charset)
 			);
 			return;
 		case Packet.EOF:
 			if (src.readableBytes() < 0xffffff) {
-				src.skipBytes(1);
+				src.skipBytes(Packet.HEADER_SIZE + 1);
 				Packet.ServerAck ack = new Packet.ServerAck(
 					src, !si.expectEof(), si.charset
 				);
@@ -127,11 +174,14 @@ public abstract class ResultSet implements Dictum {
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
 				)) {
-					System.err.format("!!! more results\n");
+					state = this::beginNextRs;
+					rsc.acceptAck(ack, false);
+				} else {
+					Channels.discardActiveDictum(
+						ctx.channel()
+					);
+					rsc.acceptAck(ack, true);
 				}
-
-				Client.discardActiveDictum(ctx.channel());
-				rsc.onSuccess(ack);
 				return;
 			}
 		}
@@ -145,11 +195,18 @@ public abstract class ResultSet implements Dictum {
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		rsc.onFailure(cause);
+		rsc.acceptFailure(cause);
 	}
 
-	protected final ColumnDefinition colDef;
+	@FunctionalInterface
+	protected interface StateHandler {
+		void handle(
+			ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+		);
+	}
+
 	protected final ResultSetConsumer rsc;
+	protected StateHandler state;
+	protected ColumnDefinition colDef;
 	protected int lastSeqNum;
-	protected boolean hasMeta = false;
 }

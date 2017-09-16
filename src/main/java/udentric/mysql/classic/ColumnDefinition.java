@@ -30,8 +30,7 @@ package udentric.mysql.classic;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
-
-import com.mysql.cj.core.exceptions.MysqlErrorNumbers;
+import udentric.mysql.MysqlErrorNumbers;
 
 public class ColumnDefinition {
 	public ColumnDefinition(int fieldCount) {
@@ -63,6 +62,10 @@ public class ColumnDefinition {
 		}
 
 		return fields[pos];
+	}
+
+	public Object getFieldValue(Row row, int pos, Class<?> cls) {
+		return row.getFieldValue(pos, fields[pos], cls);
 	}
 
 	private final Field[] fields;

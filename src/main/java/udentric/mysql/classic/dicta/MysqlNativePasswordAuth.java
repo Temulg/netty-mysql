@@ -34,7 +34,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.Config;
 import udentric.mysql.MysqlErrorNumbers;
-import udentric.mysql.classic.Client;
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.InitialSessionInfo;
 import udentric.mysql.classic.Packet;
@@ -53,12 +53,12 @@ public class MysqlNativePasswordAuth implements Dictum {
 
 	@Override
 	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
-		Config cfg = si.cl.getConfig();
+		Config cfg = si.config;
 		dst.writeIntLE(
 			(int)(si.clientCaps & 0xffffffff)
 		);
 
-		dst.writeIntLE(si.cl.getConfig().getOrDefault(
+		dst.writeIntLE(cfg.getOrDefault(
 			Config.Key.maxPacketSize, 0xffffff
 		));
 		dst.writeByte(si.charsetInfo.id);
@@ -113,7 +113,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 				);
 				si.onAuth(ack, ctx, chp);
 			} catch (Exception e) {
-				Client.discardActiveDictum(
+				Channels.discardActiveDictum(
 					ctx.channel(), e
 				);
 			}
@@ -122,7 +122,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			authSwitch(src, ctx, lastSeqNum);
 			break;
 		case Packet.ERR:
-			Client.discardActiveDictum(
+			Channels.discardActiveDictum(
 				ctx.channel(),
 				Packet.parseError(
 					src, si.charsetInfo.javaCharset
@@ -130,7 +130,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			);
 			return;
 		default:
-			Client.discardActiveDictum(
+			Channels.discardActiveDictum(
 				ctx.channel(),
 				new DecoderException(
 					"unsupported packet type "
@@ -156,7 +156,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			src.readBytes(pluginData);
 		}
 
-		Client.discardActiveDictum(
+		Channels.discardActiveDictum(
 			ctx.channel(),
 			Packet.makeError(
 				MysqlErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,

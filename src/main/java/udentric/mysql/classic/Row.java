@@ -28,5 +28,5 @@
 package udentric.mysql.classic;
 
 public abstract class Row {
-	public abstract Object asJavaObject(int pos, Field fld, Class cls);
+	public abstract Object getFieldValue(int pos, Field fld, Class<?> cls);
 }

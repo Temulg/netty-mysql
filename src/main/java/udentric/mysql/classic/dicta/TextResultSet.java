@@ -29,6 +29,7 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.SessionInfo;
 
@@ -39,10 +40,15 @@ public class TextResultSet extends ResultSet {
 		super(columnCount_, lastSeqNum_, rsc_);
 	}
 
+	public TextResultSet(int lastSeqNum_, ResultSetConsumer rsc_) {
+		super(lastSeqNum_, rsc_);
+	}
+
 	@Override
 	protected void handleRowData(
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
+		src.skipBytes(Packet.HEADER_SIZE);
 		rsc.acceptRow(colDef.parseTextRow(src, si.charset));
 	}
 }

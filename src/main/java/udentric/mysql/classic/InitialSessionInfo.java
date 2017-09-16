@@ -32,21 +32,29 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
+import io.netty.util.concurrent.Promise;
+
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Map;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
 import udentric.mysql.MysqlErrorNumbers;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.dicta.Dictum;
+import udentric.mysql.classic.dicta.InitDb;
 import udentric.mysql.classic.dicta.MysqlNativePasswordAuth;
 
 
 public class InitialSessionInfo {
-	InitialSessionInfo(Client cl_) {
-		cl = cl_;
+	InitialSessionInfo(
+		Config config_, Map<String, String> connAttributes_
+	) {
+		config = config_;
+		connAttributes = connAttributes_;
 		charsetInfo = CharsetInfo.forId(223);
 	}
 
@@ -56,11 +64,32 @@ public class InitialSessionInfo {
 	) {
 		LOGGER.debug("authenticated: {}", ack.info);
 		Channel ch = ctx.channel();
-		Client.discardActiveDictum(ch);
+		Channels.discardActiveDictum(ch);
 
-		ch.attr(Client.SESSION_INFO).set(new SessionInfo(this));
-		ch.attr(Client.INITIAL_SESSION_INFO).set(null);
-		chp.setSuccess();
+		ch.attr(Channels.SESSION_INFO).set(new SessionInfo(this));
+		ch.attr(Channels.INITIAL_SESSION_INFO).set(null);
+
+		String schema = config.getOrDefault(
+			Config.Key.DBNAME, ""
+		);
+
+		if (schema.isEmpty()) {
+			chp.setSuccess();
+			return;
+		}
+
+		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
+
+		sp.addListener(sf -> {
+			if (sf.isSuccess())
+				chp.setSuccess();
+			else
+				chp.setFailure(sf.cause());
+		});
+
+		ch.writeAndFlush(new InitDb(schema, sp)).addListener(
+			Channels::defaultSendListener
+		);
 	}
 
 	public void processInitialHandshake(
@@ -68,7 +97,7 @@ public class InitialSessionInfo {
 	) {
 		Channel ch = ctx.channel();
 		try {
-			Client.discardActiveDictum(ch);
+			Channels.discardActiveDictum(ch);
 			ch.writeAndFlush(
 				decodeInitialHandshake(src, ctx, chp)
 			).addListener(chf -> {
@@ -87,7 +116,7 @@ public class InitialSessionInfo {
 		src.skipBytes(Packet.HEADER_SIZE);
 
 		int protoVers = Packet.readInt1(src);
-		if (Client.MYSQL_PROTOCOL_VERSION != protoVers) {
+		if (Channels.MYSQL_PROTOCOL_VERSION != protoVers) {
 			throw new DecoderException(
 				"unsupported protocol version "
 				+ Integer.toString(protoVers)
@@ -167,7 +196,7 @@ public class InitialSessionInfo {
 				attrBuf = encodeAttrs(ctx);
 			}
 
-			if (cl.getConfig().containsKey(Config.Key.password)) {
+			if (config.containsKey(Config.Key.password)) {
 				clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
 				if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
 					serverCaps
@@ -190,7 +219,7 @@ public class InitialSessionInfo {
 
 	private ByteBuf encodeAttrs(ChannelHandlerContext ctx) {
 		ByteBuf buf = ctx.alloc().buffer();
-		cl.connAttributes.forEach((k, v) -> {
+		connAttributes.forEach((k, v) -> {
 			byte[] b = k.getBytes(charsetInfo.javaCharset);
 			Packet.writeIntLenenc(buf, b.length);
 			buf.writeBytes(b);
@@ -223,7 +252,8 @@ public class InitialSessionInfo {
 		InitialSessionInfo.class
 	);
 
-	public final Client cl;
+	public final Config config;
+	private final Map<String, String> connAttributes;
 	public ServerVersion version;
 	public CharsetInfo.Entry charsetInfo;
 	public long serverCaps;
