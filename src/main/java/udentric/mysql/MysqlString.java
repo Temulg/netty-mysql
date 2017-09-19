@@ -25,36 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql;
 
-import java.nio.charset.Charset;
-
-import udentric.mysql.Config;
-import udentric.mysql.Encoding;
-import udentric.mysql.ServerVersion;
-
-public class SessionInfo {
-	SessionInfo(InitialSessionInfo si) {
-		config = si.config;
-		version = si.version;
-		encoding = si.encoding;
-		serverCaps = si.serverCaps;
-		clientCaps = si.clientCaps;
-		srvConnId = si.srvConnId;
-	}
-
-	public boolean expectEof() {
-		return !ClientCapability.DEPRECATE_EOF.get(clientCaps);
-	}
-
-	public Charset charset() {
-		return encoding.charset;
-	}
-
-	public final Config config;
-	public final ServerVersion version;
-	public final Encoding encoding;
-	public final long serverCaps;
-	public final long clientCaps;
-	public final int srvConnId;
+public interface MysqlString {
 }

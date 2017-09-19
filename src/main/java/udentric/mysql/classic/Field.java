@@ -29,7 +29,7 @@ package udentric.mysql.classic;
 
 import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.value.JavaTypeAdapter;
+import udentric.mysql.Encoding;
 
 import java.nio.charset.Charset;
 import java.sql.SQLException;
@@ -50,7 +50,7 @@ public class Field {
 
 		src.skipBytes(1);
 
-		charsetInfo = CharsetInfo.forId(Packet.readInt2(src));
+		encoding = Encoding.forId(Packet.readInt2(src));
 		length = src.readIntLE();
 		type = ColumnType.forId(Packet.readInt1(src));
 		flags = src.readShortLE();
@@ -71,7 +71,7 @@ public class Field {
 		).add(
 			"columnName", columnName
 		).add(
-			"charset", charsetInfo.javaCharset
+			"encoding", encoding
 		).add(
 			"length", length
 		).add(
@@ -88,7 +88,7 @@ public class Field {
 	public final String tableName;
 	public final String columnAlias;
 	public final String columnName;
-	public final CharsetInfo.Entry charsetInfo;
+	public final Encoding encoding;
 	public final int length;
 	public final ColumnType type;
 	public final short flags;

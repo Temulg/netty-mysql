@@ -27,10 +27,11 @@
 
 package udentric.mysql.classic.value;
 
+import udentric.mysql.MysqlString;
 import udentric.mysql.classic.Field;
 
 public interface JavaTypeAdapter {
-	default Object convertTextValue(String value, Field fld) {
+	default Object convertTextValue(MysqlString value, Field fld) {
 		return null;
 	}
 }

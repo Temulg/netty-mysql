@@ -88,7 +88,7 @@ public abstract class ResultSet implements Dictum {
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, true, si.charset
+					src, true, si.charset()
 				);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
@@ -105,7 +105,7 @@ public abstract class ResultSet implements Dictum {
 		case Packet.ERR:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			Channels.discardActiveDictum(
-				ch, Packet.parseError(src, si.charset)
+				ch, Packet.parseError(src, si.charset())
 			);
 			return;
 		default:
@@ -123,7 +123,9 @@ public abstract class ResultSet implements Dictum {
 		if (!colDef.hasAllFields()) {
 			try {
 				src.skipBytes(Packet.HEADER_SIZE);
-				colDef.appendField(new Field(src, si.charset));
+				colDef.appendField(
+					new Field(src, si.charset())
+				);
 			} catch (Exception e) {
 				Channels.discardActiveDictum(ctx.channel(), e);
 			}
@@ -161,14 +163,14 @@ public abstract class ResultSet implements Dictum {
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			Channels.discardActiveDictum(
 				ctx.channel(),
-				Packet.parseError(src, si.charset)
+				Packet.parseError(src, si.charset())
 			);
 			return;
 		case Packet.EOF:
 			if (src.readableBytes() < 0xffffff) {
 				src.skipBytes(Packet.HEADER_SIZE + 1);
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, !si.expectEof(), si.charset
+					src, !si.expectEof(), si.charset()
 				);
 
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(

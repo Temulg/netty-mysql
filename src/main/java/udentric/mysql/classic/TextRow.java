@@ -27,25 +27,32 @@
 
 package udentric.mysql.classic;
 
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.Encoding;
+import udentric.mysql.MysqlString;
+import udentric.mysql.util.ByteArrayString;
+
 public class TextRow extends Row {
 	TextRow(int columnCount) {
-		columns = new String[columnCount];
+		columns = new MysqlString[columnCount];
 	}
 
-	void setValue(int columnPos, String val) {
-		columns[columnPos] = val;
-	}
-
-	public String rawValue(int pos) {
+	public MysqlString rawValue(int pos) {
 		return columns[pos];
 	}
 
+	public void extractValue(
+		int pos, int length, ByteBuf src, Encoding enc
+	) {
+		columns[pos] = new ByteArrayString(src, length, enc);
+	}
+
 	@Override
-	public Object asJavaObject(int pos, Field fld, Class cls) {
+	public Object getFieldValue(int pos, Field fld, Class<?> cls) {
 		return ColumnType.adapterForClass(cls).convertTextValue(
 			columns[pos], fld
 		);
 	}
 
-	private final String[] columns;
+	private final MysqlString[] columns;
 }

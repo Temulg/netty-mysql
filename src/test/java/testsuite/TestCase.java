@@ -29,9 +29,7 @@ package testsuite;
 
 import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayDeque;
-import java.util.EnumMap;
 
 import org.testng.ITestContext;
 import org.testng.annotations.AfterMethod;

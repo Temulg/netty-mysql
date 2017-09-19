@@ -49,6 +49,6 @@ public class TextResultSet extends ResultSet {
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
 		src.skipBytes(Packet.HEADER_SIZE);
-		rsc.acceptRow(colDef.parseTextRow(src, si.charset));
+		rsc.acceptRow(colDef.parseTextRow(src, si.encoding));
 	}
 }

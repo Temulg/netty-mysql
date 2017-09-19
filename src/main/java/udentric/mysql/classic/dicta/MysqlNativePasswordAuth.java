@@ -43,11 +43,12 @@ import udentric.mysql.util.Scramble411;
 public class MysqlNativePasswordAuth implements Dictum {
 	public MysqlNativePasswordAuth(
 		InitialSessionInfo si_, int seqNum_, ChannelPromise chp_,
-		ByteBuf attrBuf_
+		String schema_, ByteBuf attrBuf_
 	) {
 		si = si_;
 		seqNum = seqNum_;
 		chp = chp_;
+		schema = schema_;
 		attrBuf = attrBuf_;
 	}
 
@@ -61,11 +62,11 @@ public class MysqlNativePasswordAuth implements Dictum {
 		dst.writeIntLE(cfg.getOrDefault(
 			Config.Key.maxPacketSize, 0xffffff
 		));
-		dst.writeByte(si.charsetInfo.id);
+		dst.writeByte(si.encoding.mysqlId);
 		dst.writeZero(23);
 
 		dst.writeBytes(cfg.getOrDefault(Config.Key.user, "").getBytes(
-			si.charsetInfo.javaCharset
+			si.charset()
 		));
 		dst.writeByte(0);
 
@@ -79,12 +80,18 @@ public class MysqlNativePasswordAuth implements Dictum {
 			dst.writeByte(20);
 			Scramble411.encode(dst, cfg.getOrDefault(
 				Config.Key.password, ""
-			).getBytes(si.charsetInfo.javaCharset), si.secret);
+			).getBytes(si.charset()), si.secret);
 		} else
 			dst.writeByte(0);
 
+		if (!schema.isEmpty()) {
+			dst.writeBytes(schema.getBytes(
+				si.charset()
+			));
+		}
+
 		dst.writeBytes(AUTH_PLUGIN_NAME.getBytes(
-			si.charsetInfo.javaCharset
+			si.charset()
 		));
 		dst.writeByte(0);
 
@@ -109,7 +116,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		case Packet.OK:
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, true, si.charsetInfo.javaCharset
+					src, true, si.charset()
 				);
 				si.onAuth(ack, ctx, chp);
 			} catch (Exception e) {
@@ -125,7 +132,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			Channels.discardActiveDictum(
 				ctx.channel(),
 				Packet.parseError(
-					src, si.charsetInfo.javaCharset
+					src, si.charset()
 				)
 			);
 			return;
@@ -150,7 +157,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			authPluginName = "mysql_old_password";
 		else {
 			authPluginName = Packet.readStringNT(
-				src, si.charsetInfo.javaCharset
+				src, si.charset()
 			);
 			pluginData = new byte[src.readableBytes()];
 			src.readBytes(pluginData);
@@ -178,6 +185,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 
 	private final InitialSessionInfo si;
 	private final int seqNum;
+	private final String schema;
 	private final ByteBuf attrBuf;
 	private ChannelPromise chp;
 }

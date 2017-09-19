@@ -29,18 +29,15 @@ package testsuite.simple;
 
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Phaser;
 
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
-import io.netty.channel.Channel;
 import testsuite.TestCase;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnDefinition;
-import udentric.mysql.classic.Commands;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.Row;
 import udentric.mysql.classic.SyncCommands;

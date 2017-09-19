@@ -26,9 +26,16 @@
  */
 
 package udentric.mysql.classic.value;
+import udentric.mysql.MysqlString;
+import udentric.mysql.classic.Field;
 
 public class LongAdapter implements JavaTypeAdapter {
 	private LongAdapter() {
+	}
+
+	@Override
+	public Object convertTextValue(MysqlString value, Field fld) {
+		return Long.parseLong(value.toString());
 	}
 
 	public static LongAdapter INSTANCE = new LongAdapter();

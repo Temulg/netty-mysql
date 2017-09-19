@@ -46,7 +46,7 @@ public class InitDb implements Dictum {
 	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
 		SessionInfo si = Channels.sessionInfo(ctx.channel());
 		dst.writeByte(OPCODE);
-		dst.writeCharSequence(schema, si.charset);
+		dst.writeCharSequence(schema, si.charset());
 	}
 
 	@Override
@@ -63,7 +63,7 @@ public class InitDb implements Dictum {
 		case Packet.OK:
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, true, si.charset
+					src, true, si.charset()
 				);
 				Channels.discardActiveDictum(ch);
 				sp.setSuccess(ack);
@@ -73,7 +73,7 @@ public class InitDb implements Dictum {
 			break;
 		case Packet.ERR:
 			Channels.discardActiveDictum(
-				ch, Packet.parseError(src, si.charset)
+				ch, Packet.parseError(src, si.charset())
 			);
 			return;
 		default:

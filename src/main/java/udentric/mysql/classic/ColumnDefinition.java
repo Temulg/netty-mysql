@@ -28,8 +28,9 @@
 package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
-import java.nio.charset.Charset;
 import java.sql.SQLException;
+
+import udentric.mysql.Encoding;
 import udentric.mysql.MysqlErrorNumbers;
 
 public class ColumnDefinition {
@@ -46,10 +47,12 @@ public class ColumnDefinition {
 		fieldPos++;
 	}
 
-	public Row parseTextRow(ByteBuf src, Charset cs) {
+	public Row parseTextRow(ByteBuf src, Encoding enc) {
 		TextRow row = new TextRow(fields.length);
 		for (int pos = 0; pos < fields.length; ++pos)
-			row.setValue(pos, Packet.readStringLenenc(src, cs));
+			row.extractValue(
+				pos, Packet.readIntLenenc(src), src, enc
+			);
 
 		return row;
 	}

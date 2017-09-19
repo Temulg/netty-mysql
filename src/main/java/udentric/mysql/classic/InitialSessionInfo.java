@@ -34,6 +34,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import io.netty.util.concurrent.Promise;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -42,6 +43,7 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import udentric.mysql.Config;
+import udentric.mysql.Encoding;
 import udentric.mysql.MysqlErrorNumbers;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.dicta.Dictum;
@@ -55,7 +57,11 @@ public class InitialSessionInfo {
 	) {
 		config = config_;
 		connAttributes = connAttributes_;
-		charsetInfo = CharsetInfo.forId(223);
+		encoding = Encoding.forId(223);
+	}
+
+	public Charset charset() {
+		return encoding.charset;
 	}
 
 	public void onAuth(
@@ -73,7 +79,9 @@ public class InitialSessionInfo {
 			Config.Key.DBNAME, ""
 		);
 
-		if (schema.isEmpty()) {
+		if (schema.isEmpty() || ClientCapability.CONNECT_WITH_DB.get(
+			clientCaps
+		)) {
 			chp.setSuccess();
 			return;
 		}
@@ -153,7 +161,7 @@ public class InitialSessionInfo {
 			);
 		}
 
-		charsetInfo = CharsetInfo.forId(Packet.readInt1(src));
+		encoding = Encoding.forId(Packet.readInt1(src));
 
 		src.skipBytes(2);//short statusFlags = msg.readShortLE();
 
@@ -170,7 +178,7 @@ public class InitialSessionInfo {
 			);
 			src.skipBytes(1);
 			authPluginName = Packet.readStringNT(
-				src, charsetInfo.javaCharset
+				src, encoding.charset
 			);
 		} else {
 			s2Len = Math.max(12, src.readableBytes());
@@ -189,11 +197,20 @@ public class InitialSessionInfo {
 		ChannelHandlerContext ctx, ChannelPromise chp
 	) throws SQLException {
 		ByteBuf attrBuf = null;
+		String schema = "";
 
 		switch (authPluginName) {
 		case "mysql_native_password":
 			if (ClientCapability.CONNECT_ATTRS.get(clientCaps)) {
 				attrBuf = encodeAttrs(ctx);
+			}
+
+			if (ClientCapability.CONNECT_WITH_DB.get(clientCaps)) {
+				schema = config.getOrDefault(
+					Config.Key.DBNAME, ""
+				);
+				if (schema.isEmpty())
+					clientCaps &= ~ClientCapability.CONNECT_WITH_DB.mask();
 			}
 
 			if (config.containsKey(Config.Key.password)) {
@@ -206,8 +223,9 @@ public class InitialSessionInfo {
 			}
 
 			++seqNum;
+
 			return new MysqlNativePasswordAuth(
-				this, seqNum, chp, attrBuf
+				this, seqNum, chp, schema, attrBuf
 			);
 		default:
 			throw Packet.makeError(
@@ -220,10 +238,10 @@ public class InitialSessionInfo {
 	private ByteBuf encodeAttrs(ChannelHandlerContext ctx) {
 		ByteBuf buf = ctx.alloc().buffer();
 		connAttributes.forEach((k, v) -> {
-			byte[] b = k.getBytes(charsetInfo.javaCharset);
+			byte[] b = k.getBytes(encoding.charset);
 			Packet.writeIntLenenc(buf, b.length);
 			buf.writeBytes(b);
-			b = v.getBytes(charsetInfo.javaCharset);
+			b = v.getBytes(encoding.charset);
 			Packet.writeIntLenenc(buf, b.length);
 			buf.writeBytes(b);
 		});
@@ -233,19 +251,17 @@ public class InitialSessionInfo {
 	private void updateClientCapabilities() {
 		clientCaps = ClientCapability.LONG_PASSWORD.mask()
 			| ClientCapability.LONG_FLAG.mask()
+			| ClientCapability.LOCAL_FILES.mask()
 			| ClientCapability.PROTOCOL_41.mask()
 			| ClientCapability.TRANSACTIONS.mask()
 			| ClientCapability.MULTI_STATEMENTS.mask()
 			| ClientCapability.MULTI_RESULTS.mask()
 			| ClientCapability.PS_MULTI_RESULTS.mask()
-			| ClientCapability.PLUGIN_AUTH.mask();
+			| ClientCapability.PLUGIN_AUTH.mask()
+			| ClientCapability.CONNECT_ATTRS.mask()
+			| ClientCapability.DEPRECATE_EOF.mask();
 
-		if (ClientCapability.CONNECT_ATTRS.get(serverCaps))
-			clientCaps |= ClientCapability.CONNECT_ATTRS.mask();
-
-		if (ClientCapability.DEPRECATE_EOF.get(serverCaps))
-			clientCaps |= ClientCapability.DEPRECATE_EOF.mask();
-		
+		clientCaps &= serverCaps;
 	}
 
 	public static final Logger LOGGER = LogManager.getLogger(
@@ -255,7 +271,7 @@ public class InitialSessionInfo {
 	public final Config config;
 	private final Map<String, String> connAttributes;
 	public ServerVersion version;
-	public CharsetInfo.Entry charsetInfo;
+	public Encoding encoding;
 	public long serverCaps;
 	public long clientCaps;
 	public int srvConnId;

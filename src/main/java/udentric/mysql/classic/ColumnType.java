@@ -119,7 +119,7 @@ public enum ColumnType {
 		return MYSQL_TYPE_BY_ID.get(id);
 	}
 
-	public static JavaTypeAdapter adapterForClass(Class cls) {
+	public static JavaTypeAdapter adapterForClass(Class<?> cls) {
 		return ADAPTER_FOR_CLASS.getOrDefault(
 			cls, DefaultAdapter.INSTANCE
 		);
@@ -130,9 +130,9 @@ public enum ColumnType {
 	> MYSQL_TYPE_BY_ID;
 
 	private static final ImmutableMap<
-		Class, JavaTypeAdapter
+		Class<?>, JavaTypeAdapter
 	> ADAPTER_FOR_CLASS = ImmutableMap.<
-		Class, JavaTypeAdapter
+		Class<?>, JavaTypeAdapter
 	>builder().put(
 		Long.class, LongAdapter.INSTANCE
 	).build();

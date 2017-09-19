@@ -47,7 +47,7 @@ public class Query implements Dictum {
 	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
 		dst.writeByte(OPCODE);
 		dst.writeCharSequence(
-			sql, Channels.sessionInfo(ctx.channel()).charset
+			sql, Channels.sessionInfo(ctx.channel()).charset()
 		);
 	}
 
@@ -69,7 +69,7 @@ public class Query implements Dictum {
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
 				Packet.ServerAck ack = new Packet.ServerAck(
-					src, true, si.charset
+					src, true, si.charset()
 				);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
@@ -91,7 +91,7 @@ public class Query implements Dictum {
 		case Packet.ERR:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			Channels.discardActiveDictum(
-				ch, Packet.parseError(src, si.charset)
+				ch, Packet.parseError(src, si.charset())
 			);
 			return;
 		default:

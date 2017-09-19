@@ -25,36 +25,48 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.util;
 
-import java.nio.charset.Charset;
+import java.util.Arrays;
 
-import udentric.mysql.Config;
+import io.netty.buffer.ByteBuf;
 import udentric.mysql.Encoding;
-import udentric.mysql.ServerVersion;
+import udentric.mysql.MysqlString;
 
-public class SessionInfo {
-	SessionInfo(InitialSessionInfo si) {
-		config = si.config;
-		version = si.version;
-		encoding = si.encoding;
-		serverCaps = si.serverCaps;
-		clientCaps = si.clientCaps;
-		srvConnId = si.srvConnId;
+public class ByteArrayString implements MysqlString {
+	public ByteArrayString(ByteBuf in, int length, Encoding enc_) {
+		bytes = new byte[length];
+		in.readBytes(bytes);
+		enc = enc_;
 	}
 
-	public boolean expectEof() {
-		return !ClientCapability.DEPRECATE_EOF.get(clientCaps);
+	@Override
+	public String toString() {
+		return new String(bytes, enc.charset);
 	}
 
-	public Charset charset() {
-		return encoding.charset;
+	@Override
+	public final boolean equals(Object other_) {
+		if (this == other_)
+			return true;
+
+		if (!(other_ instanceof ByteArrayString))
+			return false;
+
+		ByteArrayString other = (ByteArrayString)other_;
+		return enc.compatible(other.enc) && Arrays.equals(
+			other.bytes, bytes
+		);
 	}
 
-	public final Config config;
-	public final ServerVersion version;
-	public final Encoding encoding;
-	public final long serverCaps;
-	public final long clientCaps;
-	public final int srvConnId;
+	public byte[] getBytes() {
+		return bytes;
+	}
+
+	public int size() {
+		return bytes.length;
+	}
+
+	private final byte[] bytes;
+	private final Encoding enc;
 }
