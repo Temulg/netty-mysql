@@ -42,6 +42,8 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
+
 import udentric.mysql.Config;
 import udentric.mysql.Encoding;
 import udentric.mysql.MysqlErrorNumbers;
@@ -68,7 +70,12 @@ public class InitialSessionInfo {
 		Packet.ServerAck ack, ChannelHandlerContext ctx,
 		ChannelPromise chp
 	) {
-		LOGGER.debug("authenticated: {}", ack.info);
+		LOGGER.debug(() -> {
+			return new ParameterizedMessage(
+				"authenticated: {}", ack.info
+			);
+		});
+
 		Channel ch = ctx.channel();
 		Channels.discardActiveDictum(ch);
 
@@ -138,9 +145,12 @@ public class InitialSessionInfo {
 			src, StandardCharsets.UTF_8
 		));
 		srvConnId = src.readIntLE();
-		LOGGER.debug(
-			"server identity set: {} ({})", srvConnId, version
-		);
+		LOGGER.debug(() -> {
+			return new ParameterizedMessage(
+				"server identity set: {} ({})",
+				srvConnId, version
+			);
+		});
 
 		secret = new byte[8];
 		src.readBytes(secret);

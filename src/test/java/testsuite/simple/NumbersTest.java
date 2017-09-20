@@ -51,24 +51,21 @@ public class NumbersTest extends TestCase {
 
 	@BeforeClass
 	public void beforeClass() throws SQLException {
-		System.err.format("--2- before class\n");
 		createTable(
 			"number_test",
 			"(minBigInt bigint, maxBigInt bigint, testBigInt bigint)"
 		);
-		System.err.format("--2- create table\n");
+
 		SyncCommands.simpleQuery(channel(), String.format(
 			"INSERT INTO number_test ("
 			+ "minBigInt, maxBigInt, testBigInt"
 			+ ") values (%d, %d, %d)",
 			Long.MIN_VALUE, Long.MAX_VALUE, TEST_BIGINT_VALUE
 		));
-		System.err.format("--2- execute update\n");
 	}
 
 	@Test
 	public void numbers() throws Exception {
-		System.err.format("--3- execute query\n");
 		CountDownLatch latch = new CountDownLatch(1);
 
 		channel().writeAndFlush(new Query(

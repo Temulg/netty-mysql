@@ -36,6 +36,7 @@ import io.netty.channel.ChannelPromise;
 import java.net.SocketAddress;
 import udentric.mysql.classic.dicta.Dictum;
 import udentric.mysql.classic.dicta.Handshake;
+import udentric.mysql.classic.dicta.Quit;
 
 @Sharable
 class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
@@ -66,16 +67,18 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 	public void disconnect(
 		ChannelHandlerContext ctx, ChannelPromise promise
 	) throws Exception {
-		System.err.format("-- disconnect --\n");
-		super.disconnect(ctx, promise);
+		ctx.channel().writeAndFlush(Quit.INSTANCE).addListener(chf -> {
+			super.disconnect(ctx, promise);
+		});
 	}
 
 	@Override
 	public void close(
 		ChannelHandlerContext ctx, ChannelPromise promise
 	) throws Exception {
-		System.err.format("-- close --\n");
-		super.close(ctx, promise);
+		ctx.channel().writeAndFlush(Quit.INSTANCE).addListener(chf -> {
+			super.close(ctx, promise);
+		});
 	}
 
 	@Override

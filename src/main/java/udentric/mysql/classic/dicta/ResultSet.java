@@ -141,6 +141,7 @@ public abstract class ResultSet implements Dictum {
 					)
 				);
 			} else {
+				src.skipBytes(4);
 				state = this::columnDataReceived;
 				rsc.acceptMetadata(colDef);
 			}
@@ -169,10 +170,11 @@ public abstract class ResultSet implements Dictum {
 		case Packet.EOF:
 			if (src.readableBytes() < 0xffffff) {
 				src.skipBytes(Packet.HEADER_SIZE + 1);
+
 				Packet.ServerAck ack = new Packet.ServerAck(
 					src, !si.expectEof(), si.charset()
 				);
-
+				
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
 				)) {

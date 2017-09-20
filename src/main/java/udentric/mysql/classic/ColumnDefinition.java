@@ -51,7 +51,8 @@ public class ColumnDefinition {
 		TextRow row = new TextRow(fields.length);
 		for (int pos = 0; pos < fields.length; ++pos)
 			row.extractValue(
-				pos, Packet.readIntLenenc(src), src, enc
+				pos, Packet.readIntLenenc(src), src,
+				fields[pos].encoding
 			);
 
 		return row;

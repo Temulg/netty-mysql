@@ -28,6 +28,7 @@
 package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -54,14 +55,15 @@ class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 			return;
 		}
 
+		ByteBuf ref = msg.duplicate();
 		try {
 			dct.acceptServerMessage(msg, ctx);
 		} finally {
 			int remaining = msg.readableBytes();
 			if (remaining > 0) {
 				LOGGER.warn(
-					"{} bytes left in incoming packet",
-					remaining
+					"{} bytes left in incoming packet {}",
+					remaining, ByteBufUtil.hexDump(ref)
 				);
 			}
 			msg.release();
