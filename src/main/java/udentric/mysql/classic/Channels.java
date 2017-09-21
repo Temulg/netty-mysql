@@ -155,8 +155,11 @@ public class Channels {
 		}
 	}
 
-	private static void initChannel(Channel ch, InitialSessionInfo si) {
+	private static void initChannel(
+		Channel ch, InitialSessionInfo si, boolean pooled
+	) {
 		ch.attr(INITIAL_SESSION_INFO).set(si);
+		ch.attr(PSTMT_TRACKER).set(new SimpleStatementTracker());
 
 		ch.pipeline().addLast(
 			"udentric.mysql.classic.InboundPacketFramer",
@@ -178,7 +181,7 @@ public class Channels {
 
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
-			Channels.initChannel(ch, si);
+			Channels.initChannel(ch, si, false);
 		}
 
 		private final InitialSessionInfo si;
@@ -205,7 +208,7 @@ public class Channels {
 			InitialSessionInfo si = new InitialSessionInfo(
 				config, connAttrs
 			);
-			initChannel(ch, si);
+			initChannel(ch, si, true);
 		}
 
 		private final Config config;
@@ -218,6 +221,11 @@ public class Channels {
 		SessionInfo
 	> SESSION_INFO = AttributeKey.valueOf(
 		"udentric.mysql.classic.SessionInfo"
+	);
+	public static final AttributeKey<
+		PreparedStatementTracker
+	> PSTMT_TRACKER = AttributeKey.valueOf(
+		"udentric.mysql.classic.PreparedStatementTracker"
 	);
 	public static final AttributeKey<
 		InitialSessionInfo
