@@ -31,19 +31,62 @@ import java.sql.SQLException;
 
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
+import udentric.mysql.PreparedStatement;
 
 public class SyncCommands {
 	private SyncCommands() {
 	}
 
-	public static Packet.ServerAck simpleQuery(
+	public static Packet.ServerAck executeUpdate(
 		Channel ch, String sql
 	) throws SQLException {
 		Future<Packet.ServerAck> sf = null;;
 
 		try {
-			sf = Commands.simpleQuery(
+			sf = Commands.executeUpdate(
 				ch, sql
+			).await();
+		} catch (InterruptedException e) {
+			Channels.throwAny(e);
+		}
+
+		if (sf.isSuccess())
+			return sf.getNow();
+		else {
+			Channels.throwAny(sf.cause());
+			return null;
+		}
+	}
+
+	public static PreparedStatement prepareStatement(
+		Channel ch, String sql
+	) throws SQLException {
+		Future<PreparedStatement> psp = null;
+
+		try {
+			psp = Commands.prepareStatement(
+				ch, sql
+			).await();
+		} catch (InterruptedException e) {
+			Channels.throwAny(e);
+		}
+
+		if (psp.isSuccess())
+			return psp.getNow();
+		else {
+			Channels.throwAny(psp.cause());
+			return null;
+		}
+	}
+
+	public static Packet.ServerAck executeUpdate(
+		Channel ch, PreparedStatement pstmt, Object... args
+	) throws SQLException {
+		Future<Packet.ServerAck> sf = null;;
+
+		try {
+			sf = Commands.executeUpdate(
+				ch, pstmt, args
 			).await();
 		} catch (InterruptedException e) {
 			Channels.throwAny(e);

@@ -21,9 +21,9 @@
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/22.0/4c379e845406e8cbdea17d5da808679250f54d10/guava-22.0-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.13.Final/b274cc10660e973842df85cd3fd9366e10bb7d6/netty-codec-4.1.13.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.13.Final/370eeb6e9d92495a2a3be096ab6102755af76730/netty-codec-4.1.13.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.15.Final/3c50032e398e216560ac75940f65496b0b202c92/netty-handler-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.15.Final/43cec9cfc1e80ea281bc1cb060958b1bb543d60c/netty-handler-4.1.15.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.13.Final/c900b23627f652ca97ccbcc2f33f4bde2891300d/netty-codec-4.1.13.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.15.Final/f86fdc2b83d23fb300520f2ffda0d0cc9146a002/netty-handler-4.1.15.Final-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="/root/.m2/repository/com/google/code/findbugs/jsr305/1.3.9/jsr305-1.3.9.jar"/>
@@ -42,24 +42,29 @@
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.codehaus.mojo/animal-sniffer-annotations/1.14/d90e19c7bc3a594aac2307bcfe9f2362ec4108ea/animal-sniffer-annotations-1.14-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.13.Final/39616e6af5f2088f727f560104595d5149227c42/netty-transport-4.1.13.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.13.Final/5008406221a849a350ad2a8885f14ac330e038f3/netty-transport-4.1.13.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.15.Final/2ac10a559671570fd9c7cc21dffa8f856307d148/netty-codec-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.15.Final/15cef796196b4027911d5de8a3f0d333842896d1/netty-codec-4.1.15.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.13.Final/2ca0e1c76bdc7a7c2d991c8e5ba85526b8735e7/netty-transport-4.1.13.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.15.Final/99033fb93cb75dff28fd7bad15b241301276cb89/netty-codec-4.1.15.Final-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.13.Final/a1de22ab2631cde0108186167e0e25f4e16654e8/netty-buffer-4.1.13.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.13.Final/e3f583ea8a2618a7563b1ee2aa696c23edcc3d8/netty-buffer-4.1.13.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.15.Final/927decaeb1388f94a462c65a127999aa2fa8fd4a/netty-transport-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.15.Final/46e3f244f26422b3cfb5ffc5c2d9984b7725ed89/netty-transport-4.1.15.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.13.Final/1fb4e1a0b02607f8ea738d44582daae25639aa58/netty-buffer-4.1.13.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.15.Final/54c2d1d9dcf4a1fb23d8a1ad4f71eb5d1ff88a99/netty-transport-4.1.15.Final-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.13.Final/213ee3726e285002f3dcd66f4380ea591a38f0db/netty-resolver-4.1.13.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.13.Final/d33ce420bd22c8a53246296ceb6e1ff08d31f8e1/netty-resolver-4.1.13.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.15.Final/151bdb55a25d776ff2a4a16578016c0270047f8a/netty-buffer-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.15.Final/f7edf6488292b4de584ce16acc64f611d76fe4e7/netty-buffer-4.1.15.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.13.Final/a17557344a10ef9f2dc5710cd4a2c0a17ed6d816/netty-resolver-4.1.13.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.15.Final/f45a8e8954396d806ec4f6db2c21591be8ad9cc0/netty-buffer-4.1.15.Final-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.13.Final/62f262d3491ef40628e14f29aed47e112b7b62b2/netty-common-4.1.13.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.13.Final/f640e8cd8866527150784f8986152d3bba45b712/netty-common-4.1.13.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.15.Final/b4f2ed6aefd37cdd7cdddd5e3b535aeff6c43c58/netty-resolver-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.15.Final/89565523e45aa99af2aa263900a75eb8836b3a47/netty-resolver-4.1.15.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.13.Final/fcda601c9c2d1c28f68a9dbaa03c9a5c685dd375/netty-common-4.1.13.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.15.Final/20d3890a2fb371c999867c73b10dfdb6795ee5ee/netty-resolver-4.1.15.Final-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.15.Final/22b11f11753abb1f104d8aaf7cc420fd54f15efe/netty-common-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.15.Final/d6144d4a6e0395ad762d41409ed663cc7b227e83/netty-common-4.1.15.Final.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.15.Final/4cc86769ea585156e455cf825a9560557f328ba5/netty-common-4.1.15.Final-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.11/77da7afb24d57b640d9803593a6222c7de12dd4e/testng-6.11-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.11/1fdd5e22f50b14f6d846163456e8c9a7657626fb/testng-6.11.jar">

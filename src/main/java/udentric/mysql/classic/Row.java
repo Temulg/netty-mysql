@@ -27,6 +27,7 @@
 
 package udentric.mysql.classic;
 
-public abstract class Row {
-	public abstract Object getFieldValue(int pos, Field fld, Class<?> cls);
+public interface Row extends AutoCloseable {
+	Object getFieldValue(int pos, Field fld, Class<?> cls);
+
 }

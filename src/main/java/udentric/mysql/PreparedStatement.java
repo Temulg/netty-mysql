@@ -25,36 +25,8 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.dicta;
+package udentric.mysql;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.Row;
-import udentric.mysql.classic.SessionInfo;
+public interface PreparedStatement {
 
-public class TextResultSet extends ResultSet {
-	public TextResultSet(
-		int columnCount_, int lastSeqNum_, ResultSetConsumer rsc_
-	) {
-		super(columnCount_, lastSeqNum_, rsc_);
-	}
-
-	public TextResultSet(int lastSeqNum_, ResultSetConsumer rsc_) {
-		super(lastSeqNum_, rsc_);
-	}
-
-	@Override
-	protected void handleRowData(
-		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
-	) {
-		src.skipBytes(Packet.HEADER_SIZE);
-		try (Row r = colDef.parseTextRow(src, si.encoding)) {
-			rsc.acceptRow(r);
-		} catch (Exception e) {
-			Channels.throwAny(e);
-		}
-	}
 }

@@ -56,7 +56,7 @@ public class NumbersTest extends TestCase {
 			"(minBigInt bigint, maxBigInt bigint, testBigInt bigint)"
 		);
 
-		SyncCommands.simpleQuery(channel(), String.format(
+		SyncCommands.executeUpdate(channel(), String.format(
 			"INSERT INTO number_test ("
 			+ "minBigInt, maxBigInt, testBigInt"
 			+ ") values (%d, %d, %d)",
@@ -74,19 +74,19 @@ public class NumbersTest extends TestCase {
 				@Override
 				public void acceptRow(Row row) {
 					Assert.assertEquals(
-						colDef.getFieldValue(
+						(long)colDef.getFieldValue(
 							row, 0, Long.class
 						),
 						Long.MIN_VALUE
 					);
 					Assert.assertEquals(
-						colDef.getFieldValue(
+						(long)colDef.getFieldValue(
 							row, 1, Long.class
 						),
 						Long.MAX_VALUE
 					);
 					Assert.assertEquals(
-						colDef.getFieldValue(
+						(long)colDef.getFieldValue(
 							row, 2, Long.class
 						),
 						TEST_BIGINT_VALUE

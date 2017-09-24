@@ -27,6 +27,15 @@
 
 package udentric.mysql.classic;
 
+import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
+import udentric.mysql.PreparedStatement;
+
 public interface PreparedStatementTracker {
-	int registerStatement(String sql, int remoteId);
+	Future<PreparedStatement> beginPrepare(Channel ch, String sql);
+
+	void completePrepare(
+		String sql, int remoteId, ColumnDefinition args,
+		ColumnDefinition columns
+	);
 }

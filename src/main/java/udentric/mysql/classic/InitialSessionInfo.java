@@ -46,7 +46,7 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 
 import udentric.mysql.Config;
 import udentric.mysql.Encoding;
-import udentric.mysql.MysqlErrorNumbers;
+import udentric.mysql.ErrorNumbers;
 import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.dicta.Dictum;
 import udentric.mysql.classic.dicta.InitDb;
@@ -239,7 +239,7 @@ public class InitialSessionInfo {
 			);
 		default:
 			throw Packet.makeError(
-				MysqlErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
+				ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
 				authPluginName
 			);
 		}

@@ -28,4 +28,6 @@
 package udentric.mysql;
 
 public interface MysqlString {
+	default void release() {
+	}
 }

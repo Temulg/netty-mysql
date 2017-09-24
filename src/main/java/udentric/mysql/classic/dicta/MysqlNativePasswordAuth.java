@@ -33,7 +33,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import udentric.mysql.Config;
-import udentric.mysql.MysqlErrorNumbers;
+import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.InitialSessionInfo;
@@ -166,7 +166,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		Channels.discardActiveDictum(
 			ctx.channel(),
 			Packet.makeError(
-				MysqlErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
+				ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
 				authPluginName
 			)
 		);

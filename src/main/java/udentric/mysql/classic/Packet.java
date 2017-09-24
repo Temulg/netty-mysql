@@ -33,7 +33,7 @@ import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import java.nio.charset.Charset;
-import udentric.mysql.MysqlErrorNumbers;
+import udentric.mysql.ErrorNumbers;
 
 public class Packet {
 	private Packet() {}
@@ -80,7 +80,7 @@ public class Packet {
 			}
 		default:
 			Channels.throwAny(makeError(
-				MysqlErrorNumbers.ER_MALFORMED_PACKET
+				ErrorNumbers.ER_MALFORMED_PACKET
 			));
 			return 0;
 		}
@@ -108,7 +108,7 @@ public class Packet {
 			return in.readLongLE();
 		default:
 			Channels.throwAny(makeError(
-				MysqlErrorNumbers.ER_MALFORMED_PACKET
+				ErrorNumbers.ER_MALFORMED_PACKET
 			));
 			return 0;
 		}
@@ -118,7 +118,7 @@ public class Packet {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
 			Channels.throwAny(makeError(
-				MysqlErrorNumbers.ER_MALFORMED_PACKET
+				ErrorNumbers.ER_MALFORMED_PACKET
 			));
 
 		String rv = in.readCharSequence(len, cs).toString();
@@ -152,7 +152,7 @@ public class Packet {
 			}
 		default:
 			Channels.throwAny(makeError(
-				MysqlErrorNumbers.ER_MALFORMED_PACKET
+				ErrorNumbers.ER_MALFORMED_PACKET
 			));
 			return "";
 		}
@@ -182,7 +182,7 @@ public class Packet {
 			}
 		}
 		Channels.throwAny(makeError(
-			MysqlErrorNumbers.ER_MALFORMED_PACKET
+			ErrorNumbers.ER_MALFORMED_PACKET
 		));
 	}
 
@@ -214,7 +214,7 @@ public class Packet {
 	) {
 		if (getSeqNum(src) != expected) {
 			Channels.discardActiveDictum(ch, makeError(
-				MysqlErrorNumbers.ER_NET_PACKETS_OUT_OF_ORDER
+				ErrorNumbers.ER_NET_PACKETS_OUT_OF_ORDER
 			));
 			return true;
 		} else
@@ -222,24 +222,24 @@ public class Packet {
 	}
 
 	public static SQLException makeError(int errno) {
-		String xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
+		String xOpen = ErrorNumbers.mysqlToSqlState(errno);
 		return new SQLException(
-			MysqlErrorNumbers.get(xOpen), xOpen, errno
+			ErrorNumbers.get(xOpen), xOpen, errno
 		);
 	}
 
 	public static SQLException makeError(int errno, String extra) {
-		String xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
+		String xOpen = ErrorNumbers.mysqlToSqlState(errno);
 		return new SQLException(
 			String.format(
-				"%s (%s)", MysqlErrorNumbers.get(xOpen), extra
+				"%s (%s)", ErrorNumbers.get(xOpen), extra
 			), xOpen, errno
 		);
 	}
 
 	public static SQLException makeErrorFromState(String state) {
 		return new SQLException(
-			MysqlErrorNumbers.get(state), state
+			ErrorNumbers.get(state), state
 		);
 	}
 
@@ -257,15 +257,15 @@ public class Packet {
 				xOpen = srvErrMsg.substring(1, 6);
 				srvErrMsg = srvErrMsg.substring(6);
 				if ("HY000".equals(xOpen))
-					xOpen = MysqlErrorNumbers.mysqlToSqlState(
+					xOpen = ErrorNumbers.mysqlToSqlState(
 						errno
 					);
 			} else
-				xOpen = MysqlErrorNumbers.mysqlToSqlState(
+				xOpen = ErrorNumbers.mysqlToSqlState(
 					errno
 				);
 		} else
-			xOpen = MysqlErrorNumbers.mysqlToSqlState(errno);
+			xOpen = ErrorNumbers.mysqlToSqlState(errno);
 
 		return new SQLException(srvErrMsg, xOpen, errno, null);
 	}

@@ -30,7 +30,7 @@ package udentric.mysql.classic.dicta;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.MysqlErrorNumbers;
+import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Field;
@@ -137,7 +137,7 @@ public abstract class ResultSet implements Dictum {
 				Channels.discardActiveDictum(
 					ctx.channel(),
 					Packet.makeError(
-						MysqlErrorNumbers.ER_MALFORMED_PACKET
+						ErrorNumbers.ER_MALFORMED_PACKET
 					)
 				);
 			} else {

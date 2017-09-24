@@ -32,9 +32,16 @@ import udentric.mysql.Encoding;
 import udentric.mysql.MysqlString;
 import udentric.mysql.util.ByteArrayString;
 
-public class TextRow extends Row {
+public class TextRow implements Row {
 	TextRow(int columnCount) {
 		columns = new MysqlString[columnCount];
+	}
+
+	@Override
+	public void close() {
+		for (MysqlString s: columns) {
+			s.release();
+		}
 	}
 
 	public MysqlString rawValue(int pos) {

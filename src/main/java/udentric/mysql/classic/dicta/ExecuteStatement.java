@@ -29,32 +29,42 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.Packet;
+import udentric.mysql.PreparedStatement;
+import udentric.mysql.classic.PreparedStatementDesc;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.Row;
-import udentric.mysql.classic.SessionInfo;
 
-public class TextResultSet extends ResultSet {
-	public TextResultSet(
-		int columnCount_, int lastSeqNum_, ResultSetConsumer rsc_
+public class ExecuteStatement implements Dictum {
+	public ExecuteStatement(
+		PreparedStatement pstmt_, ResultSetConsumer rsc_,
+		Object... args_
 	) {
-		super(columnCount_, lastSeqNum_, rsc_);
-	}
-
-	public TextResultSet(int lastSeqNum_, ResultSetConsumer rsc_) {
-		super(lastSeqNum_, rsc_);
+		pstmt = (PreparedStatementDesc)pstmt_;
+		rsc = rsc_;
+		args = args_;
 	}
 
 	@Override
-	protected void handleRowData(
-		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	public void emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
 	) {
-		src.skipBytes(Packet.HEADER_SIZE);
-		try (Row r = colDef.parseTextRow(src, si.encoding)) {
-			rsc.acceptRow(r);
-		} catch (Exception e) {
-			Channels.throwAny(e);
-		}
+		dst.writeByte(OPCODE);
+
 	}
+
+	@Override
+	public void acceptServerMessage(
+		ByteBuf src, ChannelHandlerContext ctx
+	) {
+	}
+
+	@Override
+	public void handleFailure(Throwable cause) {
+		rsc.acceptFailure(cause);
+	}
+
+	public static final int OPCODE = 23;
+
+	private final PreparedStatementDesc pstmt;
+	private final ResultSetConsumer rsc;
+	private final Object[] args;
 }

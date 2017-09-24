@@ -28,15 +28,19 @@
 package udentric.mysql.classic;
 
 import io.netty.channel.Channel;
+import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
+import udentric.mysql.PreparedStatement;
+import udentric.mysql.classic.dicta.PrepareStatement;
+import udentric.mysql.classic.dicta.ExecuteStatement;
 import udentric.mysql.classic.dicta.Query;
 
 public class Commands {
 	private Commands() {
 	}
 
-	public static Future<Packet.ServerAck> simpleQuery(
+	public static Future<Packet.ServerAck> executeUpdate(
 		Channel ch, String sql
 	) {
 		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
@@ -60,6 +64,53 @@ public class Commands {
 					sp.setSuccess(ack);
 			}
 		})).addListener(Channels::defaultSendListener);
+		return sp;
+	}
+
+	public static Future<PreparedStatement> prepareStatement(
+		Channel ch, String sql
+	) {
+		Future<PreparedStatement> psf = ch.attr(
+			Channels.PSTMT_TRACKER
+		).get().beginPrepare(ch, sql);
+		if (psf.isDone())
+			return psf;
+
+
+		ch.writeAndFlush(new PrepareStatement(sql, psp)).addListener(
+			Channels::defaultSendListener
+		);
+
+		return psf;
+	}
+
+	public static Future<Packet.ServerAck> executeUpdate(
+		Channel ch, PreparedStatement pstmt, Object... args
+	) {
+		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
+		ch.writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(Row row) {}
+		
+				@Override
+				public void acceptMetadata(ColumnDefinition colDef) {}
+		
+				@Override
+				public void acceptFailure(Throwable cause) {
+					sp.setFailure(cause);
+				}
+		
+				@Override
+				public void acceptAck(
+					Packet.ServerAck ack, boolean terminal
+				) {
+					if (terminal)
+						sp.setSuccess(ack);
+				}
+			},
+			args
+		)).addListener(Channels::defaultSendListener);
 		return sp;
 	}
 }

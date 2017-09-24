@@ -31,7 +31,7 @@ import io.netty.buffer.ByteBuf;
 import java.sql.SQLException;
 
 import udentric.mysql.Encoding;
-import udentric.mysql.MysqlErrorNumbers;
+import udentric.mysql.ErrorNumbers;
 
 public class ColumnDefinition {
 	public ColumnDefinition(int fieldCount) {
@@ -61,15 +61,16 @@ public class ColumnDefinition {
 	public Field getField(int pos) throws SQLException {
 		if (pos < 0 || pos >= fields.length) {
 			throw Packet.makeErrorFromState(
-				MysqlErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
+				ErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
 			);
 		}
 
 		return fields[pos];
 	}
 
-	public Object getFieldValue(Row row, int pos, Class<?> cls) {
-		return row.getFieldValue(pos, fields[pos], cls);
+	@SuppressWarnings("unchecked")
+	public <T> T getFieldValue(Row row, int pos, Class<T> cls) {
+		return (T)row.getFieldValue(pos, fields[pos], cls);
 	}
 
 	private final Field[] fields;

@@ -151,16 +151,16 @@ public abstract class TestCase {
 				!type.equalsIgnoreCase("USER")
 				|| versionMeetsMinimum(ch, 5, 7, 8)
 			) {
-				SyncCommands.simpleQuery(ch, String.format(
+				SyncCommands.executeUpdate(ch, String.format(
 					"DROP %s IF EXISTS %s",
 					type, name
 				));
 			} else {
-				SyncCommands.simpleQuery(ch, String.format(
+				SyncCommands.executeUpdate(ch, String.format(
 					"DROP %s %s", type, name
 				));
 			}
-			SyncCommands.simpleQuery(ch, "flush privileges");
+			SyncCommands.executeUpdate(ch, "flush privileges");
 		}
 
 		final String type;
@@ -181,7 +181,7 @@ public abstract class TestCase {
 		);
 
 		try {
-			SyncCommands.simpleQuery(ch, sql);
+			SyncCommands.executeUpdate(ch, sql);
 		} catch (SQLException e) {
 			if ("42S01".equals(e.getSQLState())) {
 				logger.warn(
@@ -189,8 +189,8 @@ public abstract class TestCase {
 					+ "table creation - flushing tables "
 					+ "and trying again"
 				);
-				SyncCommands.simpleQuery(ch, "FLUSH TABLES");
-				SyncCommands.simpleQuery(ch, sql);
+				SyncCommands.executeUpdate(ch, "FLUSH TABLES");
+				SyncCommands.executeUpdate(ch, sql);
 			} else {
 				throw e;
 			}
