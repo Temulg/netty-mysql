@@ -26,8 +26,12 @@
  */
 
 package udentric.mysql.classic.value;
+import udentric.mysql.ErrorNumbers;
 import udentric.mysql.MysqlString;
+import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnTypeTrait;
 import udentric.mysql.classic.Field;
+import udentric.mysql.classic.Packet;
 
 public class LongAdapter implements JavaTypeAdapter {
 	private LongAdapter() {
@@ -35,7 +39,14 @@ public class LongAdapter implements JavaTypeAdapter {
 
 	@Override
 	public Object convertTextValue(MysqlString value, Field fld) {
-		return Long.parseLong(value.toString());
+		if (ColumnTypeTrait.INTEGER.get(fld.type.traits)) {
+			return Long.parseLong(value.toString());
+		} else {
+			Channels.throwAny(Packet.makeError(
+				ErrorNumbers.ER_ILLEGAL_VALUE_FOR_TYPE
+			));
+			return null;
+		}
 	}
 
 	public static LongAdapter INSTANCE = new LongAdapter();

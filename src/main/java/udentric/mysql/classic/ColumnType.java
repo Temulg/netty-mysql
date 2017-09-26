@@ -34,61 +34,62 @@ import udentric.mysql.classic.value.JavaTypeAdapter;
 import udentric.mysql.classic.value.LongAdapter;
 
 public enum ColumnType {
-	DECIMAL,
-	TINY {
+	DECIMAL(0),
+	TINY(1, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return src.readByte();
-		}		
+		}
+
 	},
-	SHORT {
+	SHORT(2, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return src.readShortLE();
 		}
 	},
-	LONG {
+	LONG(3, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return src.readIntLE();
 		}
 	},
-	FLOAT {
+	FLOAT(4, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return Float.intBitsToFloat(src.readIntLE());
 		}
 	},
-	DOUBLE {
+	DOUBLE(5, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return Double.longBitsToDouble(src.readLongLE());
 		}
 	},
-	NULL,
-	TIMESTAMP,
-	LONGLONG {
+	NULL(6),
+	TIMESTAMP(7),
+	LONGLONG(8, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return src.readLongLE();
 		}
 	},
-	INT24 {
+	INT24(9, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
 		@Override
 		public Object readObject(ByteBuf src) {
 			return src.readIntLE();
 		}
 	},
-	DATE,
-	TIME,
-	DATETIME,
-	YEAR,
-	NEWDATE,
-	VARCHAR,
-	BIT,
-	TIMESTAMP2,
-	DATETIME2,
-	TIME2,
+	DATE(10),
+	TIME(11),
+	DATETIME(12),
+	YEAR(13),
+	NEWDATE(14),
+	VARCHAR(15),
+	BIT(16),
+	TIMESTAMP2(17),
+	DATETIME2(18),
+	TIME2(19),
 	JSON(245),
 	NEWDECIMAL(246),
 	ENUM(247),
@@ -101,12 +102,13 @@ public enum ColumnType {
 	STRING(254),
 	GEOMETRY(255);
 
-	private ColumnType() {
-		id = ordinal();
-	}
-
-	private ColumnType(int id_) {
+	private ColumnType(int id_, ColumnTypeTrait... ts) {
 		id = id_;
+		int traits_ = 0;
+		for (ColumnTypeTrait t: ts) {
+			traits_ |= t.mask();
+		}
+		traits = traits_;
 	}
 
 	public Object readObject(ByteBuf src) {
@@ -114,6 +116,7 @@ public enum ColumnType {
 			"unsupported object type"
 		);
 	}
+
 
 	public static ColumnType forId(int id) {
 		return MYSQL_TYPE_BY_ID.get(id);
@@ -137,7 +140,9 @@ public enum ColumnType {
 		Long.class, LongAdapter.INSTANCE
 	).build();
 
-	private final int id;
+	public final int id;
+	public final int traits;
+
 	static {
 		ImmutableMap.Builder<
 			Integer, ColumnType

@@ -72,7 +72,7 @@ public abstract class ResultSet implements Dictum {
 
 		SessionInfo si = Channels.sessionInfo(ctx.channel());
 
-		state.handle(src, ctx, si);
+		state.accept(src, ctx, si);
 	}
 
 	private void beginNextRs(
@@ -202,15 +202,8 @@ public abstract class ResultSet implements Dictum {
 		rsc.acceptFailure(cause);
 	}
 
-	@FunctionalInterface
-	protected interface StateHandler {
-		void handle(
-			ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
-		);
-	}
-
 	protected final ResultSetConsumer rsc;
-	protected StateHandler state;
+	protected ServerMessageConsumer state;
 	protected ColumnDefinition colDef;
 	protected int lastSeqNum;
 }

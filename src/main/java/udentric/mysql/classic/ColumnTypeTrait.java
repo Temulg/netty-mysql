@@ -29,66 +29,53 @@ package udentric.mysql.classic;
 
 import udentric.mysql.util.BitsetEnum;
 
-public enum ServerStatus implements BitsetEnum<Short> {
-	IN_TRANS(0, ""),
-	AUTOCOMMIT(1, "server in auto_commit mode"),
-	MORE_RESULTS_EXISTS(3, "multi query - next query exists"),
-	QUERY_NO_GOOD_INDEX_USED(4, ""),
-	QUERY_NO_INDEX_USED(5, ""),
-	CURSOR_EXISTS(6, ""),
-	LAST_ROW_SENT(7, ""),
-	DB_DROPPED(8, "a database was dropped"),
-	NO_BACKSLASH_ESCAPES(9, ""),
-	METADATA_CHANGED(10, ""),
-	QUERY_WAS_SLOW(11, ""),
-	PS_OUT_PARAMS(12, ""),
-	IN_TRANS_READONLY(13, ""),
-	SESSION_STATE_CHANGED (14, ""),
-	ANSI_QUOTES(15, "");
+public enum ColumnTypeTrait implements BitsetEnum<Integer> {
+	INTEGER(0, "value is integer compatible"),
+	FLOAT(1, "value is float compatible");
 
-	private ServerStatus(int bitPos_, String desc_) {
+	private ColumnTypeTrait(int bitPos_, String desc_) {
 		bitPos = bitPos_;
 		desc = desc_;
 	}
 
 	@Override
-	public boolean get(Short bits) {
+	public boolean get(Integer bits) {
 		return ((bits >>> bitPos) & 1) == 1;
 	}
 
 	@Override
-	public Short mask() {
-		return (short)(1 << bitPos);
+	public Integer mask() {
+		return (int)(1 << bitPos);
 	}
 
 	public static String describe(Short bits) {
 		StringBuilder sb = new StringBuilder();
-		ServerStatus[] scs = ServerStatus.values();
+		ColumnTypeTrait[] ctts = ColumnTypeTrait.values();
 		int cPos = 0;
 		int ccPos = 0;
 
 		while (bits != 0) {
-			ServerStatus sc = null;
-			if (cPos < scs.length) {
-				sc = scs[cPos];
-				while (sc.bitPos < ccPos) {
+			ColumnTypeTrait ct = null;
+			if (cPos < ctts.length) {
+				ct = ctts[cPos];
+				while (ct.bitPos < ccPos) {
 					cPos++;
-					if (cPos < scs.length) {
-						sc = scs[cPos];
+					if (cPos < ctts.length) {
+						ct = ctts[cPos];
 					} else {
-						sc = null;
+						ct = null;
 						break;
 					}
 				}
 			}
 
 			if (1 == (bits & 1)) {
-				if (sc != null && sc.bitPos == ccPos) {
+				if (ct != null && ct.bitPos == ccPos) {
 					sb.append("bit ").append(ccPos).append(
 						" set: "
-					).append(sc.name()).append(
+					).append(ct.name()).append(
 						" ("
-					).append(sc.desc).append(")\n");
+					).append(ct.desc).append(")\n");
 				} else {
 					sb.append("bit ").append(
 						ccPos

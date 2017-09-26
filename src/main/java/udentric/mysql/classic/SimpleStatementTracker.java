@@ -33,8 +33,6 @@ import java.util.concurrent.locks.StampedLock;
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.Promise;
-import io.netty.util.concurrent.SucceededFuture;
 import udentric.mysql.PreparedStatement;
 
 class SimpleStatementTracker implements PreparedStatementTracker {
@@ -94,10 +92,9 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 
 		idToStmt.put(remoteId, s);
 		sqlToStmt.put(sql, s);
-		p.psp.setSuccess(s);
 		lock.unlockWrite(stamp);
+		p.psp.setSuccess(s);
 	}
-
 
 	class Pstmt implements PreparedStatement {
 		private Pstmt(

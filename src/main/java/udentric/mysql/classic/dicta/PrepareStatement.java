@@ -28,15 +28,23 @@
 package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.concurrent.Promise;
+import udentric.mysql.ErrorNumbers;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.Field;
+import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.SessionInfo;
 
 public class PrepareStatement implements Dictum {
 	public PrepareStatement(String sql_, Promise<PreparedStatement> psp_) {
 		sql = sql_;
 		psp = psp_;
+		state = this::stmtPrepared;
+		lastSeqNum = 1;
 	}
 
 	@Override
@@ -53,6 +61,135 @@ public class PrepareStatement implements Dictum {
 	public void acceptServerMessage(
 		ByteBuf src, ChannelHandlerContext ctx
 	) {
+		lastSeqNum = Packet.nextSeqNum(lastSeqNum);
+		if (Packet.invalidSeqNum(ctx.channel(), src, lastSeqNum))
+			return;
+
+		SessionInfo si = Channels.sessionInfo(ctx.channel());
+
+		state.accept(src, ctx, si);
+	}
+
+	private void stmtPrepared(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channel ch = ctx.channel();
+		int type = src.getByte(
+			src.readerIndex() + Packet.HEADER_SIZE
+		) & 0xff;
+
+		switch (type) {
+		case Packet.OK:
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			try {
+				stmtId = src.readIntLE();
+				colDef = new ColumnDefinition(
+					Packet.readInt2(src)
+				);
+				paramDef = new ColumnDefinition(
+					Packet.readInt2(src)
+				);
+				src.skipBytes(1);
+				warnCount = Packet.readInt2(src);
+
+				if (!paramDef.hasAllFields())
+					state = this::receiveParamDef;
+				else if (!colDef.hasAllFields())
+					state = this::receiveColDef;
+				else
+					completePreparation(ch);
+			} catch (Exception e) {
+				Channels.discardActiveDictum(ch, e);
+			}
+			break;
+		case Packet.ERR:
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			Channels.discardActiveDictum(
+				ch, Packet.parseError(src, si.charset())
+			);
+			return;
+		}
+	}
+
+	private void receiveParamDef(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channel ch = ctx.channel();
+
+		if (!paramDef.hasAllFields()) {
+			try {
+				src.skipBytes(Packet.HEADER_SIZE);
+				paramDef.appendField(
+					new Field(src, si.charset())
+				);
+			} catch (Exception e) {
+				Channels.discardActiveDictum(ch, e);
+			}
+		} else if (si.expectEof()) {
+			src.skipBytes(Packet.HEADER_SIZE);
+			if ((
+				Packet.EOF != Packet.readInt1(src)
+			) || (src.readableBytes() != 4)) {
+				Channels.discardActiveDictum(
+					ch, Packet.makeError(
+						ErrorNumbers.ER_MALFORMED_PACKET
+					)
+				);
+			} else {
+				src.skipBytes(4);
+				if (colDef.hasAllFields())
+					completePreparation(ch);
+				else
+					state = this::receiveColDef;
+			}
+		} else {
+			if (colDef.hasAllFields())
+				completePreparation(ch);
+			else
+				state = this::receiveColDef;
+
+			receiveColDef(src, ctx, si);
+		}
+	}
+
+	private void receiveColDef(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channel ch = ctx.channel();
+
+		if (!colDef.hasAllFields()) {
+			try {
+				src.skipBytes(Packet.HEADER_SIZE);
+				colDef.appendField(
+					new Field(src, si.charset())
+				);
+			} catch (Exception e) {
+				Channels.discardActiveDictum(ch, e);
+			}
+		} else if (si.expectEof()) {
+			src.skipBytes(Packet.HEADER_SIZE);
+			if ((
+				Packet.EOF != Packet.readInt1(src)
+			) || (src.readableBytes() != 4)) {
+				Channels.discardActiveDictum(
+					ch, Packet.makeError(
+						ErrorNumbers.ER_MALFORMED_PACKET
+					)
+				);
+			} else {
+				src.skipBytes(4);
+				completePreparation(ch);
+			}
+		} else {
+			completePreparation(ch);
+		}
+	}
+
+	private void completePreparation(Channel ch) {
+		Channels.discardActiveDictum(ch);
+		ch.attr(Channels.PSTMT_TRACKER).get().completePrepare(
+			sql, stmtId, paramDef, colDef
+		);
 	}
 
 	@Override
@@ -64,4 +201,10 @@ public class PrepareStatement implements Dictum {
 
 	private final String sql;
 	private final Promise<PreparedStatement> psp;
+	protected ServerMessageConsumer state;
+	protected ColumnDefinition paramDef;
+	protected ColumnDefinition colDef;
+	protected int stmtId;
+	protected int warnCount;
+	protected int lastSeqNum;
 }

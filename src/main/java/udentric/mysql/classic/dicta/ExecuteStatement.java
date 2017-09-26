@@ -30,7 +30,6 @@ package udentric.mysql.classic.dicta;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.PreparedStatement;
-import udentric.mysql.classic.PreparedStatementDesc;
 import udentric.mysql.classic.ResultSetConsumer;
 
 public class ExecuteStatement implements Dictum {
@@ -38,7 +37,7 @@ public class ExecuteStatement implements Dictum {
 		PreparedStatement pstmt_, ResultSetConsumer rsc_,
 		Object... args_
 	) {
-		pstmt = (PreparedStatementDesc)pstmt_;
+		pstmt = pstmt_;
 		rsc = rsc_;
 		args = args_;
 	}
@@ -64,7 +63,7 @@ public class ExecuteStatement implements Dictum {
 
 	public static final int OPCODE = 23;
 
-	private final PreparedStatementDesc pstmt;
+	private final PreparedStatement pstmt;
 	private final ResultSetConsumer rsc;
 	private final Object[] args;
 }

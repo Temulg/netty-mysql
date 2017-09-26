@@ -29,6 +29,7 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import udentric.mysql.classic.SessionInfo;
 
 public interface Dictum {
 	void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx);
@@ -39,5 +40,12 @@ public interface Dictum {
 
 	default int getSeqNum() {
 		return 0;
+	}
+
+	@FunctionalInterface
+	public interface ServerMessageConsumer {
+		void accept(
+			ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+		);
 	}
 }
