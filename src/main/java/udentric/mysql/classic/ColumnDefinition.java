@@ -38,6 +38,10 @@ public class ColumnDefinition {
 		fields = new Field[fieldCount];
 	}
 
+	public int fieldCount() {
+		return fields.length;
+	}
+
 	public boolean hasAllFields() {
 		return fieldPos == fields.length;
 	}

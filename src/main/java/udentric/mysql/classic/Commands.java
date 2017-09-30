@@ -28,7 +28,6 @@
 package udentric.mysql.classic;
 
 import io.netty.channel.Channel;
-import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
 import udentric.mysql.PreparedStatement;
@@ -70,18 +69,18 @@ public class Commands {
 	public static Future<PreparedStatement> prepareStatement(
 		Channel ch, String sql
 	) {
-		Future<PreparedStatement> psf = ch.attr(
+		Promise<PreparedStatement> psp = ch.attr(
 			Channels.PSTMT_TRACKER
 		).get().beginPrepare(ch, sql);
-		if (psf.isDone())
-			return psf;
+		if (psp.isDone())
+			return psp;
 
 
 		ch.writeAndFlush(new PrepareStatement(sql, psp)).addListener(
 			Channels::defaultSendListener
 		);
 
-		return psf;
+		return psp;
 	}
 
 	public static Future<Packet.ServerAck> executeUpdate(

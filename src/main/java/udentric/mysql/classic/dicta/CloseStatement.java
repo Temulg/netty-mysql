@@ -27,73 +27,75 @@
 
 package udentric.mysql.classic.dicta;
 
-import java.util.Arrays;
-
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.DecoderException;
+import io.netty.util.concurrent.Promise;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.PreparedStatementCursorType;
-import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.SessionInfo;
 
-public class ExecuteStatement implements Dictum {
-	public ExecuteStatement(
-		PreparedStatement pstmt_, ResultSetConsumer rsc_,
-		Object... args_
+public class CloseStatement implements Dictum {
+	public CloseStatement(
+		PreparedStatement stmt_, Promise<Packet.ServerAck> sp_
 	) {
-		pstmt = pstmt_;
-		params = pstmt.parameters();
-		rsc = rsc_;
-
-		args = args_.length < params.fieldCount()
-			? Arrays.copyOf(args_, params.fieldCount())
-			: args_;
+		stmt = stmt_;
+		sp = sp_;
 	}
 
 	@Override
-	public void emitClientMessage(
-		ByteBuf dst, ChannelHandlerContext ctx
-	) {
+	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
 		dst.writeByte(OPCODE);
-		dst.writeIntLE(pstmt.getServerId());
-		dst.writeByte(PreparedStatementCursorType.NONE.mask());
-		dst.writeIntLE(1);
-		ColumnDefinition params = pstmt.parameters();
-		if (params.fieldCount() == 0)
+		dst.writeIntLE(stmt.getServerId());
+	}
+
+	@Override
+	public void acceptServerMessage(ByteBuf src, ChannelHandlerContext ctx) {
+		if (Packet.invalidSeqNum(ctx.channel(), src, 1))
 			return;
 
-		writeNullBitmap(dst);
-	}
+		src.skipBytes(Packet.HEADER_SIZE);
+		Channel ch = ctx.channel();
+		SessionInfo si = Channels.sessionInfo(ch);
 
-	private void writeNullBitmap(ByteBuf dst) {
-		byte[] nb = new byte[(params.fieldCount() + 7) / 8];
-
-		for (int pos = 0; pos < params.fieldCount(); pos++) {
-			if (args[pos] == null) {
-				nb[pos >>> 3] |= (byte)(1 << (pos & 7));
+		int type = Packet.readInt1(src);
+		switch (type) {
+		case Packet.OK:
+			try {
+				Packet.ServerAck ack = new Packet.ServerAck(
+					src, true, si.charset()
+				);
+				ch.attr(Channels.PSTMT_TRACKER).get().discard(
+					stmt
+				);
+				Channels.discardActiveDictum(ch);
+				sp.setSuccess(ack);
+			} catch (Exception e) {
+				Channels.discardActiveDictum(ch, e);
 			}
+			break;
+		case Packet.ERR:
+			Channels.discardActiveDictum(
+				ch, Packet.parseError(src, si.charset())
+			);
+			return;
+		default:
+			Channels.discardActiveDictum(ch, new DecoderException(
+				"unsupported packet type "
+				+ Integer.toString(type)
+			));
 		}
-
-		dst.writeBytes(nb);
-	}
-
-	@Override
-	public void acceptServerMessage(
-		ByteBuf src, ChannelHandlerContext ctx
-	) {
 	}
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		rsc.acceptFailure(cause);
+		sp.setFailure(cause);
 	}
 
-	public static final int OPCODE = 23;
+	public static final int OPCODE = 25;
 
-	private final PreparedStatement pstmt;
-	private final ColumnDefinition params;
-	private final ResultSetConsumer rsc;
-	private final Object[] args;
+	private final PreparedStatement stmt;
+	private final Promise<Packet.ServerAck> sp;
 }

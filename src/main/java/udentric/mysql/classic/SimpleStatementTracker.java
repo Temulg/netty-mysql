@@ -33,15 +33,16 @@ import java.util.concurrent.locks.StampedLock;
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.Promise;
 import udentric.mysql.PreparedStatement;
 
 class SimpleStatementTracker implements PreparedStatementTracker {
 	@Override
-	public Future<PreparedStatement> beginPrepare(Channel ch, String sql) {
+	public Promise<PreparedStatement> beginPrepare(Channel ch, String sql) {
 		long stamp = lock.readLock();
 
 
-		Future<PreparedStatement> psp = prepareIfAvailable(ch, sql);
+		Promise<PreparedStatement> psp = prepareIfAvailable(ch, sql);
 		if (psp != null) {
 			lock.unlockRead(stamp);
 			return psp;
@@ -67,7 +68,7 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 		return p.psp;
 	}
 
-	private Future<PreparedStatement> prepareIfAvailable(
+	private Promise<PreparedStatement> prepareIfAvailable(
 		Channel ch, String sql
 	) {
 		PreparedStatement s = sqlToStmt.get(sql);
@@ -75,7 +76,9 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 			if (s instanceof Placeholder) {
 				return ((Placeholder)s).psp;
 			} else {
-				return ch.eventLoop().newSucceededFuture(s);
+				return ch.eventLoop().<
+					PreparedStatement
+				>newPromise().setSuccess(s);
 			}
 		} else
 			return null;
@@ -96,20 +99,45 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 		p.psp.setSuccess(s);
 	}
 
+	@Override
+	public void discard(PreparedStatement stmt_) {
+		Pstmt stmt = (Pstmt)stmt_;
+
+		long stamp = lock.writeLock();
+		idToStmt.remove(stmt.srvId);
+		sqlToStmt.remove(stmt.sql);
+		lock.unlockWrite(stamp);
+	}
+
 	class Pstmt implements PreparedStatement {
 		private Pstmt(
-			String sql_, int clientId_, ColumnDefinition args_,
+			String sql_, int srvId_, ColumnDefinition params_,
 			ColumnDefinition columns_
 		) {
 			sql = sql_;
-			clientId = clientId_;
-			args = args_;
+			srvId = srvId_;
+			params = params_;
 			columns = columns_;
 		}
 
+		@Override
+		public int getServerId() {
+			return srvId;
+		}
+
+		@Override
+		public ColumnDefinition parameters() {
+			return params;
+		}
+
+		@Override
+		public ColumnDefinition columns() {
+			return columns;
+		}
+
 		private final String sql;
-		private final int clientId;
-		private final ColumnDefinition args;
+		private final int srvId;
+		private final ColumnDefinition params;
 		private final ColumnDefinition columns;
 	}
 
@@ -118,6 +146,21 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 			sql = sql_;
 			psp = new DefaultPromise<>(ch.eventLoop());
 			psp.addListener(this::discardFailed);
+		}
+
+		@Override
+		public int getServerId() {
+			return -1;
+		}
+
+		@Override
+		public ColumnDefinition parameters() {
+			return null;
+		}
+
+		@Override
+		public ColumnDefinition columns() {
+			return null;
 		}
 
 		private void discardFailed(Future<?> f) {

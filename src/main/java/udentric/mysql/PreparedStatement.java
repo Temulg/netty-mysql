@@ -27,6 +27,12 @@
 
 package udentric.mysql;
 
-public interface PreparedStatement {
+import udentric.mysql.classic.ColumnDefinition;
 
+public interface PreparedStatement {
+	int getServerId();
+
+	ColumnDefinition parameters();
+
+	ColumnDefinition columns();
 }

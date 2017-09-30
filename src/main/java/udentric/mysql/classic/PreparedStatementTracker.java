@@ -28,14 +28,16 @@
 package udentric.mysql.classic;
 
 import io.netty.channel.Channel;
-import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.Promise;
 import udentric.mysql.PreparedStatement;
 
 public interface PreparedStatementTracker {
-	Future<PreparedStatement> beginPrepare(Channel ch, String sql);
+	Promise<PreparedStatement> beginPrepare(Channel ch, String sql);
 
 	void completePrepare(
 		String sql, int remoteId, ColumnDefinition args,
 		ColumnDefinition columns
 	);
+
+	void discard(PreparedStatement stmt);
 }
