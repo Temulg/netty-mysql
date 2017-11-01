@@ -28,7 +28,6 @@
 package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
-import java.sql.SQLException;
 
 import udentric.mysql.Encoding;
 import udentric.mysql.ErrorNumbers;
@@ -62,11 +61,11 @@ public class ColumnDefinition {
 		return row;
 	}
 
-	public Field getField(int pos) throws SQLException {
+	public Field getField(int pos) {
 		if (pos < 0 || pos >= fields.length) {
-			throw Packet.makeErrorFromState(
+			Channels.throwAny(Packet.makeErrorFromState(
 				ErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
-			);
+			));
 		}
 
 		return fields[pos];

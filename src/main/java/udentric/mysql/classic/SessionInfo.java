@@ -41,6 +41,7 @@ public class SessionInfo {
 		serverCaps = si.serverCaps;
 		clientCaps = si.clientCaps;
 		srvConnId = si.srvConnId;
+		packetSize = si.packetSize;
 	}
 
 	public boolean expectEof() {
@@ -57,4 +58,5 @@ public class SessionInfo {
 	public final long serverCaps;
 	public final long clientCaps;
 	public final int srvConnId;
+	public final int packetSize;
 }

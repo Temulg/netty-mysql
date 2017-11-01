@@ -44,11 +44,12 @@ public class Query implements Dictum {
 	}
 
 	@Override
-	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+	public boolean emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
 		dst.writeByte(OPCODE);
 		dst.writeCharSequence(
 			sql, Channels.sessionInfo(ctx.channel()).charset()
 		);
+		return false;
 	}
 
 	@Override

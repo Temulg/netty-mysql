@@ -46,9 +46,12 @@ public class CloseStatement implements Dictum {
 	}
 
 	@Override
-	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+	public boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(stmt.getServerId());
+		return false;
 	}
 
 	@Override

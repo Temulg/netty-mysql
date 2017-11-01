@@ -44,17 +44,18 @@ public class PrepareStatement implements Dictum {
 		sql = sql_;
 		psp = psp_;
 		state = this::stmtPrepared;
-		lastSeqNum = 1;
+		lastSeqNum = 0;
 	}
 
 	@Override
-	public void emitClientMessage(
+	public boolean emitClientMessage(
 		ByteBuf dst, ChannelHandlerContext ctx
 	) {
 		dst.writeByte(OPCODE);
 		dst.writeCharSequence(
 			sql, Channels.sessionInfo(ctx.channel()).charset()
 		);
+		return false;
 	}
 
 	@Override
@@ -62,11 +63,11 @@ public class PrepareStatement implements Dictum {
 		ByteBuf src, ChannelHandlerContext ctx
 	) {
 		lastSeqNum = Packet.nextSeqNum(lastSeqNum);
-		if (Packet.invalidSeqNum(ctx.channel(), src, lastSeqNum))
+		if (Packet.invalidSeqNum(ctx.channel(), src, lastSeqNum)) {
 			return;
+		}
 
 		SessionInfo si = Channels.sessionInfo(ctx.channel());
-
 		state.accept(src, ctx, si);
 	}
 
@@ -81,6 +82,7 @@ public class PrepareStatement implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
+
 			try {
 				stmtId = src.readIntLE();
 				colDef = new ColumnDefinition(
@@ -127,6 +129,7 @@ public class PrepareStatement implements Dictum {
 			}
 		} else if (si.expectEof()) {
 			src.skipBytes(Packet.HEADER_SIZE);
+
 			if ((
 				Packet.EOF != Packet.readInt1(src)
 			) || (src.readableBytes() != 4)) {

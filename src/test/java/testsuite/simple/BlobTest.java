@@ -61,27 +61,30 @@ public class BlobTest extends TestCase {
 
 	@BeforeClass
 	public void beforeClass() throws Exception {
-		createBlobFile(1 << 25);
+		createBlobFile(1 << 12/*25*/);
 		createTable(
-			"BLOBTEST",
+			"blobtest",
 			"(pos int PRIMARY KEY auto_increment, blobdata LONGBLOB)"
 		);
 	}
 
 	@Test
 	public void byteStreamInsert() throws Exception {
+		logger.info("--1-\n");
 		PreparedStatement pstmt = SyncCommands.prepareStatement(
-			channel(),  "INSERT INTO BLOBTEST(blobdata) VALUES (?)"
+			channel(),  "INSERT INTO blobtest(blobdata) VALUES (?)"
 		);
-
+		logger.info("--2-\n");
 		try (FileChannel fc = FileChannel.open(
 			testBlobFile, StandardOpenOption.READ
 		)) {
+			logger.info("--3-\n");
 			SyncCommands.executeUpdate(
 				channel(), pstmt, fc
 			);
+			logger.info("--4-\n");
 		}
-
+		logger.info("--5-\n");
 		doRetrieval();
 	}
 

@@ -30,13 +30,17 @@ package udentric.mysql.classic.dicta;
 import java.util.Arrays;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.DefaultFileRegion;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.PreparedStatementCursorType;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.ServerStatus;
+import udentric.mysql.classic.SessionInfo;
 
 public class ExecuteStatement implements Dictum {
 	public ExecuteStatement(
@@ -45,16 +49,31 @@ public class ExecuteStatement implements Dictum {
 	) {
 		pstmt = pstmt_;
 		params = pstmt.parameters();
+		omitTypeDeclaration = pstmt.typesDeclared();
 		rsc = rsc_;
 
 		args = args_.length < params.fieldCount()
 			? Arrays.copyOf(args_, params.fieldCount())
 			: args_;
+		state = this::emitCommand;
 	}
 
 	@Override
-	public void emitClientMessage(
+	public int getSeqNum() {
+		return seqNum;
+	}
+
+	@Override
+	public boolean emitClientMessage(
 		ByteBuf dst, ChannelHandlerContext ctx
+	) {
+		SessionInfo si = Channels.sessionInfo(ctx.channel());
+		bufferStartPos = dst.writerIndex();
+		return state.apply(dst, ctx, si);
+	}
+
+	private boolean emitCommand(
+		ByteBuf dst, ChannelHandlerContext ctx, SessionInfo si
 	) {
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(pstmt.getServerId());
@@ -62,9 +81,27 @@ public class ExecuteStatement implements Dictum {
 		dst.writeIntLE(1);
 		ColumnDefinition params = pstmt.parameters();
 		if (params.fieldCount() == 0)
-			return;
+			return false;
 
 		writeNullBitmap(dst);
+		if (!omitTypeDeclaration) {
+			dst.writeByte(1);
+			try {
+				for (int c = 0; c < params.fieldCount(); c++) {
+					dst.writeByte(
+						params.getField(c).type.id
+					);
+					dst.writeByte(
+						params.getField(c).paramFlags()
+					);
+				}
+			} catch (Exception e) {
+				Channels.throwAny(e);
+			}
+		}
+
+		state = this::emitParamData;
+		return emitParamDataImpl(dst, ctx, si);
 	}
 
 	private void writeNullBitmap(ByteBuf dst) {
@@ -79,10 +116,133 @@ public class ExecuteStatement implements Dictum {
 		dst.writeBytes(nb);
 	}
 
+	private boolean emitParamData(
+		ByteBuf dst, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		seqNum++;
+		return emitParamDataImpl(dst, ctx, si);
+	}
+
+	private boolean emitParamDataImpl(
+		ByteBuf dst, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		while (true) {
+			if (appendLeftovers(dst, si))
+				return true;
+
+			if (paramConsumed) {
+				paramPos++;
+				paramOffset = 0;
+				paramConsumed = false;
+				if (paramPos >= params.fieldCount())
+					return false;
+			}
+
+			if (pstmt.parameterPreloaded(paramPos)) {
+				paramConsumed = true;
+				continue;
+			}
+
+			int lastPos = dst.writerIndex() - bufferStartPos;
+			int limit = si.packetSize - lastPos;
+			if (limit == 0)
+				return true;
+
+			paramConsumed = !params.getField(
+				paramPos
+			).encodeValueBinary(
+				dst, args[paramPos], paramOffset, limit
+			);
+			paramOffset += dst.writerIndex() - lastPos;
+			if (preserveLeftovers(dst, si))
+				return true;
+		}
+	}
+
+	private boolean appendLeftovers(ByteBuf dst, SessionInfo si) {
+		if (paramLeftOvers == null)
+			return false;
+
+		int limit = si.packetSize - dst.writerIndex() + bufferStartPos;
+		if (limit > paramLeftOvers.readableBytes()) {
+			dst.writeBytes(paramLeftOvers);
+			paramLeftOvers.release();
+			paramLeftOvers = null;
+			return false;
+		} else {
+			dst.writeBytes(paramLeftOvers, limit);
+			return true;
+		}
+	}
+
+	private boolean preserveLeftovers(ByteBuf dst, SessionInfo si) {
+		int count = dst.writerIndex() - bufferStartPos;
+		if (count < si.packetSize)
+			return false;
+
+		int nextPos = bufferStartPos + si.packetSize;
+		paramLeftOvers = dst.retainedSlice(
+			nextPos, count - si.packetSize
+		);
+		dst.writerIndex(nextPos);
+		return true;
+	}
+
 	@Override
 	public void acceptServerMessage(
 		ByteBuf src, ChannelHandlerContext ctx
 	) {
+		if (Packet.invalidSeqNum(
+			ctx.channel(), src, Packet.nextSeqNum(seqNum)
+		))
+			return;
+
+		seqNum = Packet.getSeqNum(src);
+		Channel ch = ctx.channel();
+		SessionInfo si = Channels.sessionInfo(ch);
+
+		int type = src.getByte(
+			src.readerIndex() + Packet.HEADER_SIZE
+		) & 0xff;
+
+		switch (type) {
+		case Packet.OK:
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			try {
+				Packet.ServerAck ack = new Packet.ServerAck(
+					src, true, si.charset()
+				);
+				if (ServerStatus.MORE_RESULTS_EXISTS.get(
+					ack.srvStatus
+				)) {
+					ch.attr(Channels.ACTIVE_DICTUM).set(
+						new BinaryResultSet(
+							seqNum, rsc
+						)
+					);
+					rsc.acceptAck(ack, false);
+				} else {
+					Channels.discardActiveDictum(ch);
+					rsc.acceptAck(ack, true);
+				}
+			} catch (Exception e) {
+				Channels.discardActiveDictum(ch, e);
+			}
+			break;
+		case Packet.ERR:
+			src.skipBytes(Packet.HEADER_SIZE + 1);
+			Channels.discardActiveDictum(
+				ch, Packet.parseError(src, si.charset())
+			);
+			return;
+		default:
+			src.skipBytes(Packet.HEADER_SIZE);
+			ch.attr(Channels.ACTIVE_DICTUM).set(
+				new BinaryResultSet(
+					Packet.readIntLenenc(src), seqNum, rsc
+				)
+			);
+		}
 	}
 
 	@Override
@@ -95,5 +255,13 @@ public class ExecuteStatement implements Dictum {
 	private final PreparedStatement pstmt;
 	private final ColumnDefinition params;
 	private final ResultSetConsumer rsc;
+	private final boolean omitTypeDeclaration;
 	private final Object[] args;
+	private ClientMessageEmitter state;
+	private int seqNum;
+	private int bufferStartPos;
+	private int paramPos;
+	private int paramOffset;
+	private boolean paramConsumed;
+	private ByteBuf paramLeftOvers;
 }

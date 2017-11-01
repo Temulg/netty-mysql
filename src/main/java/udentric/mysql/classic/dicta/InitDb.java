@@ -43,10 +43,13 @@ public class InitDb implements Dictum {
 	}
 
 	@Override
-	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+	public boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
 		SessionInfo si = Channels.sessionInfo(ctx.channel());
 		dst.writeByte(OPCODE);
 		dst.writeCharSequence(schema, si.charset());
+		return false;
 	}
 
 	@Override

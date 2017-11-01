@@ -27,6 +27,7 @@
 
 package udentric.mysql.classic;
 
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.concurrent.locks.StampedLock;
 
@@ -118,6 +119,32 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 			srvId = srvId_;
 			params = params_;
 			columns = columns_;
+			parameterPreloaded = new BitSet(params.fieldCount());
+		}
+
+		@Override
+		public boolean typesDeclared() {
+			return typesDeclared;
+		}
+
+		@Override
+		public void typesDeclared(boolean v) {
+			typesDeclared = v;
+		}
+
+		@Override
+		public void markParameterPreloaded(int pos) {
+			parameterPreloaded.set(pos);
+		}
+
+		@Override
+		public boolean parameterPreloaded(int pos) {
+			return parameterPreloaded.get(pos);
+		}
+
+		@Override
+		public void resetPreloaded() {
+			parameterPreloaded.clear();
 		}
 
 		@Override
@@ -139,6 +166,8 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 		private final int srvId;
 		private final ColumnDefinition params;
 		private final ColumnDefinition columns;
+		private final BitSet parameterPreloaded;
+		private boolean typesDeclared;
 	}
 
 	class Placeholder implements PreparedStatement {

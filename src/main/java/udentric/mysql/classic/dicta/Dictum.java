@@ -32,7 +32,11 @@ import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.classic.SessionInfo;
 
 public interface Dictum {
-	void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx);
+	default boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
+		return false;
+	}
 
 	void acceptServerMessage(ByteBuf src, ChannelHandlerContext ctx);
 
@@ -40,6 +44,13 @@ public interface Dictum {
 
 	default int getSeqNum() {
 		return 0;
+	}
+
+	@FunctionalInterface
+	public interface ClientMessageEmitter {
+		boolean apply(
+			ByteBuf dst, ChannelHandlerContext ctx, SessionInfo si
+		);
 	}
 
 	@FunctionalInterface

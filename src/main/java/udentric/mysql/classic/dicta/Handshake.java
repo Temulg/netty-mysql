@@ -39,7 +39,9 @@ public class Handshake implements Dictum {
 	}
 
 	@Override
-	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+	public boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
 		throw new UnsupportedOperationException("Not supported.");
 	}
 

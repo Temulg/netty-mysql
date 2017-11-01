@@ -26,6 +26,7 @@
  */
 
 package udentric.mysql.classic.value;
+import io.netty.buffer.ByteBuf;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.MysqlString;
 import udentric.mysql.classic.Channels;
@@ -38,7 +39,7 @@ public class LongAdapter implements JavaTypeAdapter {
 	}
 
 	@Override
-	public Object convertTextValue(MysqlString value, Field fld) {
+	public Object decodeTextValue(MysqlString value, Field fld) {
 		if (ColumnTypeTrait.INTEGER.get(fld.type.traits)) {
 			return Long.parseLong(value.toString());
 		} else {
@@ -47,6 +48,13 @@ public class LongAdapter implements JavaTypeAdapter {
 			));
 			return null;
 		}
+	}
+
+	public boolean encodeBinaryValue(
+		ByteBuf dst, Object val, Field fld, int valueOffset,
+		int softLimit
+	) {
+		throw new UnsupportedOperationException("Not implemented.");
 	}
 
 	public static LongAdapter INSTANCE = new LongAdapter();

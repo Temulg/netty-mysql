@@ -56,7 +56,7 @@ public class TextRow implements Row {
 
 	@Override
 	public Object getFieldValue(int pos, Field fld, Class<?> cls) {
-		return ColumnType.adapterForClass(cls).convertTextValue(
+		return ColumnType.adapterForClass(cls).decodeTextValue(
 			columns[pos], fld
 		);
 	}

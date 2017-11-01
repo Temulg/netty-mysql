@@ -60,6 +60,9 @@ public class InitialSessionInfo {
 		config = config_;
 		connAttributes = connAttributes_;
 		encoding = Encoding.forId(223);
+		packetSize = config.getOrDefault(
+			Config.Key.maxPacketSize, 0xffffff
+		);
 	}
 
 	public Charset charset() {
@@ -285,5 +288,6 @@ public class InitialSessionInfo {
 	public long serverCaps;
 	public long clientCaps;
 	public int srvConnId;
+	public int packetSize;
 	public byte[] secret;
 }

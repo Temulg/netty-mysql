@@ -27,11 +27,17 @@
 
 package udentric.mysql.classic.value;
 
+import io.netty.buffer.ByteBuf;
 import udentric.mysql.MysqlString;
 import udentric.mysql.classic.Field;
 
 public interface JavaTypeAdapter {
-	default Object convertTextValue(MysqlString value, Field fld) {
+	default Object decodeTextValue(MysqlString value, Field fld) {
 		return null;
 	}
+
+	boolean encodeBinaryValue(
+		ByteBuf dst, Object val, Field fld, int valueOffset,
+		int softLimit
+	);
 }

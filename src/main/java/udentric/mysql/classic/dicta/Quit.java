@@ -35,10 +35,11 @@ public class Quit implements Dictum {
 	}
 
 	@Override
-	public void emitClientMessage(
+	public boolean emitClientMessage(
 		ByteBuf dst, ChannelHandlerContext ctx
 	) {
 		dst.writeByte(OPCODE);
+		return false;
 	}
 
 	@Override

@@ -27,8 +27,18 @@
 
 package udentric.mysql.classic.value;
 
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.Field;
+
 public class DefaultAdapter implements JavaTypeAdapter {
 	private DefaultAdapter() {
+	}
+
+	public boolean encodeBinaryValue(
+		ByteBuf dst, Object val, Field fld, int valueOffset,
+		int softLimit
+	) {
+		throw new UnsupportedOperationException("Not implemented.");
 	}
 
 	public static DefaultAdapter INSTANCE = new DefaultAdapter();

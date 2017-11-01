@@ -58,6 +58,16 @@ public class Field {
 		src.skipBytes(2);
 	}
 
+	public int paramFlags() {
+		return 0;
+	}
+
+	public boolean encodeValueBinary(
+		ByteBuf dst, Object val, int valOffset, int softLimit
+	) {
+		return false;
+	}
+
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this).add(

@@ -27,8 +27,11 @@
 
 package udentric.mysql.classic;
 
+import java.nio.channels.ScatteringByteChannel;
+
 import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.value.ByteChannelAdapter;
 import udentric.mysql.classic.value.DefaultAdapter;
 import udentric.mysql.classic.value.JavaTypeAdapter;
 import udentric.mysql.classic.value.LongAdapter;
@@ -123,9 +126,29 @@ public enum ColumnType {
 	}
 
 	public static JavaTypeAdapter adapterForClass(Class<?> cls) {
-		return ADAPTER_FOR_CLASS.getOrDefault(
-			cls, DefaultAdapter.INSTANCE
-		);
+		JavaTypeAdapter a = findAdapterForClass(cls);
+		return a != null ? a : DefaultAdapter.INSTANCE;
+	}
+
+	private static JavaTypeAdapter findAdapterForClass(Class<?> cls) {
+		if (cls == null || cls == Object.class)
+			return null;
+
+		JavaTypeAdapter a = ADAPTER_FOR_CLASS.get(cls);
+		if (a != null)
+			return a;
+
+		a = findAdapterForClass(cls.getSuperclass());
+		if (a != null)
+			return a;
+
+		for (Class<?> iface: cls.getInterfaces()) {
+			a = findAdapterForClass(iface);
+			if (a != null)
+				return a;
+		}
+
+		return null;
 	}
 
 	private static final ImmutableMap<
@@ -138,6 +161,8 @@ public enum ColumnType {
 		Class<?>, JavaTypeAdapter
 	>builder().put(
 		Long.class, LongAdapter.INSTANCE
+	).put(
+		ScatteringByteChannel.class, ByteChannelAdapter.INSTANCE
 	).build();
 
 	public final int id;

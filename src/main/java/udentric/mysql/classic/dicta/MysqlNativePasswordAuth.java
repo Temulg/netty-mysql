@@ -53,15 +53,15 @@ public class MysqlNativePasswordAuth implements Dictum {
 	}
 
 	@Override
-	public void emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+	public boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
 		Config cfg = si.config;
 		dst.writeIntLE(
 			(int)(si.clientCaps & 0xffffffff)
 		);
 
-		dst.writeIntLE(cfg.getOrDefault(
-			Config.Key.maxPacketSize, 0xffffff
-		));
+		dst.writeIntLE(si.packetSize);
 		dst.writeByte(si.encoding.mysqlId);
 		dst.writeZero(23);
 
@@ -85,9 +85,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			dst.writeByte(0);
 
 		if (!schema.isEmpty()) {
-			dst.writeBytes(schema.getBytes(
-				si.charset()
-			));
+			dst.writeBytes(schema.getBytes(si.charset()));
 		}
 
 		dst.writeBytes(AUTH_PLUGIN_NAME.getBytes(
@@ -100,7 +98,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			dst.writeBytes(attrBuf);
 			attrBuf.release();
 		}
-		
+		return false;
 	}
 
 	@Override

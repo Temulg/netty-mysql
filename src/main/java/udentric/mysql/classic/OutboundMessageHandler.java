@@ -102,18 +102,33 @@ class OutboundMessageHandler extends ChannelOutboundHandlerAdapter {
 		}
 
 		try {
-			ByteBuf dst = ctx.alloc().buffer();
-			int wpos = dst.writerIndex();
-
-			dst.writeMediumLE(0);
-			dst.writeByte(dct.getSeqNum());
-			dct.emitClientMessage(dst, ctx);
-
-			int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
-			dst.setMediumLE(wpos, len);
-			super.write(ctx, dst, promise);
+			while (true) {
+				ByteBuf dst = ctx.alloc().buffer();
+				if (encodeDictum(dst, dct, ctx)) {
+					super.write(
+						ctx, dst, ctx.voidPromise()
+					);
+				} else {
+					super.write(ctx, dst, promise);
+					break;
+				}
+			}
 		} catch (Exception e) {
 			promise.setFailure(e);
 		}
+	}
+
+	private boolean encodeDictum(
+		ByteBuf dst, Dictum dct, ChannelHandlerContext ctx
+	) {
+		int wpos = dst.writerIndex();
+
+		dst.writeMediumLE(0);
+		dst.writeByte(dct.getSeqNum());
+		boolean hasNext = dct.emitClientMessage(dst, ctx);
+
+		int len = dst.writerIndex() - wpos - Packet.HEADER_SIZE;
+		dst.setMediumLE(wpos, len);
+		return hasNext;
 	}
 }
