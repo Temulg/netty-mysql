@@ -25,9 +25,8 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.prepared.singular;
 
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.concurrent.locks.StampedLock;
 
@@ -35,9 +34,12 @@ import io.netty.channel.Channel;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
+import udentric.mysql.FieldSet;
 import udentric.mysql.PreparedStatement;
+import udentric.mysql.classic.FieldSetImpl;
 
-class SimpleStatementTracker implements PreparedStatementTracker {
+public class StatementTracker
+implements udentric.mysql.classic.prepared.StatementTracker {
 	@Override
 	public Promise<PreparedStatement> beginPrepare(Channel ch, String sql) {
 		long stamp = lock.readLock();
@@ -87,11 +89,14 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 
 	@Override
 	public void completePrepare(
-		String sql, int remoteId, ColumnDefinition args,
-		ColumnDefinition columns
+		String sql, int remoteId, FieldSet parameters,
+		FieldSet columns
 	) {
 		long stamp = lock.writeLock();
-		Pstmt s = new Pstmt(sql, remoteId, args, columns);
+		Statement s = new Statement(
+			sql, remoteId, (FieldSetImpl)parameters,
+			(FieldSetImpl)columns
+		);
 		Placeholder p = (Placeholder)sqlToStmt.get(sql);
 
 		idToStmt.put(remoteId, s);
@@ -102,7 +107,7 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 
 	@Override
 	public void discard(PreparedStatement stmt_) {
-		Pstmt stmt = (Pstmt)stmt_;
+		Statement stmt = (Statement)stmt_;
 
 		long stamp = lock.writeLock();
 		idToStmt.remove(stmt.srvId);
@@ -110,65 +115,6 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 		lock.unlockWrite(stamp);
 	}
 
-	class Pstmt implements PreparedStatement {
-		private Pstmt(
-			String sql_, int srvId_, ColumnDefinition params_,
-			ColumnDefinition columns_
-		) {
-			sql = sql_;
-			srvId = srvId_;
-			params = params_;
-			columns = columns_;
-			parameterPreloaded = new BitSet(params.fieldCount());
-		}
-
-		@Override
-		public boolean typesDeclared() {
-			return typesDeclared;
-		}
-
-		@Override
-		public void typesDeclared(boolean v) {
-			typesDeclared = v;
-		}
-
-		@Override
-		public void markParameterPreloaded(int pos) {
-			parameterPreloaded.set(pos);
-		}
-
-		@Override
-		public boolean parameterPreloaded(int pos) {
-			return parameterPreloaded.get(pos);
-		}
-
-		@Override
-		public void resetPreloaded() {
-			parameterPreloaded.clear();
-		}
-
-		@Override
-		public int getServerId() {
-			return srvId;
-		}
-
-		@Override
-		public ColumnDefinition parameters() {
-			return params;
-		}
-
-		@Override
-		public ColumnDefinition columns() {
-			return columns;
-		}
-
-		private final String sql;
-		private final int srvId;
-		private final ColumnDefinition params;
-		private final ColumnDefinition columns;
-		private final BitSet parameterPreloaded;
-		private boolean typesDeclared;
-	}
 
 	class Placeholder implements PreparedStatement {
 		private Placeholder(String sql_, Channel ch) {
@@ -178,17 +124,12 @@ class SimpleStatementTracker implements PreparedStatementTracker {
 		}
 
 		@Override
-		public int getServerId() {
-			return -1;
-		}
-
-		@Override
-		public ColumnDefinition parameters() {
+		public FieldSet parameters() {
 			return null;
 		}
 
 		@Override
-		public ColumnDefinition columns() {
+		public FieldSet columns() {
 			return null;
 		}
 

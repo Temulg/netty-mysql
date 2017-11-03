@@ -35,25 +35,31 @@ import io.netty.util.concurrent.Promise;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.SessionInfo;
+import udentric.mysql.classic.prepared.Statement;
 
 public class ResetStatement implements Dictum {
 	public ResetStatement(
-		PreparedStatement stmt_, Promise<Packet.ServerAck> sp_
+		PreparedStatement stmt_, Promise<ServerAck> sp_
 	) {
-		stmt = stmt_;
+		stmt = (Statement)stmt_;
 		sp = sp_;
 	}
 
 	@Override
-	public boolean emitClientMessage(ByteBuf dst, ChannelHandlerContext ctx) {
+	public boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(stmt.getServerId());
 		return false;
 	}
 
 	@Override
-	public void acceptServerMessage(ByteBuf src, ChannelHandlerContext ctx) {
+	public void acceptServerMessage(
+		ByteBuf src, ChannelHandlerContext ctx
+	) {
 		if (Packet.invalidSeqNum(ctx.channel(), src, 1))
 			return;
 
@@ -65,7 +71,7 @@ public class ResetStatement implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				Channels.discardActiveDictum(ch);
@@ -94,6 +100,6 @@ public class ResetStatement implements Dictum {
 
 	public static final int OPCODE = 26;
 
-	private final PreparedStatement stmt;
-	private final Promise<Packet.ServerAck> sp;
+	private final Statement stmt;
+	private final Promise<ServerAck> sp;
 }

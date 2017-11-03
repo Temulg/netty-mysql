@@ -25,62 +25,54 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
-
-import java.nio.channels.ScatteringByteChannel;
+package udentric.mysql.classic.type.sql;
 
 import com.google.common.collect.ImmutableMap;
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.value.ByteChannelAdapter;
-import udentric.mysql.classic.value.DefaultAdapter;
-import udentric.mysql.classic.value.JavaTypeAdapter;
-import udentric.mysql.classic.value.LongAdapter;
 
-public enum ColumnType {
+public enum TypeId {
 	DECIMAL(0),
-	TINY(1, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
+	TINY(1, Traits.INTEGER, Traits.FLOAT) {
 		@Override
-		public Object readObject(ByteBuf src) {
-			return src.readByte();
-		}
-
-	},
-	SHORT(2, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
-		@Override
-		public Object readObject(ByteBuf src) {
-			return src.readShortLE();
+		public Adapter adapter() {
+			return null;
 		}
 	},
-	LONG(3, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
+	SHORT(2, Traits.INTEGER, Traits.FLOAT) {
 		@Override
-		public Object readObject(ByteBuf src) {
-			return src.readIntLE();
+		public Adapter adapter() {
+			return null;
 		}
 	},
-	FLOAT(4, ColumnTypeTrait.FLOAT) {
+	LONG(3, Traits.INTEGER, Traits.FLOAT) {
 		@Override
-		public Object readObject(ByteBuf src) {
-			return Float.intBitsToFloat(src.readIntLE());
+		public Adapter adapter() {
+			return null;
 		}
 	},
-	DOUBLE(5, ColumnTypeTrait.FLOAT) {
+	FLOAT(4, Traits.FLOAT) {
 		@Override
-		public Object readObject(ByteBuf src) {
-			return Double.longBitsToDouble(src.readLongLE());
+		public Adapter adapter() {
+			return null;
+		}
+	},
+	DOUBLE(5, Traits.FLOAT) {
+		@Override
+		public Adapter adapter() {
+			return null;
 		}
 	},
 	NULL(6),
 	TIMESTAMP(7),
-	LONGLONG(8, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
+	LONGLONG(8, Traits.INTEGER, Traits.FLOAT) {
 		@Override
-		public Object readObject(ByteBuf src) {
-			return src.readLongLE();
+		public Adapter adapter() {
+			return null;
 		}
 	},
-	INT24(9, ColumnTypeTrait.INTEGER, ColumnTypeTrait.FLOAT) {
+	INT24(9, Traits.INTEGER, Traits.FLOAT) {
 		@Override
-		public Object readObject(ByteBuf src) {
-			return src.readIntLE();
+		public Adapter adapter() {
+			return null;
 		}
 	},
 	DATE(10),
@@ -105,26 +97,25 @@ public enum ColumnType {
 	STRING(254),
 	GEOMETRY(255);
 
-	private ColumnType(int id_, ColumnTypeTrait... ts) {
+	private TypeId(int id_, Traits... ts) {
 		id = id_;
 		int traits_ = 0;
-		for (ColumnTypeTrait t: ts) {
+		for (Traits t: ts) {
 			traits_ |= t.mask();
 		}
 		traits = traits_;
 	}
 
-	public Object readObject(ByteBuf src) {
+	public Adapter adapter() {
 		throw new UnsupportedOperationException(
-			"unsupported object type"
+			"Unsupported object type"
 		);
 	}
 
-
-	public static ColumnType forId(int id) {
+	public static TypeId forId(int id) {
 		return MYSQL_TYPE_BY_ID.get(id);
 	}
-
+/*
 	public static JavaTypeAdapter adapterForClass(Class<?> cls) {
 		JavaTypeAdapter a = findAdapterForClass(cls);
 		return a != null ? a : DefaultAdapter.INSTANCE;
@@ -150,11 +141,11 @@ public enum ColumnType {
 
 		return null;
 	}
-
+*/
 	private static final ImmutableMap<
-		Integer, ColumnType
+		Integer, TypeId
 	> MYSQL_TYPE_BY_ID;
-
+/*
 	private static final ImmutableMap<
 		Class<?>, JavaTypeAdapter
 	> ADAPTER_FOR_CLASS = ImmutableMap.<
@@ -164,17 +155,17 @@ public enum ColumnType {
 	).put(
 		ScatteringByteChannel.class, ByteChannelAdapter.INSTANCE
 	).build();
-
+*/
 	public final int id;
 	public final int traits;
 
 	static {
 		ImmutableMap.Builder<
-			Integer, ColumnType
+			Integer, TypeId
 		> builder = ImmutableMap.builder();
 
-		for (ColumnType ct: ColumnType.values())
-			builder.put(ct.id, ct);
+		for (TypeId t: TypeId.values())
+			builder.put(t.id, t);
 
 		MYSQL_TYPE_BY_ID = builder.build();
 	}

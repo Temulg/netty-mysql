@@ -25,37 +25,44 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.value;
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.ErrorNumbers;
-import udentric.mysql.MysqlString;
-import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnTypeTrait;
-import udentric.mysql.classic.Field;
-import udentric.mysql.classic.Packet;
+package udentric.mysql.classic;
 
-public class LongAdapter implements JavaTypeAdapter {
-	private LongAdapter() {
+import java.nio.charset.Charset;
+
+import com.google.common.base.MoreObjects;
+
+import io.netty.buffer.ByteBuf;
+
+public class ServerAck	{
+	public ServerAck(ByteBuf msg, boolean okPacket, Charset cs) {
+		rows = okPacket ? Packet.readLongLenenc(msg) : 0;
+		insertId = okPacket ? Packet.readLongLenenc(msg) : 0;
+		srvStatus = msg.readShortLE();
+		warnCount = Packet.readInt2(msg);
+
+		info = okPacket ? msg.readCharSequence(
+			msg.readableBytes(), cs
+		).toString() : "";
 	}
 
 	@Override
-	public Object decodeTextValue(MysqlString value, Field fld) {
-		if (ColumnTypeTrait.INTEGER.get(fld.type.traits)) {
-			return Long.parseLong(value.toString());
-		} else {
-			Channels.throwAny(Packet.makeError(
-				ErrorNumbers.ER_ILLEGAL_VALUE_FOR_TYPE
-			));
-			return null;
-		}
+	public String toString() {
+		return MoreObjects.toStringHelper(this).add(
+			"rows", rows
+		).add(
+			"insertId", insertId
+		).add(
+			"srvStatus", srvStatus
+		).add(
+			"warnCount", warnCount
+		).add(
+			"info", info
+		).toString();
 	}
 
-	public boolean encodeBinaryValue(
-		ByteBuf dst, Object val, Field fld, int valueOffset,
-		int softLimit
-	) {
-		throw new UnsupportedOperationException("Not implemented.");
-	}
-
-	public static LongAdapter INSTANCE = new LongAdapter();
+	public final long rows;
+	public final long insertId;
+	public final short srvStatus;
+	public final int warnCount;
+	public final String info;
 }

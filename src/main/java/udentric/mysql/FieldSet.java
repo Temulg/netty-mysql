@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
+ /*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -25,19 +25,57 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql;
 
-import io.netty.channel.Channel;
-import io.netty.util.concurrent.Promise;
-import udentric.mysql.PreparedStatement;
+import java.util.Arrays;
+import java.util.Iterator;
 
-public interface PreparedStatementTracker {
-	Promise<PreparedStatement> beginPrepare(Channel ch, String sql);
+public abstract class FieldSet implements Iterable<Field> {
+	public FieldSet(int count) {
+		fields = new Field[count];
+	}
 
-	void completePrepare(
-		String sql, int remoteId, ColumnDefinition args,
-		ColumnDefinition columns
-	);
+	public int size() {
+		return fields.length;
+	}
 
-	void discard(PreparedStatement stmt);
+	public Field get(int pos) {
+		return fields[pos];
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(fields);
+	}
+
+	@Override
+	public boolean equals(Object other_) {
+		if (!(other_ instanceof FieldSet))
+			return false;
+
+		FieldSet other = (FieldSet)other_;
+		return Arrays.equals(fields, other.fields);
+	}
+
+	public abstract <T> T getValue(DataRow row, int pos, Class<T> cls);
+
+	@Override
+	public Iterator<Field> iterator() {
+		return new Iterator<Field>() {
+			@Override
+			public boolean hasNext() {
+				return pos < fields.length;
+			}
+
+			@Override
+			public Field next() {
+				pos++;
+				return fields[pos - 1];
+			}
+
+			private int pos;
+		};
+	}
+
+	protected final Field[] fields;
 }

@@ -50,6 +50,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
 import udentric.mysql.Config;
 import udentric.mysql.classic.dicta.Dictum;
+import udentric.mysql.classic.prepared.StatementTracker;
 
 public class Channels {
 	private Channels() {
@@ -90,8 +91,8 @@ public class Channels {
 		return newPoolHandler(config, Collections.emptyMap());
 	}
 
-	public static Promise<Packet.ServerAck> newServerPromise(Channel ch) {
-		return new DefaultPromise<Packet.ServerAck>(ch.eventLoop());
+	public static Promise<ServerAck> newServerPromise(Channel ch) {
+		return new DefaultPromise<ServerAck>(ch.eventLoop());
 	}
 
 	public static void discardActiveDictum(Channel ch, Throwable cause) {
@@ -159,7 +160,9 @@ public class Channels {
 		Channel ch, InitialSessionInfo si, boolean pooled
 	) {
 		ch.attr(INITIAL_SESSION_INFO).set(si);
-		ch.attr(PSTMT_TRACKER).set(new SimpleStatementTracker());
+		ch.attr(PSTMT_TRACKER).set(
+			new udentric.mysql.classic.prepared.singular.StatementTracker()
+		);
 
 		ch.pipeline().addLast(
 			"udentric.mysql.classic.InboundPacketFramer",
@@ -223,9 +226,9 @@ public class Channels {
 		"udentric.mysql.classic.SessionInfo"
 	);
 	public static final AttributeKey<
-		PreparedStatementTracker
+		StatementTracker
 	> PSTMT_TRACKER = AttributeKey.valueOf(
-		"udentric.mysql.classic.PreparedStatementTracker"
+		"udentric.mysql.classic.prepared.StatementTracker"
 	);
 	public static final AttributeKey<
 		InitialSessionInfo

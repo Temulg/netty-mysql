@@ -29,7 +29,6 @@ package udentric.mysql.classic;
 
 import java.sql.SQLException;
 
-import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import java.nio.charset.Charset;
@@ -268,40 +267,6 @@ public class Packet {
 			xOpen = ErrorNumbers.mysqlToSqlState(errno);
 
 		return new SQLException(srvErrMsg, xOpen, errno, null);
-	}
-
-	public static class ServerAck	{
-		public ServerAck(ByteBuf msg, boolean okPacket, Charset cs) {
-			rows = okPacket ? readLongLenenc(msg) : 0;
-			insertId = okPacket ? readLongLenenc(msg) : 0;
-			srvStatus = msg.readShortLE();
-			warnCount = readInt2(msg);
-
-			info = okPacket ? msg.readCharSequence(
-				msg.readableBytes(), cs
-			).toString() : "";
-		}
-
-		@Override
-		public String toString() {
-			return MoreObjects.toStringHelper(this).add(
-				"rows", rows
-			).add(
-				"insertId", insertId
-			).add(
-				"srvStatus", srvStatus
-			).add(
-				"warnCount", warnCount
-			).add(
-				"info", info
-			).toString();
-		}
-
-		public final long rows;
-		public final long insertId;
-		public final short srvStatus;
-		public final int warnCount;
-		public final String info;
 	}
 
 	public static final int HEADER_SIZE = 4;

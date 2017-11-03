@@ -28,16 +28,19 @@
 package udentric.mysql.classic;
 
 import com.google.common.base.MoreObjects;
+
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.Encoding;
+import udentric.mysql.Field;
+import udentric.mysql.classic.type.sql.TypeId;
 
 import java.nio.charset.Charset;
-import java.sql.SQLException;
+import java.util.Objects;
 
-public class Field {
-	public Field(
+public class FieldImpl implements Field {
+	public FieldImpl(
 		ByteBuf src, Charset cs
-	) throws SQLException {
+	) {
 		Packet.skipBytesLenenc(src); // catalog
 
 		schema = Packet.readStringLenenc(src, cs);
@@ -52,20 +55,54 @@ public class Field {
 
 		encoding = Encoding.forId(Packet.readInt2(src));
 		length = src.readIntLE();
-		type = ColumnType.forId(Packet.readInt1(src));
+		type = TypeId.forId(Packet.readInt1(src));
 		flags = src.readShortLE();
 		decimalDigits = Packet.readInt1(src);
 		src.skipBytes(2);
+
+		hashCode = Objects.hash(
+			schema, tableAlias, tableName, columnAlias, columnName,
+			encoding.mysqlId, length, type, flags, decimalDigits
+		);
 	}
 
 	public int paramFlags() {
 		return 0;
 	}
 
-	public boolean encodeValueBinary(
-		ByteBuf dst, Object val, int valOffset, int softLimit
-	) {
-		return false;
+	@Override
+	public int hashCode() {
+		return hashCode;
+	}
+
+	@Override
+	public boolean equals(Object other_) {
+		if (!(other_ instanceof FieldImpl))
+			return false;
+
+		FieldImpl other = (FieldImpl)other_;
+
+		return schema.equals(
+			other.schema
+		) && tableAlias.equals(
+			other.tableAlias
+		) && tableName.equals(
+			other.tableName
+		) && columnAlias.equals(
+			other.columnAlias
+		) && columnName.equals(
+			other.columnName
+		) && (
+			encoding.mysqlId == other.encoding.mysqlId
+		) && (
+			length == other.length
+		) && (
+			type == other.type
+		) && (
+			flags == other.flags
+		) && (
+			decimalDigits == other.decimalDigits
+		);
 	}
 
 	@Override
@@ -100,7 +137,8 @@ public class Field {
 	public final String columnName;
 	public final Encoding encoding;
 	public final int length;
-	public final ColumnType type;
+	public final TypeId type;
 	public final short flags;
 	public final int decimalDigits;
+	private final int hashCode;
 }

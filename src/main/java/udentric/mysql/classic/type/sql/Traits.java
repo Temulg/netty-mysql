@@ -25,17 +25,15 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.type.sql;
 
 import udentric.mysql.util.BitsetEnum;
 
-public enum PreparedStatementCursorType implements BitsetEnum<Integer> {
-	NONE(0, ""),
-	READ_ONLY(1, "read only cursor"),
-	UPDATE(2, "update cursor"),
-	SCROLLABLE(4, "");
+public enum Traits implements BitsetEnum<Integer> {
+	INTEGER(0, "value is integer compatible"),
+	FLOAT(1, "value is float compatible");
 
-	private PreparedStatementCursorType(int bitPos_, String desc_) {
+	private Traits(int bitPos_, String desc_) {
 		bitPos = bitPos_;
 		desc = desc_;
 	}
@@ -47,37 +45,37 @@ public enum PreparedStatementCursorType implements BitsetEnum<Integer> {
 
 	@Override
 	public Integer mask() {
-		return 1 << bitPos;
+		return (int)(1 << bitPos);
 	}
 
-	public static String describe(Integer bits) {
+	public static String describe(Short bits) {
 		StringBuilder sb = new StringBuilder();
-		PreparedStatementCursorType[] scs = PreparedStatementCursorType.values();
+		Traits[] ctts = Traits.values();
 		int cPos = 0;
 		int ccPos = 0;
 
 		while (bits != 0) {
-			PreparedStatementCursorType sc = null;
-			if (cPos < scs.length) {
-				sc = scs[cPos];
-				while (sc.bitPos < ccPos) {
+			Traits ct = null;
+			if (cPos < ctts.length) {
+				ct = ctts[cPos];
+				while (ct.bitPos < ccPos) {
 					cPos++;
-					if (cPos < scs.length) {
-						sc = scs[cPos];
+					if (cPos < ctts.length) {
+						ct = ctts[cPos];
 					} else {
-						sc = null;
+						ct = null;
 						break;
 					}
 				}
 			}
 
 			if (1 == (bits & 1)) {
-				if (sc != null && sc.bitPos == ccPos) {
+				if (ct != null && ct.bitPos == ccPos) {
 					sb.append("bit ").append(ccPos).append(
 						" set: "
-					).append(sc.name()).append(
+					).append(ct.name()).append(
 						" ("
-					).append(sc.desc).append(")\n");
+					).append(ct.desc).append(")\n");
 				} else {
 					sb.append("bit ").append(
 						ccPos
@@ -85,7 +83,7 @@ public enum PreparedStatementCursorType implements BitsetEnum<Integer> {
 				}
 			}
 
-			bits = bits >>> 1;
+			bits = (short)(bits >>> 1);
 			ccPos++;
 		}
 		return sb.toString();

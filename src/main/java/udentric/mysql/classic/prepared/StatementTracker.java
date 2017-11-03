@@ -25,57 +25,20 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.prepared;
 
-import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
+import io.netty.util.concurrent.Promise;
+import udentric.mysql.FieldSet;
+import udentric.mysql.PreparedStatement;
 
-import udentric.mysql.Encoding;
-import udentric.mysql.ErrorNumbers;
+public interface StatementTracker {
+	Promise<PreparedStatement> beginPrepare(Channel ch, String sql);
 
-public class ColumnDefinition {
-	public ColumnDefinition(int fieldCount) {
-		fields = new Field[fieldCount];
-	}
+	void completePrepare(
+		String sql, int remoteId, FieldSet parameters,
+		FieldSet columns
+	);
 
-	public int fieldCount() {
-		return fields.length;
-	}
-
-	public boolean hasAllFields() {
-		return fieldPos == fields.length;
-	}
-
-	public void appendField(Field f) {
-		fields[fieldPos] = f;
-		fieldPos++;
-	}
-
-	public Row parseTextRow(ByteBuf src, Encoding enc) {
-		TextRow row = new TextRow(fields.length);
-		for (int pos = 0; pos < fields.length; ++pos)
-			row.extractValue(
-				pos, Packet.readIntLenenc(src), src,
-				fields[pos].encoding
-			);
-
-		return row;
-	}
-
-	public Field getField(int pos) {
-		if (pos < 0 || pos >= fields.length) {
-			Channels.throwAny(Packet.makeErrorFromState(
-				ErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
-			));
-		}
-
-		return fields[pos];
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T> T getFieldValue(Row row, int pos, Class<T> cls) {
-		return (T)row.getFieldValue(pos, fields[pos], cls);
-	}
-
-	private final Field[] fields;
-	private int fieldPos = 0;
+	void discard(PreparedStatement stmt);
 }

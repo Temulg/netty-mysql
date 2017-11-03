@@ -27,29 +27,8 @@
 
 package udentric.mysql;
 
-import udentric.mysql.classic.ColumnDefinition;
-
 public interface PreparedStatement {
-	int getServerId();
+	FieldSet parameters();
 
-	default boolean typesDeclared() {
-		return false;
-	}
-
-	default void typesDeclared(boolean v) {
-	}
-
-	default void markParameterPreloaded(int pos) {
-	}
-
-	default boolean parameterPreloaded(int pos) {
-		return false;
-	}
-
-	default void resetPreloaded() {
-	}
-
-	ColumnDefinition parameters();
-
-	ColumnDefinition columns();
+	FieldSet columns();
 }

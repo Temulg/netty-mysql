@@ -70,8 +70,7 @@ public class InitialSessionInfo {
 	}
 
 	public void onAuth(
-		Packet.ServerAck ack, ChannelHandlerContext ctx,
-		ChannelPromise chp
+		ServerAck ack, ChannelHandlerContext ctx, ChannelPromise chp
 	) {
 		LOGGER.debug(() -> {
 			return new ParameterizedMessage(
@@ -96,7 +95,7 @@ public class InitialSessionInfo {
 			return;
 		}
 
-		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
+		Promise<ServerAck> sp = Channels.newServerPromise(ch);
 
 		sp.addListener(sf -> {
 			if (sf.isSuccess())

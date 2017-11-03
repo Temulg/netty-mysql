@@ -35,13 +35,15 @@ import io.netty.util.concurrent.Promise;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.SessionInfo;
+import udentric.mysql.classic.prepared.Statement;
 
 public class CloseStatement implements Dictum {
 	public CloseStatement(
-		PreparedStatement stmt_, Promise<Packet.ServerAck> sp_
+		PreparedStatement stmt_, Promise<ServerAck> sp_
 	) {
-		stmt = stmt_;
+		stmt = (Statement)stmt_;
 		sp = sp_;
 	}
 
@@ -67,7 +69,7 @@ public class CloseStatement implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				ch.attr(Channels.PSTMT_TRACKER).get().discard(
@@ -99,6 +101,6 @@ public class CloseStatement implements Dictum {
 
 	public static final int OPCODE = 25;
 
-	private final PreparedStatement stmt;
-	private final Promise<Packet.ServerAck> sp;
+	private final Statement stmt;
+	private final Promise<ServerAck> sp;
 }

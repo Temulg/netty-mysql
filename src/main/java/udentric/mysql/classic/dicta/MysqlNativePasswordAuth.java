@@ -38,6 +38,7 @@ import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ClientCapability;
 import udentric.mysql.classic.InitialSessionInfo;
 import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.util.Scramble411;
 
 public class MysqlNativePasswordAuth implements Dictum {
@@ -113,7 +114,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				si.onAuth(ack, ctx, chp);

@@ -32,10 +32,11 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnDefinition;
-import udentric.mysql.classic.Field;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.FieldSetImpl;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SessionInfo;
 
@@ -46,7 +47,7 @@ public abstract class ResultSet implements Dictum {
 		rsc = rsc_;
 		lastSeqNum = lastSeqNum_;
 		state = this::columnCountReceived;
-		colDef = new ColumnDefinition(columnCount);
+		columns = new FieldSetImpl(columnCount);
 	}
 
 	protected ResultSet(
@@ -89,7 +90,7 @@ public abstract class ResultSet implements Dictum {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
@@ -112,9 +113,10 @@ public abstract class ResultSet implements Dictum {
 			return;
 		default:
 			src.skipBytes(Packet.HEADER_SIZE);
-			colDef = new ColumnDefinition(
+			columns = new FieldSetImpl(
 				Packet.readIntLenenc(src)
 			);
+			colFieldPos = 0;
 			state = this::columnCountReceived;
 		}
 	}
@@ -122,12 +124,14 @@ public abstract class ResultSet implements Dictum {
 	private void columnCountReceived(
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
-		if (!colDef.hasAllFields()) {
+		if (colFieldPos < columns.size()) {
 			try {
 				src.skipBytes(Packet.HEADER_SIZE);
-				colDef.appendField(
-					new Field(src, si.charset())
+				columns.set(
+					colFieldPos,
+					new FieldImpl(src, si.charset())
 				);
+				colFieldPos++;
 			} catch (Exception e) {
 				Channels.discardActiveDictum(ctx.channel(), e);
 			}
@@ -145,11 +149,11 @@ public abstract class ResultSet implements Dictum {
 			} else {
 				src.skipBytes(4);
 				state = this::columnDataReceived;
-				rsc.acceptMetadata(colDef);
+				rsc.acceptMetadata(columns);
 			}
 		} else {
 			state = this::columnDataReceived;
-			rsc.acceptMetadata(colDef);
+			rsc.acceptMetadata(columns);
 			columnDataReceived(src, ctx, si);
 		}
 	}
@@ -173,7 +177,7 @@ public abstract class ResultSet implements Dictum {
 			if (src.readableBytes() < 0xffffff) {
 				src.skipBytes(Packet.HEADER_SIZE + 1);
 
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, !si.expectEof(), si.charset()
 				);
 				
@@ -206,6 +210,7 @@ public abstract class ResultSet implements Dictum {
 
 	protected final ResultSetConsumer rsc;
 	protected ServerMessageConsumer state;
-	protected ColumnDefinition colDef;
+	protected FieldSetImpl columns;
 	protected int lastSeqNum;
+	protected int colFieldPos;
 }

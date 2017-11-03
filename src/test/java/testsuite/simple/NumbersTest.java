@@ -36,12 +36,12 @@ import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
 import testsuite.TestCase;
+import udentric.mysql.DataRow;
+import udentric.mysql.FieldSet;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.Row;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.SyncCommands;
-import udentric.mysql.classic.Packet.ServerAck;
 import udentric.mysql.classic.dicta.Query;
 
 public class NumbersTest extends TestCase {
@@ -72,21 +72,22 @@ public class NumbersTest extends TestCase {
 			"SELECT * from number_test",
 			new ResultSetConsumer(){
 				@Override
-				public void acceptRow(Row row) {
+				public void acceptRow(DataRow row) {
+
 					Assert.assertEquals(
-						(long)colDef.getFieldValue(
+						(long)columns.getValue(
 							row, 0, Long.class
 						),
 						Long.MIN_VALUE
 					);
 					Assert.assertEquals(
-						(long)colDef.getFieldValue(
+						(long)columns.getValue(
 							row, 1, Long.class
 						),
 						Long.MAX_VALUE
 					);
 					Assert.assertEquals(
-						(long)colDef.getFieldValue(
+						(long)columns.getValue(
 							row, 2, Long.class
 						),
 						TEST_BIGINT_VALUE
@@ -95,9 +96,9 @@ public class NumbersTest extends TestCase {
 
 				@Override
 				public void acceptMetadata(
-					ColumnDefinition colDef_
+					FieldSet columns_
 				) {
-					colDef = colDef_;
+					columns = columns_;
 				}
 			
 				@Override
@@ -114,7 +115,7 @@ public class NumbersTest extends TestCase {
 					latch.countDown();
 				}
 
-				ColumnDefinition colDef;
+				FieldSet columns;
 			}
 		)).addListener(Channels::defaultSendListener);
 		latch.await();

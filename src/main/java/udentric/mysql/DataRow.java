@@ -25,35 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.DataRow;
-import udentric.mysql.Encoding;
-import udentric.mysql.MysqlString;
-import udentric.mysql.util.ByteArrayString;
-
-public class TextRow implements DataRow {
-	TextRow(int columnCount) {
-		columns = new MysqlString[columnCount];
-	}
-
-	@Override
-	public void close() {
-		for (MysqlString s: columns) {
-			s.release();
-		}
-	}
-
-	public MysqlString rawValue(int pos) {
-		return columns[pos];
-	}
-
-	public void extractValue(
-		int pos, int length, ByteBuf src, Encoding enc
-	) {
-		columns[pos] = new ByteArrayString(src, length, enc);
-	}
-
-	private final MysqlString[] columns;
+public interface DataRow extends AutoCloseable {
 }

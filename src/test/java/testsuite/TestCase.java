@@ -182,7 +182,14 @@ public abstract class TestCase {
 
 		try {
 			SyncCommands.executeUpdate(ch, sql);
-		} catch (SQLException e) {
+		} catch (Exception e_) {
+			SQLException e;
+
+			if (e_ instanceof SQLException)
+				e = (SQLException)e_;
+			else
+				throw e_;
+
 			if ("42S01".equals(e.getSQLState())) {
 				logger.warn(
 					"Stale mysqld table cache preventing "

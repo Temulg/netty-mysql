@@ -33,6 +33,7 @@ import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SessionInfo;
 
@@ -69,7 +70,7 @@ public class Query implements Dictum {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(

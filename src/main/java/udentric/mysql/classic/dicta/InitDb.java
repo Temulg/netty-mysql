@@ -34,10 +34,11 @@ import io.netty.handler.codec.DecoderException;
 import io.netty.util.concurrent.Promise;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.SessionInfo;
 
 public class InitDb implements Dictum {
-	public InitDb(String schema_, Promise<Packet.ServerAck> sp_) {
+	public InitDb(String schema_, Promise<ServerAck> sp_) {
 		schema = schema_;
 		sp = sp_;
 	}
@@ -65,7 +66,7 @@ public class InitDb implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				Channels.discardActiveDictum(ch);
@@ -95,5 +96,5 @@ public class InitDb implements Dictum {
 	public static final int OPCODE = 2;
 
 	private final String schema;
-	private final Promise<Packet.ServerAck> sp;
+	private final Promise<ServerAck> sp;
 }

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
+ /*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -25,19 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.value;
+package udentric.mysql;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.MysqlString;
-import udentric.mysql.classic.Field;
-
-public interface JavaTypeAdapter {
-	default Object decodeTextValue(MysqlString value, Field fld) {
-		return null;
-	}
-
-	boolean encodeBinaryValue(
-		ByteBuf dst, Object val, Field fld, int valueOffset,
-		int softLimit
-	);
+public interface Field {
 }

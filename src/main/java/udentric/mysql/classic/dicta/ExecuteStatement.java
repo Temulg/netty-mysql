@@ -35,26 +35,27 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.DefaultFileRegion;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnDefinition;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.FieldSetImpl;
 import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.PreparedStatementCursorType;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SessionInfo;
+import udentric.mysql.classic.prepared.CursorType;
+import udentric.mysql.classic.prepared.Statement;
 
 public class ExecuteStatement implements Dictum {
 	public ExecuteStatement(
 		PreparedStatement pstmt_, ResultSetConsumer rsc_,
 		Object... args_
 	) {
-		pstmt = pstmt_;
-		params = pstmt.parameters();
+		pstmt = (Statement)pstmt_;
+		parameters = (FieldSetImpl)pstmt.parameters();
 		omitTypeDeclaration = pstmt.typesDeclared();
 		rsc = rsc_;
 
-		args = args_.length < params.fieldCount()
-			? Arrays.copyOf(args_, params.fieldCount())
-			: args_;
+		args = args_;
 		state = this::emitCommand;
 	}
 
@@ -77,27 +78,18 @@ public class ExecuteStatement implements Dictum {
 	) {
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(pstmt.getServerId());
-		dst.writeByte(PreparedStatementCursorType.NONE.mask());
+		dst.writeByte(CursorType.NONE.mask());
 		dst.writeIntLE(1);
-		ColumnDefinition params = pstmt.parameters();
-		if (params.fieldCount() == 0)
+		if (parameters.size() == 0)
 			return false;
 
 		writeNullBitmap(dst);
 		if (!omitTypeDeclaration) {
 			dst.writeByte(1);
-			try {
-				for (int c = 0; c < params.fieldCount(); c++) {
-					dst.writeByte(
-						params.getField(c).type.id
-					);
-					dst.writeByte(
-						params.getField(c).paramFlags()
-					);
-				}
-			} catch (Exception e) {
-				Channels.throwAny(e);
-			}
+			parameters.forEach(fld -> {
+				dst.writeByte(((FieldImpl)fld).type.id);
+				dst.writeByte(((FieldImpl)fld).paramFlags());
+			});
 		}
 
 		state = this::emitParamData;
@@ -105,15 +97,25 @@ public class ExecuteStatement implements Dictum {
 	}
 
 	private void writeNullBitmap(ByteBuf dst) {
-		byte[] nb = new byte[(params.fieldCount() + 7) / 8];
+		int bitCount = (parameters.size() + 7) & (~7);
 
-		for (int pos = 0; pos < params.fieldCount(); pos++) {
-			if (args[pos] == null) {
-				nb[pos >>> 3] |= (byte)(1 << (pos & 7));
+		for (int wPos = 0; wPos < bitCount; wPos += 8) {
+			int acc = 0;
+			for (int bPos = 0; bPos < 8; bPos++) {
+				int argPos = bPos + wPos;
+				if (argPos >= parameters.size())
+					break;
+
+				if (((
+					args.length <= argPos
+				) || (
+					args[argPos]==null
+				)) && !pstmt.parameterPreloaded(argPos)) {
+					acc |= 1 << bPos;
+				}
 			}
+			dst.writeByte(acc);
 		}
-
-		dst.writeBytes(nb);
 	}
 
 	private boolean emitParamData(
@@ -134,7 +136,7 @@ public class ExecuteStatement implements Dictum {
 				paramPos++;
 				paramOffset = 0;
 				paramConsumed = false;
-				if (paramPos >= params.fieldCount())
+				if (paramPos >= parameters.size())
 					return false;
 			}
 
@@ -148,7 +150,7 @@ public class ExecuteStatement implements Dictum {
 			if (limit == 0)
 				return true;
 
-			paramConsumed = !params.getField(
+			paramConsumed = !parameters.get(
 				paramPos
 			).encodeValueBinary(
 				dst, args[paramPos], paramOffset, limit
@@ -209,7 +211,7 @@ public class ExecuteStatement implements Dictum {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
-				Packet.ServerAck ack = new Packet.ServerAck(
+				ServerAck ack = new ServerAck(
 					src, true, si.charset()
 				);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
@@ -252,8 +254,8 @@ public class ExecuteStatement implements Dictum {
 
 	public static final int OPCODE = 23;
 
-	private final PreparedStatement pstmt;
-	private final ColumnDefinition params;
+	private final Statement pstmt;
+	private final FieldSetImpl parameters;
 	private final ResultSetConsumer rsc;
 	private final boolean omitTypeDeclaration;
 	private final Object[] args;

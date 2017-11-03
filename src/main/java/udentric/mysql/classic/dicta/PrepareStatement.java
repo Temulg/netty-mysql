@@ -34,8 +34,8 @@ import io.netty.util.concurrent.Promise;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnDefinition;
-import udentric.mysql.classic.Field;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.FieldSetImpl;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.SessionInfo;
 
@@ -85,18 +85,18 @@ public class PrepareStatement implements Dictum {
 
 			try {
 				stmtId = src.readIntLE();
-				colDef = new ColumnDefinition(
+				columns = new FieldSetImpl(
 					Packet.readInt2(src)
 				);
-				paramDef = new ColumnDefinition(
+				parameters = new FieldSetImpl(
 					Packet.readInt2(src)
 				);
 				src.skipBytes(1);
 				warnCount = Packet.readInt2(src);
 
-				if (!paramDef.hasAllFields())
+				if (paramFieldPos < parameters.size())
 					state = this::receiveParamDef;
-				else if (!colDef.hasAllFields())
+				else if (colFieldPos < columns.size())
 					state = this::receiveColDef;
 				else
 					completePreparation(ch);
@@ -118,12 +118,14 @@ public class PrepareStatement implements Dictum {
 	) {
 		Channel ch = ctx.channel();
 
-		if (!paramDef.hasAllFields()) {
+		if (paramFieldPos < parameters.size()) {
 			try {
 				src.skipBytes(Packet.HEADER_SIZE);
-				paramDef.appendField(
-					new Field(src, si.charset())
+				parameters.set(
+					paramFieldPos, 
+					new FieldImpl(src, si.charset())
 				);
+				paramFieldPos++;
 			} catch (Exception e) {
 				Channels.discardActiveDictum(ch, e);
 			}
@@ -140,13 +142,13 @@ public class PrepareStatement implements Dictum {
 				);
 			} else {
 				src.skipBytes(4);
-				if (colDef.hasAllFields())
+				if (colFieldPos >= columns.size())
 					completePreparation(ch);
 				else
 					state = this::receiveColDef;
 			}
 		} else {
-			if (colDef.hasAllFields())
+			if (colFieldPos >= columns.size())
 				completePreparation(ch);
 			else
 				state = this::receiveColDef;
@@ -160,12 +162,14 @@ public class PrepareStatement implements Dictum {
 	) {
 		Channel ch = ctx.channel();
 
-		if (!colDef.hasAllFields()) {
+		if (colFieldPos < columns.size()) {
 			try {
 				src.skipBytes(Packet.HEADER_SIZE);
-				colDef.appendField(
-					new Field(src, si.charset())
+				columns.set(
+					colFieldPos,
+					new FieldImpl(src, si.charset())
 				);
+				colFieldPos++;
 			} catch (Exception e) {
 				Channels.discardActiveDictum(ch, e);
 			}
@@ -191,7 +195,7 @@ public class PrepareStatement implements Dictum {
 	private void completePreparation(Channel ch) {
 		Channels.discardActiveDictum(ch);
 		ch.attr(Channels.PSTMT_TRACKER).get().completePrepare(
-			sql, stmtId, paramDef, colDef
+			sql, stmtId, parameters, columns
 		);
 	}
 
@@ -205,9 +209,11 @@ public class PrepareStatement implements Dictum {
 	private final String sql;
 	private final Promise<PreparedStatement> psp;
 	protected ServerMessageConsumer state;
-	protected ColumnDefinition paramDef;
-	protected ColumnDefinition colDef;
+	protected FieldSetImpl parameters;
+	protected FieldSetImpl columns;
 	protected int stmtId;
 	protected int warnCount;
 	protected int lastSeqNum;
+	private int paramFieldPos;
+	private int colFieldPos;
 }

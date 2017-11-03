@@ -25,21 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.value;
+package udentric.mysql.classic.type.sql;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.Field;
-
-public class DefaultAdapter implements JavaTypeAdapter {
-	private DefaultAdapter() {
-	}
-
-	public boolean encodeBinaryValue(
-		ByteBuf dst, Object val, Field fld, int valueOffset,
-		int softLimit
-	) {
-		throw new UnsupportedOperationException("Not implemented.");
-	}
-
-	public static DefaultAdapter INSTANCE = new DefaultAdapter();
+public interface Adapter {
 }

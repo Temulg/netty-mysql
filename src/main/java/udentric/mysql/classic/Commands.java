@@ -39,17 +39,11 @@ public class Commands {
 	private Commands() {
 	}
 
-	public static Future<Packet.ServerAck> executeUpdate(
+	public static Future<ServerAck> executeUpdate(
 		Channel ch, String sql
 	) {
-		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
+		Promise<ServerAck> sp = Channels.newServerPromise(ch);
 		ch.writeAndFlush(new Query(sql, new ResultSetConsumer(){
-			@Override
-			public void acceptRow(Row row) {}
-		
-			@Override
-			public void acceptMetadata(ColumnDefinition colDef) {}
-		
 			@Override
 			public void acceptFailure(Throwable cause) {
 				sp.setFailure(cause);
@@ -57,7 +51,7 @@ public class Commands {
 		
 			@Override
 			public void acceptAck(
-				Packet.ServerAck ack, boolean terminal
+				ServerAck ack, boolean terminal
 			) {
 				if (terminal)
 					sp.setSuccess(ack);
@@ -83,26 +77,20 @@ public class Commands {
 		return psp;
 	}
 
-	public static Future<Packet.ServerAck> executeUpdate(
+	public static Future<ServerAck> executeUpdate(
 		Channel ch, PreparedStatement pstmt, Object... args
 	) {
-		Promise<Packet.ServerAck> sp = Channels.newServerPromise(ch);
+		Promise<ServerAck> sp = Channels.newServerPromise(ch);
 		ch.writeAndFlush(new ExecuteStatement(
 			pstmt, new ResultSetConsumer(){
-				@Override
-				public void acceptRow(Row row) {}
-		
-				@Override
-				public void acceptMetadata(ColumnDefinition colDef) {}
-		
 				@Override
 				public void acceptFailure(Throwable cause) {
 					sp.setFailure(cause);
 				}
-		
+
 				@Override
 				public void acceptAck(
-					Packet.ServerAck ack, boolean terminal
+					ServerAck ack, boolean terminal
 				) {
 					if (terminal)
 						sp.setSuccess(ack);

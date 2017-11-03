@@ -25,20 +25,27 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.value;
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.Field;
+package udentric.mysql.classic.prepared;
 
-public class ByteChannelAdapter implements JavaTypeAdapter {
-	private ByteChannelAdapter() {
+import udentric.mysql.PreparedStatement;
+
+public interface Statement extends PreparedStatement {
+	int getServerId();
+
+	default boolean typesDeclared() {
+		return false;
 	}
-
-	public boolean encodeBinaryValue(
-		ByteBuf dst, Object val, Field fld, int valueOffset,
-		int softLimit
-	) {
-		throw new UnsupportedOperationException("Not implemented.");
+	
+	default void typesDeclared(boolean v) {
 	}
-
-	public static ByteChannelAdapter INSTANCE = new ByteChannelAdapter();
+	
+	default void markParameterPreloaded(int pos) {
+	}
+	
+	default boolean parameterPreloaded(int pos) {
+		return false;
+	}
+	
+	default void resetPreloaded() {
+	}
 }

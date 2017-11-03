@@ -45,13 +45,13 @@ import org.testng.log4testng.Logger;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.stream.ChunkedNioFile;
 import testsuite.TestCase;
+import udentric.mysql.DataRow;
+import udentric.mysql.FieldSet;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.ColumnDefinition;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.Row;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.SyncCommands;
-import udentric.mysql.classic.Packet.ServerAck;
 import udentric.mysql.classic.dicta.Query;
 
 public class BlobTest extends TestCase {
@@ -141,17 +141,19 @@ public class BlobTest extends TestCase {
 			"SELECT blobdata from BLOBTEST LIMIT 1",
 			new ResultSetConsumer(){
 				@Override
-				public void acceptRow(Row row) {
+				public void acceptRow(DataRow row) {
 					Assert.assertTrue(checkBlob(
-						colDef.getFieldValue(row, 0, ByteBuf.class)
+						columns.getValue(
+							row, 0, ByteBuf.class
+						)
 					));
 				}
 
 				@Override
 				public void acceptMetadata(
-					ColumnDefinition colDef_
+					FieldSet columns_
 				) {
-					colDef = colDef_;
+					columns = columns_;
 				}
 			
 				@Override
@@ -168,7 +170,7 @@ public class BlobTest extends TestCase {
 					latch.countDown();
 				}
 
-				ColumnDefinition colDef;
+				FieldSet columns;
 			}
 		)).addListener(Channels::defaultSendListener);
 		latch.await();

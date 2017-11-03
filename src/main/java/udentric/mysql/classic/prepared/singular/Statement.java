@@ -25,19 +25,70 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.prepared.singular;
 
-import udentric.mysql.DataRow;
+import java.util.BitSet;
+
 import udentric.mysql.FieldSet;
+import udentric.mysql.classic.FieldSetImpl;
 
-public interface ResultSetConsumer {
-	default void acceptMetadata(FieldSet columns) {
+class Statement implements udentric.mysql.classic.prepared.Statement {
+	Statement(
+		String sql_, int srvId_,
+		FieldSetImpl parameters_,
+		FieldSetImpl columns_
+	) {
+		sql = sql_;
+		srvId = srvId_;
+		parameters = parameters_;
+		columns = columns_;
+		parameterPreloaded = new BitSet(parameters.size());
 	}
 
-	default void acceptRow(DataRow row) {
+	@Override
+	public boolean typesDeclared() {
+		return typesDeclared;
 	}
 
-	void acceptAck(ServerAck ack, boolean terminal);
+	@Override
+	public void typesDeclared(boolean v) {
+		typesDeclared = v;
+	}
 
-	void acceptFailure(Throwable cause);
+	@Override
+	public void markParameterPreloaded(int pos) {
+		parameterPreloaded.set(pos);
+	}
+
+	@Override
+	public boolean parameterPreloaded(int pos) {
+		return parameterPreloaded.get(pos);
+	}
+
+	@Override
+	public void resetPreloaded() {
+		parameterPreloaded.clear();
+	}
+
+	@Override
+	public int getServerId() {
+		return srvId;
+	}
+
+	@Override
+	public FieldSet parameters() {
+		return parameters;
+	}
+
+	@Override
+	public FieldSet columns() {
+		return columns;
+	}
+
+	final String sql;
+	final int srvId;
+	private final FieldSetImpl parameters;
+	private final FieldSetImpl columns;
+	private final BitSet parameterPreloaded;
+	private boolean typesDeclared;
 }

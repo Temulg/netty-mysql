@@ -27,8 +27,6 @@
 
 package udentric.mysql.classic;
 
-import java.sql.SQLException;
-
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import udentric.mysql.PreparedStatement;
@@ -37,10 +35,8 @@ public class SyncCommands {
 	private SyncCommands() {
 	}
 
-	public static Packet.ServerAck executeUpdate(
-		Channel ch, String sql
-	) throws SQLException {
-		Future<Packet.ServerAck> sf = null;;
+	public static ServerAck executeUpdate(Channel ch, String sql) {
+		Future<ServerAck> sf = null;;
 
 		try {
 			sf = Commands.executeUpdate(
@@ -60,7 +56,7 @@ public class SyncCommands {
 
 	public static PreparedStatement prepareStatement(
 		Channel ch, String sql
-	) throws SQLException {
+	) {
 		Future<PreparedStatement> psp = null;
 
 		try {
@@ -79,10 +75,10 @@ public class SyncCommands {
 		}
 	}
 
-	public static Packet.ServerAck executeUpdate(
+	public static ServerAck executeUpdate(
 		Channel ch, PreparedStatement pstmt, Object... args
-	) throws SQLException {
-		Future<Packet.ServerAck> sf = null;;
+	) {
+		Future<ServerAck> sf = null;;
 
 		try {
 			sf = Commands.executeUpdate(

@@ -25,15 +25,17 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.prepared;
 
 import udentric.mysql.util.BitsetEnum;
 
-public enum ColumnTypeTrait implements BitsetEnum<Integer> {
-	INTEGER(0, "value is integer compatible"),
-	FLOAT(1, "value is float compatible");
+public enum CursorType implements BitsetEnum<Integer> {
+	NONE(0, ""),
+	READ_ONLY(1, "read only cursor"),
+	UPDATE(2, "update cursor"),
+	SCROLLABLE(4, "");
 
-	private ColumnTypeTrait(int bitPos_, String desc_) {
+	private CursorType(int bitPos_, String desc_) {
 		bitPos = bitPos_;
 		desc = desc_;
 	}
@@ -45,37 +47,37 @@ public enum ColumnTypeTrait implements BitsetEnum<Integer> {
 
 	@Override
 	public Integer mask() {
-		return (int)(1 << bitPos);
+		return 1 << bitPos;
 	}
 
-	public static String describe(Short bits) {
+	public static String describe(Integer bits) {
 		StringBuilder sb = new StringBuilder();
-		ColumnTypeTrait[] ctts = ColumnTypeTrait.values();
+		CursorType[] scs = CursorType.values();
 		int cPos = 0;
 		int ccPos = 0;
 
 		while (bits != 0) {
-			ColumnTypeTrait ct = null;
-			if (cPos < ctts.length) {
-				ct = ctts[cPos];
-				while (ct.bitPos < ccPos) {
+			CursorType sc = null;
+			if (cPos < scs.length) {
+				sc = scs[cPos];
+				while (sc.bitPos < ccPos) {
 					cPos++;
-					if (cPos < ctts.length) {
-						ct = ctts[cPos];
+					if (cPos < scs.length) {
+						sc = scs[cPos];
 					} else {
-						ct = null;
+						sc = null;
 						break;
 					}
 				}
 			}
 
 			if (1 == (bits & 1)) {
-				if (ct != null && ct.bitPos == ccPos) {
+				if (sc != null && sc.bitPos == ccPos) {
 					sb.append("bit ").append(ccPos).append(
 						" set: "
-					).append(ct.name()).append(
+					).append(sc.name()).append(
 						" ("
-					).append(ct.desc).append(")\n");
+					).append(sc.desc).append(")\n");
 				} else {
 					sb.append("bit ").append(
 						ccPos
@@ -83,7 +85,7 @@ public enum ColumnTypeTrait implements BitsetEnum<Integer> {
 				}
 			}
 
-			bits = (short)(bits >>> 1);
+			bits = bits >>> 1;
 			ccPos++;
 		}
 		return sb.toString();

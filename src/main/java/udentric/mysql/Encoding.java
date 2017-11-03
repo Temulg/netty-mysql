@@ -44,6 +44,16 @@ public class Encoding {
 		return charset.equals(other.charset);
 	}
 
+	@Override
+	public boolean equals(Object other_) {
+		if (!(other_ instanceof Encoding))
+			return false;
+
+		Encoding other = (Encoding)other_;
+
+		return mysqlId == other.mysqlId;
+	}
+
 	public final int mysqlId;
 	public final String mysqlCharset;
 	public final String mysqlCollation;
