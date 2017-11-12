@@ -46,7 +46,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.stream.ChunkedNioFile;
 import testsuite.TestCase;
 import udentric.mysql.DataRow;
-import udentric.mysql.FieldSet;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
@@ -143,19 +142,12 @@ public class BlobTest extends TestCase {
 				@Override
 				public void acceptRow(DataRow row) {
 					Assert.assertTrue(checkBlob(
-						columns.getValue(
-							row, 0, ByteBuf.class
+						row.getValue(
+							0, ByteBuf.class
 						)
 					));
 				}
 
-				@Override
-				public void acceptMetadata(
-					FieldSet columns_
-				) {
-					columns = columns_;
-				}
-			
 				@Override
 				public void acceptFailure(Throwable cause) {
 					Assert.fail("query failed", cause);
@@ -169,8 +161,6 @@ public class BlobTest extends TestCase {
 					Assert.assertTrue(terminal);
 					latch.countDown();
 				}
-
-				FieldSet columns;
 			}
 		)).addListener(Channels::defaultSendListener);
 		latch.await();

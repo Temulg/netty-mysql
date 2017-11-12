@@ -29,31 +29,47 @@ package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.DataRow;
-import udentric.mysql.Encoding;
-import udentric.mysql.MysqlString;
-import udentric.mysql.util.ByteArrayString;
 
-public class TextRow implements DataRow {
-	TextRow(int columnCount) {
-		columns = new MysqlString[columnCount];
+public class BinaryDataRow implements DataRow {
+	public BinaryDataRow(FieldSetImpl columns_, ByteBuf data_) {
+		columns = columns_;
+		index = new int[columns.size() * 2];
+		data = data_;
+
+		int offset = 0;
+
+		for (int pos = 0; pos < columns.size(); pos++) {
+			((FieldImpl)(columns.get(pos))).binaryValueByteSize(
+				data, offset
+			);
+			offset = index[pos * 2] + index[pos * 2 + 1];
+		}
 	}
 
 	@Override
 	public void close() {
-		for (MysqlString s: columns) {
-			s.release();
+		data.release();
+	}
+
+	@Override
+	public <T> T getValue(int pos, Class<T> cls) {
+		return ((FieldImpl)(columns.get(pos))).binaryValueDecode(
+			data, index[pos * 2], index[pos * 2 + 1], cls
+		);
+	}
+
+	private void indexFields(int last) {
+		int offset = 0;
+
+		for (int pos = 0; pos <= last * 2; pos += 2) {
+			if (index[pos] == 0) {
+				
+			}
+			offset = index[pos] + index[pos + 1];
 		}
 	}
 
-	public MysqlString rawValue(int pos) {
-		return columns[pos];
-	}
-
-	public void extractValue(
-		int pos, int length, ByteBuf src, Encoding enc
-	) {
-		columns[pos] = new ByteArrayString(src, length, enc);
-	}
-
-	private final MysqlString[] columns;
+	private final FieldSetImpl columns;
+	private final int[] index;		
+	private final ByteBuf data;
 }

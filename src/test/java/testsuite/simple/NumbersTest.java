@@ -37,7 +37,6 @@ import org.testng.log4testng.Logger;
 
 import testsuite.TestCase;
 import udentric.mysql.DataRow;
-import udentric.mysql.FieldSet;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.ServerAck;
@@ -73,34 +72,26 @@ public class NumbersTest extends TestCase {
 			new ResultSetConsumer(){
 				@Override
 				public void acceptRow(DataRow row) {
-
 					Assert.assertEquals(
-						(long)columns.getValue(
-							row, 0, Long.class
+						(long)row.getValue(
+							0, Long.class
 						),
 						Long.MIN_VALUE
 					);
 					Assert.assertEquals(
-						(long)columns.getValue(
-							row, 1, Long.class
+						(long)row.getValue(
+							1, Long.class
 						),
 						Long.MAX_VALUE
 					);
 					Assert.assertEquals(
-						(long)columns.getValue(
-							row, 2, Long.class
+						(long)row.getValue(
+							2, Long.class
 						),
 						TEST_BIGINT_VALUE
 					);
 				}
 
-				@Override
-				public void acceptMetadata(
-					FieldSet columns_
-				) {
-					columns = columns_;
-				}
-			
 				@Override
 				public void acceptFailure(Throwable cause) {
 					Assert.fail("query failed", cause);
@@ -114,8 +105,6 @@ public class NumbersTest extends TestCase {
 					Assert.assertTrue(terminal);
 					latch.countDown();
 				}
-
-				FieldSet columns;
 			}
 		)).addListener(Channels::defaultSendListener);
 		latch.await();

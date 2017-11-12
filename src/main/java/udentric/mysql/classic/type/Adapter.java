@@ -25,48 +25,41 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.type;
 
-import udentric.mysql.FieldSet;
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.FieldImpl;
 
-public class FieldSetImpl extends FieldSet {
-	public FieldSetImpl(int count) {
-		super(count);
+public interface Adapter {
+	default <T> T textValueDecode(
+		ByteBuf src, int offset, int length, Class<T> cls,
+		FieldImpl fld
+	) {
+		throw new UnsupportedOperationException("Not implemented yet");
 	}
 
-	public void set(int pos, FieldImpl fld) {
-		fields[pos] = fld;
+	default <T> Adapter getAdapterForClass(Class<T> cls) {
+		return null;
 	}
 
-/*
-	public boolean hasAllFields() {
-		return fieldPos == fields.length;
-	}
+	default <T> Adapter findAdapterForClass(Class<T> cls) {
+		if (cls == null || cls == Object.class)
+			return null;
 
-	public void appendField(Field f) {
-		fields[fieldPos] = f;
-		fieldPos++;
-	}
+		Adapter a = getAdapterForClass(cls);
+		if (a != null)
+			return a;
 
-	public Row parseTextRow(ByteBuf src, Encoding enc) {
-		TextRow row = new TextRow(fields.length);
-		for (int pos = 0; pos < fields.length; ++pos)
-			row.extractValue(
-				pos, Packet.readIntLenenc(src), src,
-				fields[pos].encoding
-			);
+		a = findAdapterForClass(cls.getSuperclass());
+		if (a != null)
+			return a;
 
-		return row;
-	}
-
-	public Field getField(int pos) {
-		if (pos < 0 || pos >= fields.length) {
-			Channels.throwAny(Packet.makeErrorFromState(
-				ErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
-			));
+		for (Class<?> iface: cls.getInterfaces()) {
+			a = findAdapterForClass(iface);
+			if (a != null)
+				return a;
 		}
 
-		return fields[pos];
+		return null;
 	}
-*/
 }

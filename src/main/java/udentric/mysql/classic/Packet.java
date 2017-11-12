@@ -123,7 +123,45 @@ public class Packet {
 		String rv = in.readCharSequence(len, cs).toString();
 		in.skipBytes(1);
 		return rv;
-        }
+	}
+
+	public static void getRangeLenenc(
+		int[] rangeVec, int vecPos, ByteBuf in, int bufOffset
+	) {
+		int offset = in.readerIndex() + bufOffset;
+		int len = 0xff & in.getByte(offset);
+		offset++;
+		if (len < 0xfb) {
+			rangeVec[vecPos] = offset;
+			rangeVec[vecPos + 1] = len;
+			return;
+		}
+
+		switch (len) {
+		case 0xfb:
+			rangeVec[vecPos] = offset;
+			rangeVec[vecPos + 1] = 0;
+			return;
+		case 0xfc:
+			rangeVec[vecPos] = offset + 2;
+			rangeVec[vecPos + 1] = 0xffff & in.getShortLE(offset);
+			return;
+		case 0xfd:
+			rangeVec[vecPos] = offset + 3;
+			rangeVec[vecPos + 1] = in.getMediumLE(offset);
+			return;
+		case 0xfe:
+			rangeVec[vecPos] = offset + 8;
+			rangeVec[vecPos + 1] = Math.toIntExact(
+				in.getLongLE(offset)
+			);
+			return;
+		default:
+			Channels.throwAny(makeError(
+				ErrorNumbers.ER_MALFORMED_PACKET
+			));
+		}
+	}
 
 	public static String readStringLenenc(ByteBuf in, Charset cs) {
 		int len = readInt1(in);
@@ -143,18 +181,15 @@ public class Packet {
 				in.readMediumLE(), cs
 			).toString();
 		case 0xfe:
-			long llen = in.readLongLE();
-			if (llen <= Integer.MAX_VALUE) {
-				return in.readCharSequence(
-					(int)llen, cs
-				).toString();
-			}
-		default:
-			Channels.throwAny(makeError(
-				ErrorNumbers.ER_MALFORMED_PACKET
-			));
-			return "";
+			return in.readCharSequence(
+				Math.toIntExact(in.readLongLE()), cs
+			).toString();
 		}
+
+		Channels.throwAny(makeError(
+			ErrorNumbers.ER_MALFORMED_PACKET
+		));
+		return "";
 	}
 
 	public static void skipBytesLenenc(ByteBuf in) {
@@ -174,12 +209,10 @@ public class Packet {
 			in.skipBytes(in.readMediumLE());
 			return;
 		case 0xfe:
-			long llen = in.readLongLE();
-			if (llen <= Integer.MAX_VALUE) {
-				in.skipBytes((int)llen);
-				return;
-			}
+			in.skipBytes(Math.toIntExact(in.readLongLE()));
+			return;
 		}
+
 		Channels.throwAny(makeError(
 			ErrorNumbers.ER_MALFORMED_PACKET
 		));

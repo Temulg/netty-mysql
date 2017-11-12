@@ -30,6 +30,7 @@ package udentric.mysql.classic.dicta;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageDecoder;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
@@ -174,7 +175,7 @@ public abstract class ResultSet implements Dictum {
 			);
 			return;
 		case Packet.EOF:
-			if (src.readableBytes() < 0xffffff) {
+			if (src.readableBytes() < si.packetSize) {
 				src.skipBytes(Packet.HEADER_SIZE + 1);
 
 				ServerAck ack = new ServerAck(
@@ -196,7 +197,28 @@ public abstract class ResultSet implements Dictum {
 			}
 		}
 
-		handleRowData(src, ctx, si);
+		src.skipBytes(Packet.HEADER_SIZE);
+		boolean incomplete = src.readableBytes() >= si.packetSize;
+		ByteBuf data = src;
+
+		if (partial == null) {
+			if (incomplete) {
+				partial = src;
+				return;
+			}
+		} else {
+			partial = ByteToMessageDecoder.COMPOSITE_CUMULATOR.cumulate(
+				ctx.alloc(), partial, src
+			);
+
+			if (incomplete)
+				return;
+
+			data = partial;
+			partial = null;
+		}
+
+		handleRowData(data, ctx, si);
 	}
 
 	protected abstract void handleRowData(
@@ -213,4 +235,5 @@ public abstract class ResultSet implements Dictum {
 	protected FieldSetImpl columns;
 	protected int lastSeqNum;
 	protected int colFieldPos;
+	protected ByteBuf partial;
 }

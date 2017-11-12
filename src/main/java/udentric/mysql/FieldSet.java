@@ -57,8 +57,6 @@ public abstract class FieldSet implements Iterable<Field> {
 		return Arrays.equals(fields, other.fields);
 	}
 
-	public abstract <T> T getValue(DataRow row, int pos, Class<T> cls);
-
 	@Override
 	public Iterator<Field> iterator() {
 		return new Iterator<Field>() {

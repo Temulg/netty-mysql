@@ -32,7 +32,7 @@ import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.Encoding;
 import udentric.mysql.Field;
-import udentric.mysql.classic.type.sql.TypeId;
+import udentric.mysql.classic.type.TypeId;
 
 import java.nio.charset.Charset;
 import java.util.Objects;
@@ -59,11 +59,6 @@ public class FieldImpl implements Field {
 		flags = src.readShortLE();
 		decimalDigits = Packet.readInt1(src);
 		src.skipBytes(2);
-
-		hashCode = Objects.hash(
-			schema, tableAlias, tableName, columnAlias, columnName,
-			encoding.mysqlId, length, type, flags, decimalDigits
-		);
 	}
 
 	public int paramFlags() {
@@ -72,7 +67,10 @@ public class FieldImpl implements Field {
 
 	@Override
 	public int hashCode() {
-		return hashCode;
+		return Objects.hash(
+			schema, tableAlias, tableName, columnAlias, columnName,
+			encoding.mysqlId, length, type, flags, decimalDigits
+		);
 	}
 
 	@Override
@@ -130,6 +128,29 @@ public class FieldImpl implements Field {
 		).toString();
 	}
 
+	public <T> T textValueDecode(
+		ByteBuf src, int offset, int length, Class<T> cls
+	) {
+		return type.adapter.textValueDecode(
+			src, offset, length, cls, this
+		);
+	}
+
+	public boolean binaryValueEncode(
+		ByteBuf dst, Object value, int valueOffset, int bufLimit
+	) {
+
+	}
+
+	public <T> T binaryValueDecode(
+		ByteBuf src, int offset, int length, Class<T> cls
+	) {
+		
+	}
+
+	public int binaryValueByteSize(ByteBuf src, int offset) {
+	}
+
 	public final String schema;
 	public final String tableAlias;
 	public final String tableName;
@@ -140,5 +161,4 @@ public class FieldImpl implements Field {
 	public final TypeId type;
 	public final short flags;
 	public final int decimalDigits;
-	private final int hashCode;
 }

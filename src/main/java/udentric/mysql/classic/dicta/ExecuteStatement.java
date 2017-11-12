@@ -27,12 +27,9 @@
 
 package udentric.mysql.classic.dicta;
 
-import java.util.Arrays;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.DefaultFileRegion;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
@@ -150,9 +147,9 @@ public class ExecuteStatement implements Dictum {
 			if (limit == 0)
 				return true;
 
-			paramConsumed = !parameters.get(
+			paramConsumed = !((FieldImpl)(parameters.get(
 				paramPos
-			).encodeValueBinary(
+			))).binaryValueEncode(
 				dst, args[paramPos], paramOffset, limit
 			);
 			paramOffset += dst.writerIndex() - lastPos;

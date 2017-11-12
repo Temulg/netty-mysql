@@ -31,9 +31,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.DataRow;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.SessionInfo;
+import udentric.mysql.classic.TextDataRow;
 
 public class TextResultSet extends ResultSet {
 	public TextResultSet(
@@ -50,9 +50,10 @@ public class TextResultSet extends ResultSet {
 	protected void handleRowData(
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
-		src.skipBytes(Packet.HEADER_SIZE);
-		try (DataRow r = columns.parseTextRow(src, si.encoding)) {
+		try (DataRow r = new TextDataRow(columns, src)) {
 			rsc.acceptRow(r);
+		} catch (Exception e) {
+			Channels.throwAny(e);
 		}
 	}
 }

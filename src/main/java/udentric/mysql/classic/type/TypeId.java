@@ -25,7 +25,72 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.sql;
+package udentric.mysql.classic.type;
 
-public interface Adapter {
+import com.google.common.collect.ImmutableMap;
+
+public enum TypeId {
+	DECIMAL(0),
+	TINY(1),
+	SHORT(2),
+	LONG(3, new LongAdapter()),
+	FLOAT(4),
+	DOUBLE(5),
+	NULL(6),
+	TIMESTAMP(7),
+	LONGLONG(8),
+	INT24(9),
+	DATE(10),
+	TIME(11),
+	DATETIME(12),
+	YEAR(13),
+	NEWDATE(14),
+	VARCHAR(15),
+	BIT(16),
+	TIMESTAMP2(17),
+	DATETIME2(18),
+	TIME2(19),
+	JSON(245),
+	NEWDECIMAL(246),
+	ENUM(247),
+	SET(248),
+	TINY_BLOB(249),
+	MEDIUM_BLOB(250),
+	LONG_BLOB(251),
+	BLOB(252),
+	VAR_STRING(253),
+	STRING(254),
+	GEOMETRY(255);
+
+	private TypeId(int id_, Adapter adapter_) {
+		id = id_;
+		adapter = adapter_;
+	}
+
+	private TypeId(int id_) {
+		id = id_;
+		adapter = new DefaultAdapter();
+	}
+
+	public static TypeId forId(int id) {
+		return MYSQL_TYPE_BY_ID.get(id);
+	}
+
+	private static final ImmutableMap<
+		Integer, TypeId
+	> MYSQL_TYPE_BY_ID;
+
+	public final int id;
+	public final Adapter adapter;
+
+	static {
+		ImmutableMap.Builder<
+			Integer, TypeId
+		> builder = ImmutableMap.builder();
+
+		for (TypeId t: TypeId.values())
+			builder.put(t.id, t);
+
+		MYSQL_TYPE_BY_ID = builder.build();
+	}
 }

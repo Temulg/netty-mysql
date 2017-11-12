@@ -27,46 +27,36 @@
 
 package udentric.mysql.classic;
 
-import udentric.mysql.FieldSet;
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.DataRow;
 
-public class FieldSetImpl extends FieldSet {
-	public FieldSetImpl(int count) {
-		super(count);
-	}
+public class TextDataRow implements DataRow {
+	public TextDataRow(FieldSetImpl columns_, ByteBuf data_) {
+		columns = columns_;
+		index = new int[2 * columns.size()];
+		data = data_;
 
-	public void set(int pos, FieldImpl fld) {
-		fields[pos] = fld;
-	}
+		int offset = 0;
 
-/*
-	public boolean hasAllFields() {
-		return fieldPos == fields.length;
-	}
-
-	public void appendField(Field f) {
-		fields[fieldPos] = f;
-		fieldPos++;
-	}
-
-	public Row parseTextRow(ByteBuf src, Encoding enc) {
-		TextRow row = new TextRow(fields.length);
-		for (int pos = 0; pos < fields.length; ++pos)
-			row.extractValue(
-				pos, Packet.readIntLenenc(src), src,
-				fields[pos].encoding
-			);
-
-		return row;
-	}
-
-	public Field getField(int pos) {
-		if (pos < 0 || pos >= fields.length) {
-			Channels.throwAny(Packet.makeErrorFromState(
-				ErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
-			));
+		for (int pos = 0; pos < (2 * columns.size()); pos += 2) {
+			Packet.getRangeLenenc(index, pos, data, offset);
+			offset = index[pos] + index[pos + 1];
 		}
-
-		return fields[pos];
 	}
-*/
+
+	@Override
+	public void close() {
+		data.release();
+	}
+
+	@Override
+	public <T> T getValue(int pos, Class<T> cls) {
+		return ((FieldImpl)(columns.get(pos))).textValueDecode(
+			data, index[pos * 2], index[pos * 2 + 1], cls
+		);
+	}
+
+	private final FieldSetImpl columns;
+	private final int[] index;
+	private final ByteBuf data;
 }

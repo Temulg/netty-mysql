@@ -30,8 +30,8 @@ package udentric.mysql.classic.dicta;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import udentric.mysql.DataRow;
+import udentric.mysql.classic.BinaryDataRow;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.SessionInfo;
 
@@ -50,9 +50,10 @@ public class BinaryResultSet extends ResultSet {
 	protected void handleRowData(
 		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
 	) {
-		src.skipBytes(Packet.HEADER_SIZE);
-		try (DataRow r = columns.parseTextRow(src, si.encoding)) {
+		try (DataRow r = new BinaryDataRow(columns, src)) {
 			rsc.acceptRow(r);
+		} catch (Exception e) {
+			Channels.throwAny(e);
 		}
 	}
 }
