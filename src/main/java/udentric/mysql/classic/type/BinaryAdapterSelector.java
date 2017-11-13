@@ -27,27 +27,24 @@
 
 package udentric.mysql.classic.type;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
+public interface BinaryAdapterSelector {
+	<T> BinaryAdapter<T> get(Class<T> cls);
 
-public interface BinaryAdapter<T> {
-	TypeId typeId();
+	<T> BinaryAdapter<T> find(Object obj);
 
-	default void encodeValue(
-		ByteBuf dst, T value, AdapterState state,
-		int bufSoftLimit, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not encode object of class %s as value of type %s",
-			value.getClass(), typeId()
-		));
-	}
-
-	default T decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not decode binary value of type %s", typeId()
-		));
-	}
+	static final BinaryAdapterSelector PLACEHOLDER = new BinaryAdapterSelector() {
+		@Override
+		public <T> BinaryAdapter<T> get(Class<T> cls) {
+			throw new UnsupportedOperationException(
+				"Not implemented"
+			);
+		}
+	
+		@Override
+		public <T> BinaryAdapter<T> find(Object obj) {
+			throw new UnsupportedOperationException(
+				"Not implemented"
+			);
+		}
+	};
 }

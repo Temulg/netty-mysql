@@ -33,15 +33,40 @@ import udentric.mysql.classic.FieldImpl;
 
 public enum TypeId {
 	DECIMAL(0),
-	TINY(1),
-	SHORT(2),
-	LONG(3),
+	TINY(1) {
+		@Override
+		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
+			return 1;
+		}
+	},
+	SHORT(2) {
+		@Override
+		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
+			return 2;
+		}
+	},
+	LONG(3) {
+		@Override
+		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
+			return 4;
+		}
+	},
 	FLOAT(4),
 	DOUBLE(5),
 	NULL(6),
 	TIMESTAMP(7),
-	LONGLONG(8),
-	INT24(9),
+	LONGLONG(8) {
+		@Override
+		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
+			return 8;
+		}
+	},
+	INT24(9) {
+		@Override
+		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
+			return 4;
+		}
+	},
 	DATE(10),
 	TIME(11),
 	DATETIME(12),
@@ -66,24 +91,29 @@ public enum TypeId {
 
 	private TypeId(int id_) {
 		id = id_;
-	}
-
-	public <T> TextAdapter<T> getTextAdapterForClass(Class<T> cls) {
-		return udentric.mysql.classic.type.text.Selector.get(
-			this, cls
+		textAdapterSelector = (TextAdapterSelector)loadClass(
+			String.format(
+				"%s.test.T%04dSelector",
+				TypeId.class.getPackage().getName(), id
+			), TextAdapterSelector.PLACEHOLDER
+		);
+		binaryAdapterSelector = (BinaryAdapterSelector)loadClass(
+			String.format(
+				"%s.binary.T%04dSelector",
+				TypeId.class.getPackage().getName(), id
+			), BinaryAdapterSelector.PLACEHOLDER
 		);
 	}
 
-	public <T> BinaryAdapter<T> getBinaryAdapterForClass(Class<T> cls) {
-		return udentric.mysql.classic.type.binary.Selector.get(
-			this, cls
-		);
-	}
-
-	public BinaryAdapter findBinaryAdapterForObject(Object obj) {
-		return udentric.mysql.classic.type.binary.Selector.find(
-			this, obj
-		);		
+	private static Object loadClass(String name, Object def) {
+		try {
+			Class<?> cls = TypeId.class.getClassLoader().loadClass(
+				name
+			);
+			return cls.newInstance();
+		} catch (ReflectiveOperationException e) {
+			return def;
+		}
 	}
 
 	public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
@@ -101,6 +131,8 @@ public enum TypeId {
 	> MYSQL_TYPE_BY_ID;
 
 	public final int id;
+	public final TextAdapterSelector textAdapterSelector;
+	public final BinaryAdapterSelector binaryAdapterSelector;
 
 	static {
 		ImmutableMap.Builder<

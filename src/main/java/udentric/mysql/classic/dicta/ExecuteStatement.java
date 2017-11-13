@@ -41,6 +41,7 @@ import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SessionInfo;
 import udentric.mysql.classic.prepared.CursorType;
 import udentric.mysql.classic.prepared.Statement;
+import udentric.mysql.classic.type.AdapterState;
 
 public class ExecuteStatement implements Dictum {
 	public ExecuteStatement(
@@ -129,16 +130,15 @@ public class ExecuteStatement implements Dictum {
 			if (appendLeftovers(dst, si))
 				return true;
 
-			if (paramConsumed) {
+			if (paramEncoderState.done()) {
 				paramPos++;
-				paramOffset = 0;
-				paramConsumed = false;
+				paramEncoderState.reset();
 				if (paramPos >= parameters.size())
 					return false;
 			}
 
 			if (pstmt.parameterPreloaded(paramPos)) {
-				paramConsumed = true;
+				paramEncoderState.markAsDone();
 				continue;
 			}
 
@@ -147,12 +147,12 @@ public class ExecuteStatement implements Dictum {
 			if (limit == 0)
 				return true;
 
-			paramConsumed = !((FieldImpl)(parameters.get(
+			((FieldImpl)(parameters.get(
 				paramPos
 			))).binaryValueEncode(
-				dst, args[paramPos], paramOffset, limit
+				dst, args[paramPos], paramEncoderState, limit
 			);
-			paramOffset += dst.writerIndex() - lastPos;
+
 			if (preserveLeftovers(dst, si))
 				return true;
 		}
@@ -256,11 +256,10 @@ public class ExecuteStatement implements Dictum {
 	private final ResultSetConsumer rsc;
 	private final boolean omitTypeDeclaration;
 	private final Object[] args;
+	private final AdapterState paramEncoderState = new AdapterState();
 	private ClientMessageEmitter state;
 	private int seqNum;
 	private int bufferStartPos;
 	private int paramPos;
-	private int paramOffset;
-	private boolean paramConsumed;
 	private ByteBuf paramLeftOvers;
 }

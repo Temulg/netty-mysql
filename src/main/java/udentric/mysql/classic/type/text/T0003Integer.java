@@ -40,8 +40,7 @@ class T0003Integer implements TextAdapter<Integer> {
 
 	@Override
 	public Integer decodeValue(
-		ByteBuf src, int offset, int length,
-		Class<Integer> cls, FieldImpl fld
+		ByteBuf src, int offset, int length, FieldImpl fld
 	) {
 		String s = src.getCharSequence(
 			src.readerIndex() + offset, length,

@@ -25,28 +25,15 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type;
 
-import com.google.common.collect.ImmutableTable;
-import udentric.mysql.classic.type.TextAdapter;
-import udentric.mysql.classic.type.TypeId;
+public interface TextAdapterSelector {
+	<T> TextAdapter<T> get(Class<T> cls);
 
-public class Selector {
-	public static <T> TextAdapter<T> get(TypeId id, Class<T> cls) {
-		return (TextAdapter<T>)ADAPTERS.get(id, cls);
-	}
-
-	private static final ImmutableTable<
-		TypeId, Class<?>, TextAdapter<?>
-	> ADAPTERS = ImmutableTable.<
-		TypeId, Class<?>, TextAdapter<?>
-	>builder().put(
-		TypeId.LONG, Integer.class, new T0003Integer()
-	).put(
-		TypeId.LONG, String.class, new AnyString(TypeId.LONG)
-	).put(
-		TypeId.LONGLONG, Long.class, new T0008Long()
-	).put(
-		TypeId.LONGLONG, String.class, new AnyString(TypeId.LONGLONG)
-	).build();
+	static final TextAdapterSelector PLACEHOLDER = new TextAdapterSelector() {
+		@Override
+		public <T> TextAdapter<T> get(Class<T> cls) {
+			throw new UnsupportedOperationException("Not implemented");
+		}
+	};
 }

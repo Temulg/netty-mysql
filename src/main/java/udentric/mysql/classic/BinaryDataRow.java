@@ -58,17 +58,6 @@ public class BinaryDataRow implements DataRow {
 		);
 	}
 
-	private void indexFields(int last) {
-		int offset = 0;
-
-		for (int pos = 0; pos <= last * 2; pos += 2) {
-			if (index[pos] == 0) {
-				
-			}
-			offset = index[pos] + index[pos + 1];
-		}
-	}
-
 	private final FieldSetImpl columns;
 	private final int[] index;		
 	private final ByteBuf data;

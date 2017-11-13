@@ -29,6 +29,7 @@ package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
 
@@ -39,23 +40,18 @@ class T0003Integer implements BinaryAdapter<Integer> {
 	}
 
 	@Override
-	public boolean encodeValue(
-		ByteBuf dst, Integer value, int encodedByteCount, int bufLimit,
-		FieldImpl fld
+	public void encodeValue(
+		ByteBuf dst, Integer value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
 	) {
-
+		dst.writeIntLE(value);
+		state.markAsDone();
 	}
 
 	@Override
 	public Integer decodeValue(
-		ByteBuf src, int offset, int length, Class<Integer> cls,
-		FieldImpl fld
+		ByteBuf src, int offset, int length, FieldImpl fld
 	) {
-
-	}
-
-	@Override
-	public int byteSizeOfValue(ByteBuf src, int offset, FieldImpl fld) {
-
+		return src.getIntLE(src.readerIndex() + offset);
 	}
 }

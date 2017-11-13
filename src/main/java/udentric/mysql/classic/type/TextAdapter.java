@@ -34,12 +34,10 @@ public interface TextAdapter<T> {
 	TypeId typeId();
 
 	default T decodeValue(
-		ByteBuf src, int offset, int length, Class<T> cls,
-		FieldImpl fld
+		ByteBuf src, int offset, int length, FieldImpl fld
 	) {
 		throw new UnsupportedOperationException(String.format(
-			"Could not assign text value of type %s to object of class %s",
-			typeId(), cls
+			"Could not decode text value of type %s", typeId()
 		));
 	}
 }

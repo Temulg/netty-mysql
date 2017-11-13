@@ -40,8 +40,7 @@ class T0008Long implements TextAdapter<Long> {
 
 	@Override
 	public Long decodeValue(
-		ByteBuf src, int offset, int length,
-		Class<Long> cls, FieldImpl fld
+		ByteBuf src, int offset, int length, FieldImpl fld
 	) {
 		String s = src.getCharSequence(
 			src.readerIndex() + offset, length,

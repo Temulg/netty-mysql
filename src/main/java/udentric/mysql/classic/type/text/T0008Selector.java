@@ -25,29 +25,27 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type;
+package udentric.mysql.classic.type.text;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
+import com.google.common.collect.ImmutableMap;
+import udentric.mysql.classic.type.TextAdapter;
+import udentric.mysql.classic.type.TextAdapterSelector;
+import udentric.mysql.classic.type.TypeId;
 
-public interface BinaryAdapter<T> {
-	TypeId typeId();
-
-	default void encodeValue(
-		ByteBuf dst, T value, AdapterState state,
-		int bufSoftLimit, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not encode object of class %s as value of type %s",
-			value.getClass(), typeId()
-		));
+public class T0008Selector implements TextAdapterSelector {
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> TextAdapter<T> get(Class<T> cls) {
+		return (TextAdapter<T>)ADAPTERS.get(cls);
 	}
 
-	default T decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not decode binary value of type %s", typeId()
-		));
-	}
+	private final ImmutableMap<
+		Class<?>, TextAdapter<?>
+	> ADAPTERS = ImmutableMap.<
+		Class<?>, TextAdapter<?>
+	>builder().put(
+		Long.class, new T0008Long()
+	).put(
+		String.class, new AnyString(TypeId.LONGLONG)
+	).build();
 }

@@ -44,8 +44,7 @@ class AnyString implements TextAdapter<String> {
 
 	@Override
 	public String decodeValue(
-		ByteBuf src, int offset, int length,
-		Class<String> cls, FieldImpl fld
+		ByteBuf src, int offset, int length, FieldImpl fld
 	) {
 		return src.getCharSequence(
 			src.readerIndex() + offset, length,

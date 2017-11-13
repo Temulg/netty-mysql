@@ -25,29 +25,41 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type;
+package udentric.mysql.classic.type.binary;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
+import com.google.common.collect.ImmutableMap;
+import java.util.Iterator;
+import java.util.Map;
+import udentric.mysql.classic.type.BinaryAdapter;
+import udentric.mysql.classic.type.BinaryAdapterSelector;
 
-public interface BinaryAdapter<T> {
-	TypeId typeId();
-
-	default void encodeValue(
-		ByteBuf dst, T value, AdapterState state,
-		int bufSoftLimit, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not encode object of class %s as value of type %s",
-			value.getClass(), typeId()
-		));
+public class T0003Selector implements BinaryAdapterSelector {
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> BinaryAdapter<T> get(Class<T> cls) {
+		return (BinaryAdapter<T>)ADAPTERS.get(cls);
 	}
 
-	default T decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not decode binary value of type %s", typeId()
-		));
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> BinaryAdapter<T> find(Object obj) {
+		Iterator<
+			Map.Entry<Class<?>, BinaryAdapter<?>>
+		> iter = ADAPTERS.entrySet().iterator();
+		while (iter.hasNext()) {
+			Map.Entry<
+				Class<?>, BinaryAdapter<?>
+			> entry = iter.next();
+			if (entry.getKey().isInstance(obj)) {
+				return (BinaryAdapter<T>)entry.getValue();
+			}
+		}
+		return null;
 	}
+
+	private final ImmutableMap<
+		Class<?>, BinaryAdapter<?>
+	> ADAPTERS = ImmutableMap.<
+		Class<?>, BinaryAdapter<?>
+	>builder().build();
 }

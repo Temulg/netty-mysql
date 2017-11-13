@@ -32,6 +32,7 @@ import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.Encoding;
 import udentric.mysql.Field;
+import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 
 import java.nio.charset.Charset;
@@ -131,24 +132,24 @@ public class FieldImpl implements Field {
 	public <T> T textValueDecode(
 		ByteBuf src, int offset, int length, Class<T> cls
 	) {
-		return type.getTextAdapterForClass(cls).decodeValue(
-			src, offset, length, cls, this
+		return type.textAdapterSelector.get(cls).decodeValue(
+			src, offset, length, this
 		);
 	}
 
-	public boolean binaryValueEncode(
-		ByteBuf dst, Object value, int encodedByteCount, int bufLimit
+	public void binaryValueEncode(
+		ByteBuf dst, Object value, AdapterState state, int bufSoftLimit
 	) {
-		return type.findBinaryAdapterForObject(value).encodeValue(
-			dst, value, encodedByteCount, bufLimit, this
+		type.binaryAdapterSelector.find(value).encodeValue(
+			dst, value, state, bufSoftLimit, this
 		);
 	}
 
 	public <T> T binaryValueDecode(
 		ByteBuf src, int offset, int length, Class<T> cls
 	) {
-		return type.getBinaryAdapterForClass(cls).decodeValue(
-			src, offset, length, cls, this
+		return type.binaryAdapterSelector.get(cls).decodeValue(
+			src, offset, length, this
 		);
 	}
 

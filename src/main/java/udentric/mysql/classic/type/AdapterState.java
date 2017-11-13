@@ -25,37 +25,29 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.binary;
+package udentric.mysql.classic.type;
 
-import com.google.common.collect.ImmutableTable;
-import java.util.Iterator;
-import java.util.Map;
-import udentric.mysql.classic.type.BinaryAdapter;
-import udentric.mysql.classic.type.TypeId;
-
-public class Selector {
-	public static <T> BinaryAdapter<T> get(TypeId id, Class<T> cls) {
-		return (BinaryAdapter<T>)ADAPTERS.get(id, cls);
+public class AdapterState {
+	public boolean done() {
+		return done;
 	}
 
-	public static BinaryAdapter find(TypeId id, Object obj) {
-		Iterator<
-			Map.Entry<Class<?>, BinaryAdapter<?>>
-		> iter = ADAPTERS.row(id).entrySet().iterator();
-		while (iter.hasNext()) {
-			Map.Entry<
-				Class<?>, BinaryAdapter<?>
-			> entry = iter.next();
-			if (entry.getKey().isInstance(obj)) {
-				return entry.getValue();
-			}
+	public void markAsDone() {
+		done = true;
+	}
+
+	public void reset() {
+		state = null;
+		done = false;
+	}
+
+	public boolean resetIfDone() {
+		if (done) {
+			reset();
 		}
-		return null;
+		return done;
 	}
 
-	private static final ImmutableTable<
-		TypeId, Class<?>, BinaryAdapter<?>
-	> ADAPTERS = ImmutableTable.<
-		TypeId, Class<?>, BinaryAdapter<?>
-	>builder().build();
+	private Object state;
+	private boolean done;
 }
