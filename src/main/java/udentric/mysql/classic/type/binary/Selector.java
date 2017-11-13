@@ -25,7 +25,37 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type;
+package udentric.mysql.classic.type.binary;
 
-class DefaultAdapter implements Adapter {
+import com.google.common.collect.ImmutableTable;
+import java.util.Iterator;
+import java.util.Map;
+import udentric.mysql.classic.type.BinaryAdapter;
+import udentric.mysql.classic.type.TypeId;
+
+public class Selector {
+	public static <T> BinaryAdapter<T> get(TypeId id, Class<T> cls) {
+		return (BinaryAdapter<T>)ADAPTERS.get(id, cls);
+	}
+
+	public static BinaryAdapter find(TypeId id, Object obj) {
+		Iterator<
+			Map.Entry<Class<?>, BinaryAdapter<?>>
+		> iter = ADAPTERS.row(id).entrySet().iterator();
+		while (iter.hasNext()) {
+			Map.Entry<
+				Class<?>, BinaryAdapter<?>
+			> entry = iter.next();
+			if (entry.getKey().isInstance(obj)) {
+				return entry.getValue();
+			}
+		}
+		return null;
+	}
+
+	private static final ImmutableTable<
+		TypeId, Class<?>, BinaryAdapter<?>
+	> ADAPTERS = ImmutableTable.<
+		TypeId, Class<?>, BinaryAdapter<?>
+	>builder().build();
 }

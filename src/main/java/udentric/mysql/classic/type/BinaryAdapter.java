@@ -27,70 +27,38 @@
 
 package udentric.mysql.classic.type;
 
-import com.google.common.collect.ImmutableMap;
-
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
 
-class LongAdapter implements Adapter {
-	public LongAdapter() {
-		Adapter nat = new NativeVal();
-		adapters = ImmutableMap.<
-			Class<?>, Adapter
-		>builder().put(
-			Long.TYPE, nat
-		).put(
-			Long.class, nat
-		).put(
-			String.class, new StringVal()
-		).build();
+public interface BinaryAdapter<T> {
+	TypeId typeId();
+
+	default boolean encodeValue(
+		ByteBuf dst, T value, int encodedByteCount,
+		int bufLimit, FieldImpl fld
+	) {
+		throw new UnsupportedOperationException(String.format(
+			"Could not encode object of class %s as value of type %s",
+			value.getClass(), typeId()
+		));
 	}
 
-	@Override
-	public <T> T textValueDecode(
+	default T decodeValue(
 		ByteBuf src, int offset, int length, Class<T> cls,
 		FieldImpl fld
 	) {
-		Adapter a = findAdapterForClass(cls);
-		return a.textValueDecode(src, offset, length, cls, fld);
+		throw new UnsupportedOperationException(String.format(
+			"Could not assign binary value of type %s to object of class %s",
+			typeId(), cls
+		));
 	}
 
-	@Override
-	public <T> Adapter getAdapterForClass(Class<T> cls) {
-		return adapters.get(cls);
+	default int byteSizeOfValue(
+		ByteBuf src, int offset, FieldImpl fld
+	) {
+		throw new UnsupportedOperationException(String.format(
+			"Unsupported binary value type %s",
+			typeId()
+		));
 	}
-
-	private static class NativeVal implements Adapter {
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> T textValueDecode(
-			ByteBuf src, int offset, int length, Class<T> cls,
-			FieldImpl fld
-		) {
-			String s = src.getCharSequence(
-				src.readerIndex() + offset, length,
-				fld.encoding.charset
-			).toString();
-	
-			return (T)(Long)Long.parseLong(s);
-		}
-	}
-
-	private static class StringVal implements Adapter {
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> T textValueDecode(
-			ByteBuf src, int offset, int length, Class<T> cls,
-			FieldImpl fld
-		) {
-			String s = src.getCharSequence(
-				src.readerIndex() + offset, length,
-				fld.encoding.charset
-			).toString();
-	
-			return (T)s;
-		}
-	}
-
-	final ImmutableMap<Class<?>, Adapter> adapters;
 }

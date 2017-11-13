@@ -28,12 +28,14 @@
 package udentric.mysql.classic.type;
 
 import com.google.common.collect.ImmutableMap;
+import io.netty.buffer.ByteBuf;
+import udentric.mysql.classic.FieldImpl;
 
 public enum TypeId {
 	DECIMAL(0),
 	TINY(1),
 	SHORT(2),
-	LONG(3, new LongAdapter()),
+	LONG(3),
 	FLOAT(4),
 	DOUBLE(5),
 	NULL(6),
@@ -62,14 +64,32 @@ public enum TypeId {
 	STRING(254),
 	GEOMETRY(255);
 
-	private TypeId(int id_, Adapter adapter_) {
-		id = id_;
-		adapter = adapter_;
-	}
-
 	private TypeId(int id_) {
 		id = id_;
-		adapter = new DefaultAdapter();
+	}
+
+	public <T> TextAdapter<T> getTextAdapterForClass(Class<T> cls) {
+		return udentric.mysql.classic.type.text.Selector.get(
+			this, cls
+		);
+	}
+
+	public <T> BinaryAdapter<T> getBinaryAdapterForClass(Class<T> cls) {
+		return udentric.mysql.classic.type.binary.Selector.get(
+			this, cls
+		);
+	}
+
+	public BinaryAdapter findBinaryAdapterForObject(Object obj) {
+		return udentric.mysql.classic.type.binary.Selector.find(
+			this, obj
+		);		
+	}
+
+	public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
+		throw new UnsupportedOperationException(
+			"Could not determine byte size for type " + this
+		);
 	}
 
 	public static TypeId forId(int id) {
@@ -81,7 +101,6 @@ public enum TypeId {
 	> MYSQL_TYPE_BY_ID;
 
 	public final int id;
-	public final Adapter adapter;
 
 	static {
 		ImmutableMap.Builder<

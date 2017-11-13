@@ -25,41 +25,28 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type;
+package udentric.mysql.classic.type.text;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.type.TextAdapter;
+import udentric.mysql.classic.type.TypeId;
 
-public interface Adapter {
-	default <T> T textValueDecode(
-		ByteBuf src, int offset, int length, Class<T> cls,
-		FieldImpl fld
+class T0003Integer implements TextAdapter<Integer> {
+	@Override
+	public TypeId typeId() {
+		return TypeId.LONG;
+	}
+
+	@Override
+	public Integer decodeValue(
+		ByteBuf src, int offset, int length,
+		Class<Integer> cls, FieldImpl fld
 	) {
-		throw new UnsupportedOperationException("Not implemented yet");
-	}
-
-	default <T> Adapter getAdapterForClass(Class<T> cls) {
-		return null;
-	}
-
-	default <T> Adapter findAdapterForClass(Class<T> cls) {
-		if (cls == null || cls == Object.class)
-			return null;
-
-		Adapter a = getAdapterForClass(cls);
-		if (a != null)
-			return a;
-
-		a = findAdapterForClass(cls.getSuperclass());
-		if (a != null)
-			return a;
-
-		for (Class<?> iface: cls.getInterfaces()) {
-			a = findAdapterForClass(iface);
-			if (a != null)
-				return a;
-		}
-
-		return null;
+		String s = src.getCharSequence(
+			src.readerIndex() + offset, length,
+			fld.encoding.charset
+		).toString();
+		return Integer.parseInt(s);
 	}
 }

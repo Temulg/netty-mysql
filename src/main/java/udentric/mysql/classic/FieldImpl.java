@@ -131,24 +131,29 @@ public class FieldImpl implements Field {
 	public <T> T textValueDecode(
 		ByteBuf src, int offset, int length, Class<T> cls
 	) {
-		return type.adapter.textValueDecode(
+		return type.getTextAdapterForClass(cls).decodeValue(
 			src, offset, length, cls, this
 		);
 	}
 
 	public boolean binaryValueEncode(
-		ByteBuf dst, Object value, int valueOffset, int bufLimit
+		ByteBuf dst, Object value, int encodedByteCount, int bufLimit
 	) {
-
+		return type.findBinaryAdapterForObject(value).encodeValue(
+			dst, value, encodedByteCount, bufLimit, this
+		);
 	}
 
 	public <T> T binaryValueDecode(
 		ByteBuf src, int offset, int length, Class<T> cls
 	) {
-		
+		return type.getBinaryAdapterForClass(cls).decodeValue(
+			src, offset, length, cls, this
+		);
 	}
 
 	public int binaryValueByteSize(ByteBuf src, int offset) {
+		return type.binaryValueByteSize(src, offset, this);
 	}
 
 	public final String schema;
