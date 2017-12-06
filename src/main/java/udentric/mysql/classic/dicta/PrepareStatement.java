@@ -94,9 +94,9 @@ public class PrepareStatement implements Dictum {
 				src.skipBytes(1);
 				warnCount = Packet.readInt2(src);
 
-				if (paramFieldPos < parameters.size())
+				if (parameters.size() > 0)
 					state = this::receiveParamDef;
-				else if (colFieldPos < columns.size())
+				else if (columns.size() > 0)
 					state = this::receiveColDef;
 				else
 					completePreparation(ch);
@@ -118,42 +118,47 @@ public class PrepareStatement implements Dictum {
 	) {
 		Channel ch = ctx.channel();
 
-		if (paramFieldPos < parameters.size()) {
-			try {
-				src.skipBytes(Packet.HEADER_SIZE);
-				parameters.set(
-					paramFieldPos, 
-					new FieldImpl(src, si.charset())
-				);
-				paramFieldPos++;
-			} catch (Exception e) {
-				Channels.discardActiveDictum(ch, e);
-			}
-		} else if (si.expectEof()) {
+		try {
 			src.skipBytes(Packet.HEADER_SIZE);
-
-			if ((
-				Packet.EOF != Packet.readInt1(src)
-			) || (src.readableBytes() != 4)) {
-				Channels.discardActiveDictum(
-					ch, Packet.makeError(
-						ErrorNumbers.ER_MALFORMED_PACKET
-					)
-				);
-			} else {
-				src.skipBytes(4);
-				if (colFieldPos >= columns.size())
-					completePreparation(ch);
-				else
+			parameters.set(
+				paramFieldPos, 
+				new FieldImpl(src, si.charset())
+			);
+			paramFieldPos++;
+			if (paramFieldPos == parameters.size()) {
+				if (si.expectEof())
+					state = this::finishedWithParamDef;
+				else if (columns.size() > 0)
 					state = this::receiveColDef;
+				else
+					completePreparation(ch);
 			}
-		} else {
-			if (colFieldPos >= columns.size())
-				completePreparation(ch);
-			else
-				state = this::receiveColDef;
+		} catch (Exception e) {
+			Channels.discardActiveDictum(ch, e);
+		}		
+	}
 
-			receiveColDef(src, ctx, si);
+	private void finishedWithParamDef(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channel ch = ctx.channel();
+		src.skipBytes(Packet.HEADER_SIZE);
+
+		if ((
+			Packet.EOF == Packet.readInt1(src)
+		) || (src.readableBytes() == 4)) {
+			src.skipBytes(4);
+
+			if (columns.size() > 0)
+				state = this::receiveColDef;
+			else
+				completePreparation(ch);
+		} else {
+			Channels.discardActiveDictum(
+				ch, Packet.makeError(
+					ErrorNumbers.ER_MALFORMED_PACKET
+				)
+			);
 		}
 	}
 
@@ -162,32 +167,39 @@ public class PrepareStatement implements Dictum {
 	) {
 		Channel ch = ctx.channel();
 
-		if (colFieldPos < columns.size()) {
-			try {
-				src.skipBytes(Packet.HEADER_SIZE);
-				columns.set(
-					colFieldPos,
-					new FieldImpl(src, si.charset())
-				);
-				colFieldPos++;
-			} catch (Exception e) {
-				Channels.discardActiveDictum(ch, e);
-			}
-		} else if (si.expectEof()) {
+		try {
 			src.skipBytes(Packet.HEADER_SIZE);
-			if ((
-				Packet.EOF != Packet.readInt1(src)
-			) || (src.readableBytes() != 4)) {
-				Channels.discardActiveDictum(
-					ch, Packet.makeError(
-						ErrorNumbers.ER_MALFORMED_PACKET
-					)
-				);
-			} else {
-				src.skipBytes(4);
-				completePreparation(ch);
+			columns.set(
+				colFieldPos,
+				new FieldImpl(src, si.charset())
+			);
+			colFieldPos++;
+			if (colFieldPos == columns.size()) {
+				if (si.expectEof())
+					state = this::finishedWithColDef;
+				else
+					completePreparation(ch);
 			}
+		} catch (Exception e) {
+			Channels.discardActiveDictum(ch, e);
+		}
+	}
+
+	private void finishedWithColDef(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channel ch = ctx.channel();
+		src.skipBytes(Packet.HEADER_SIZE);
+		if ((
+			Packet.EOF != Packet.readInt1(src)
+		) || (src.readableBytes() != 4)) {
+			Channels.discardActiveDictum(
+				ch, Packet.makeError(
+					ErrorNumbers.ER_MALFORMED_PACKET
+				)
+			);
 		} else {
+			src.skipBytes(4);
 			completePreparation(ch);
 		}
 	}
