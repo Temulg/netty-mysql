@@ -25,36 +25,17 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic;
 
-import com.google.common.collect.ImmutableMap;
-import udentric.mysql.classic.type.TextAdapter;
-import udentric.mysql.classic.type.TextAdapterSelector;
-import udentric.mysql.classic.type.TypeId;
-
-public class T0003Selector extends TextAdapterSelector {
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> get(Class<T> cls) {
-		return (TextAdapter<T>)(
-			cls != null ? ADAPTERS.get(cls) : defaultAdapter
-		);
+public class SimpleColumnValueMapper implements ColumnValueMapper {
+	public SimpleColumnValueMapper(Class... cls) {
+		classes = cls;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> find(Object obj) {
-		return (TextAdapter<T>)findAdapter(obj, ADAPTERS);
+	public Object getValueObjectOrClass(int col) {
+		return classes[col];
 	}
 
-	private final TextAdapter<?> defaultAdapter = new T0003Integer();
-	private final ImmutableMap<
-		Class<?>, TextAdapter<?>
-	> ADAPTERS = ImmutableMap.<
-		Class<?>, TextAdapter<?>
-	>builder().put(
-		Integer.class, defaultAdapter
-	).put(
-		String.class, new AnyString(TypeId.LONG)
-	).build();
+	private final Class[] classes;
 }

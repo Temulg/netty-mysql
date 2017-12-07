@@ -29,6 +29,8 @@ package udentric.mysql.classic.type.text;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TextAdapter;
 import udentric.mysql.classic.type.TypeId;
 
@@ -40,12 +42,13 @@ class T0008Long implements TextAdapter<Long> {
 
 	@Override
 	public Long decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
+		Long dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		String s = src.getCharSequence(
-			src.readerIndex() + offset, length,
-			fld.encoding.charset
+		int sz = Packet.readIntLenenc(src);
+		String s = src.readCharSequence(
+			sz, fld.encoding.charset
 		).toString();
+		state.markAsDone();
 		return Long.parseLong(s);
 	}
 }

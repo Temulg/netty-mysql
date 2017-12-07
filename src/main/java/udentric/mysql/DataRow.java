@@ -27,6 +27,6 @@
 
 package udentric.mysql;
 
-public interface DataRow extends AutoCloseable {
-	<T> T getValue(int pos, Class<T> cls);
+public interface DataRow {
+	<T> T getValue(int pos);
 }

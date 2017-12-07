@@ -27,13 +27,41 @@
 
 package udentric.mysql.classic.type;
 
-public interface TextAdapterSelector {
-	<T> TextAdapter<T> get(Class<T> cls);
+import com.google.common.collect.ImmutableMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-	static final TextAdapterSelector PLACEHOLDER = new TextAdapterSelector() {
-		@Override
-		public <T> TextAdapter<T> get(Class<T> cls) {
-			throw new UnsupportedOperationException("Not implemented");
-		}
-	};
+public abstract class TextAdapterSelector {
+	public abstract <T> TextAdapter<T> get(Class<T> cls);
+
+	public abstract <T> TextAdapter<T> find(Object obj);
+
+	protected TextAdapter<?> findAdapter(
+		Object obj,
+		ImmutableMap<Class<?>, TextAdapter<?>> staticAdapterMap
+	) {
+		return dynamicAdapterMap.computeIfAbsent(
+			obj.getClass(), cls -> {
+				Iterator<
+					Map.Entry<Class<?>, TextAdapter<?>>
+				> iter = staticAdapterMap.entrySet().iterator();
+				
+				while (iter.hasNext()) {
+					Map.Entry<
+						Class<?>, TextAdapter<?>
+					> entry = iter.next();
+
+					if (entry.getKey().isInstance(obj)) {
+						return entry.getValue();
+					}
+				}
+				return null;
+			}
+		);
+	}
+
+	protected final ConcurrentHashMap<
+		Class<?>, TextAdapter<?>
+	> dynamicAdapterMap = new ConcurrentHashMap<>();
 }

@@ -28,38 +28,30 @@
 package udentric.mysql.classic.type.binary;
 
 import com.google.common.collect.ImmutableMap;
-import java.util.Iterator;
-import java.util.Map;
 import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.BinaryAdapterSelector;
 
-public class T0003Selector implements BinaryAdapterSelector {
+public class T0003Selector extends BinaryAdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> BinaryAdapter<T> get(Class<T> cls) {
-		return (BinaryAdapter<T>)ADAPTERS.get(cls);
+		return (BinaryAdapter<T>)(
+			cls != null ? ADAPTERS.get(cls) : defaultAdapter
+		);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> BinaryAdapter<T> find(Object obj) {
-		Iterator<
-			Map.Entry<Class<?>, BinaryAdapter<?>>
-		> iter = ADAPTERS.entrySet().iterator();
-		while (iter.hasNext()) {
-			Map.Entry<
-				Class<?>, BinaryAdapter<?>
-			> entry = iter.next();
-			if (entry.getKey().isInstance(obj)) {
-				return (BinaryAdapter<T>)entry.getValue();
-			}
-		}
-		return null;
+		return (BinaryAdapter<T>)findAdapter(obj, ADAPTERS);
 	}
 
+	private final BinaryAdapter<?> defaultAdapter = new T0003Integer();
 	private final ImmutableMap<
 		Class<?>, BinaryAdapter<?>
 	> ADAPTERS = ImmutableMap.<
 		Class<?>, BinaryAdapter<?>
-	>builder().build();
+	>builder().put(
+		Integer.class, defaultAdapter
+	).build();
 }

@@ -27,17 +27,26 @@
 
 package udentric.mysql.classic.type;
 
+import io.netty.buffer.ByteBufAllocator;
+import java.util.function.Consumer;
+
 public class AdapterState {
+	public AdapterState(ByteBufAllocator alloc_) {
+		alloc = alloc_;
+	}
+
 	public boolean done() {
 		return done;
 	}
 
 	public void markAsDone() {
 		done = true;
+		release.accept(state);
 	}
 
 	public void reset() {
 		state = null;
+		release = this::defaultStateRelease;
 		done = false;
 	}
 
@@ -48,6 +57,24 @@ public class AdapterState {
 		return done;
 	}
 
+	public <T> T get() {
+		return (T)state;
+	}
+
+	public <T> void set(T state_) {
+		state = state_;
+	}
+
+	public <T> void set(T state_, Consumer<T> release_) {
+		state = state_;
+		release = release_;
+	}
+
+	private void defaultStateRelease(Object obj) {
+	}
+
 	private Object state;
+	private Consumer release;
 	private boolean done;
+	public final ByteBufAllocator alloc;
 }

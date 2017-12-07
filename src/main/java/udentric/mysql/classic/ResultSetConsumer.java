@@ -31,7 +31,8 @@ import udentric.mysql.DataRow;
 import udentric.mysql.FieldSet;
 
 public interface ResultSetConsumer {
-	default void acceptMetadata(FieldSet columns) {
+	default ColumnValueMapper acceptMetadata(FieldSet columns) {
+		return null;
 	}
 
 	default void acceptRow(DataRow row) {

@@ -34,7 +34,7 @@ public interface TextAdapter<T> {
 	TypeId typeId();
 
 	default T decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
+		T dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
 		throw new UnsupportedOperationException(String.format(
 			"Could not decode text value of type %s", typeId()

@@ -90,6 +90,7 @@ public class ExecuteStatement implements Dictum {
 			});
 		}
 
+		paramEncoderState = new AdapterState(ctx.alloc());
 		state = this::emitParamData;
 		return emitParamDataImpl(dst, ctx, si);
 	}
@@ -256,7 +257,7 @@ public class ExecuteStatement implements Dictum {
 	private final ResultSetConsumer rsc;
 	private final boolean omitTypeDeclaration;
 	private final Object[] args;
-	private final AdapterState paramEncoderState = new AdapterState();
+	private AdapterState paramEncoderState;
 	private ClientMessageEmitter state;
 	private int seqNum;
 	private int bufferStartPos;

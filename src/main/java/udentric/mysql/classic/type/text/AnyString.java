@@ -28,7 +28,10 @@
 package udentric.mysql.classic.type.text;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.Packet;
+import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TextAdapter;
 import udentric.mysql.classic.type.TypeId;
 
@@ -44,12 +47,55 @@ class AnyString implements TextAdapter<String> {
 
 	@Override
 	public String decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
+		String dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		return src.getCharSequence(
-			src.readerIndex() + offset, length,
-			fld.encoding.charset
-		).toString();
+		State s = state.get();
+		if (s == null) {
+			int sz = Packet.readIntLenenc(src);
+			if (src.readableBytes() >= sz) {
+				String rv = src.readCharSequence(
+					sz, fld.encoding.charset
+				).toString();
+				state.markAsDone();
+				return rv;
+			}
+
+			
+			s = new State(sz, state.alloc.compositeBuffer());
+			s.acc.addComponent(
+				true, src.readRetainedSlice(src.readableBytes())
+			);
+			state.set(s);
+		} else {
+			int count = s.sz - s.acc.writerIndex();
+			if (src.readableBytes() < count)
+				count = src.readableBytes();
+
+			s.acc.addComponent(true, src.readRetainedSlice(count));
+			if (s.acc.writerIndex() == s.sz) {
+				String rv = s.acc.readCharSequence(
+					s.sz, fld.encoding.charset
+				).toString();
+				state.markAsDone();
+				return rv;
+			}
+		}
+		return null;
+	}
+
+	private static class State {
+		State(int sz_, CompositeByteBuf acc_) {
+			sz = sz_;
+			acc = acc_;
+		}
+
+		final int sz;
+		final CompositeByteBuf acc;
+	}
+
+	private static void releaseState(Object s_) {
+		State s = (State)s_;
+		s.acc.release();
 	}
 
 	private final TypeId id;

@@ -25,36 +25,45 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
 import com.google.common.collect.ImmutableMap;
-import udentric.mysql.classic.type.TextAdapter;
-import udentric.mysql.classic.type.TextAdapterSelector;
+import java.nio.channels.GatheringByteChannel;
+import java.nio.channels.ScatteringByteChannel;
+import udentric.mysql.classic.type.BinaryAdapter;
+import udentric.mysql.classic.type.BinaryAdapterSelector;
 import udentric.mysql.classic.type.TypeId;
 
-public class T0003Selector extends TextAdapterSelector {
+public class T0253Selector extends BinaryAdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> get(Class<T> cls) {
-		return (TextAdapter<T>)(
+	public <T> BinaryAdapter<T> get(Class<T> cls) {
+		return (BinaryAdapter<T>)(
 			cls != null ? ADAPTERS.get(cls) : defaultAdapter
 		);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> find(Object obj) {
-		return (TextAdapter<T>)findAdapter(obj, ADAPTERS);
+	public <T> BinaryAdapter<T> find(Object obj) {
+		return (BinaryAdapter<T>)findAdapter(obj, ADAPTERS);
 	}
 
-	private final TextAdapter<?> defaultAdapter = new T0003Integer();
+	private final BinaryAdapter<?> defaultAdapter = new AnyByteArray(
+		TypeId.VAR_STRING
+	);
+
 	private final ImmutableMap<
-		Class<?>, TextAdapter<?>
+		Class<?>, BinaryAdapter<?>
 	> ADAPTERS = ImmutableMap.<
-		Class<?>, TextAdapter<?>
+		Class<?>, BinaryAdapter<?>
 	>builder().put(
-		Integer.class, defaultAdapter
+		byte[].class, defaultAdapter
 	).put(
-		String.class, new AnyString(TypeId.LONG)
+		ScatteringByteChannel.class,
+		new AnyNioReadChannel(TypeId.VAR_STRING)
+	).put(
+		GatheringByteChannel.class,
+		new AnyNioWriteChannel(TypeId.VAR_STRING)
 	).build();
 }

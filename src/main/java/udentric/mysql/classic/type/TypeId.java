@@ -29,44 +29,20 @@ package udentric.mysql.classic.type;
 
 import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
+import java.util.function.Supplier;
 import udentric.mysql.classic.FieldImpl;
 
 public enum TypeId {
 	DECIMAL(0),
-	TINY(1) {
-		@Override
-		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
-			return 1;
-		}
-	},
-	SHORT(2) {
-		@Override
-		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
-			return 2;
-		}
-	},
-	LONG(3) {
-		@Override
-		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
-			return 4;
-		}
-	},
+	TINY(1),
+	SHORT(2),
+	LONG(3),
 	FLOAT(4),
 	DOUBLE(5),
 	NULL(6),
 	TIMESTAMP(7),
-	LONGLONG(8) {
-		@Override
-		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
-			return 8;
-		}
-	},
-	INT24(9) {
-		@Override
-		public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
-			return 4;
-		}
-	},
+	LONGLONG(8),
+	INT24(9),
 	DATE(10),
 	TIME(11),
 	DATETIME(12),
@@ -95,31 +71,62 @@ public enum TypeId {
 			String.format(
 				"%s.test.T%04dSelector",
 				TypeId.class.getPackage().getName(), id
-			), TextAdapterSelector.PLACEHOLDER
+			), () -> new TextAdapterSelector() {
+				@Override
+				public TextAdapter get(Class cls) {
+					throw new UnsupportedOperationException(String.format(
+						"Text adapter from MySQL type %s "
+						+ "to object type %s not implemented",
+						TypeId.this.name(), cls.getName()
+					));
+				}
+
+				@Override
+				public TextAdapter find(Object obj) {
+					throw new UnsupportedOperationException(String.format(
+						"Text adapter from object class %s "
+						+ "to MySQL type %s not implemented",
+						obj.getClass().getName(), TypeId.this.name()
+					));
+				}
+			}
 		);
+
 		binaryAdapterSelector = (BinaryAdapterSelector)loadClass(
 			String.format(
 				"%s.binary.T%04dSelector",
 				TypeId.class.getPackage().getName(), id
-			), BinaryAdapterSelector.PLACEHOLDER
+			), () -> new BinaryAdapterSelector() {
+				@Override
+				public BinaryAdapter get(Class cls) {
+					throw new UnsupportedOperationException(String.format(
+						"Binary adapter from MySQL type %s "
+						+ "to object type %s not implemented",
+						TypeId.this.name(), cls.getName()
+					));
+				}
+
+				@Override
+				public BinaryAdapter find(Object obj) {
+					throw new UnsupportedOperationException(String.format(
+						"Binary adapter from object class %s "
+						+ "to MySQL type %s not implemented",
+						obj.getClass().getName(), TypeId.this.name()
+					));
+				}
+			}
 		);
 	}
 
-	private static Object loadClass(String name, Object def) {
+	private static Object loadClass(String name, Supplier<Object> def) {
 		try {
 			Class<?> cls = TypeId.class.getClassLoader().loadClass(
 				name
 			);
 			return cls.newInstance();
 		} catch (ReflectiveOperationException e) {
-			return def;
+			return def.get();
 		}
-	}
-
-	public int binaryValueByteSize(ByteBuf src, int offset, FieldImpl fld) {
-		throw new UnsupportedOperationException(
-			"Could not determine byte size for type " + this
-		);
 	}
 
 	public static TypeId forId(int id) {

@@ -28,11 +28,13 @@
 package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ByteToMessageDecoder;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnValueMapper;
+import udentric.mysql.classic.DataRowImpl;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.FieldSetImpl;
 import udentric.mysql.classic.Packet;
@@ -150,11 +152,16 @@ public abstract class ResultSet implements Dictum {
 			} else {
 				src.skipBytes(4);
 				state = this::columnDataReceived;
-				rsc.acceptMetadata(columns);
+				initRow(
+					rsc.acceptMetadata(columns),
+					ctx.alloc()
+				);
 			}
 		} else {
 			state = this::columnDataReceived;
-			rsc.acceptMetadata(columns);
+			initRow(
+				rsc.acceptMetadata(columns), ctx.alloc()
+			);
 			columnDataReceived(src, ctx, si);
 		}
 	}
@@ -198,35 +205,27 @@ public abstract class ResultSet implements Dictum {
 		}
 
 		src.skipBytes(Packet.HEADER_SIZE);
-		boolean incomplete = src.readableBytes() >= si.packetSize;
-		ByteBuf data = src;
+		boolean lastBlock = src.readableBytes() < si.packetSize;
 
-		if (partial == null) {
-			if (incomplete) {
-				partial = src;
-				return;
-			}
-		} else {
-			partial = ByteToMessageDecoder.COMPOSITE_CUMULATOR.cumulate(
-				ctx.alloc(), partial, src
-			);
+		acceptRowData(src);
 
-			if (incomplete)
-				return;
-
-			data = partial;
-			partial = null;
-		}
-
-		handleRowData(data, ctx, si);
+		if (lastBlock)
+			consumeRow();
 	}
 
-	protected abstract void handleRowData(
-		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	protected abstract void initRow(
+		ColumnValueMapper mapper, ByteBufAllocator alloc
 	);
+
+	protected abstract void acceptRowData(ByteBuf src);
+
+	protected abstract void consumeRow();
 
 	@Override
 	public void handleFailure(Throwable cause) {
+		if (row != null)
+			row.reset();
+
 		rsc.acceptFailure(cause);
 	}
 
@@ -235,5 +234,4 @@ public abstract class ResultSet implements Dictum {
 	protected FieldSetImpl columns;
 	protected int lastSeqNum;
 	protected int colFieldPos;
-	protected ByteBuf partial;
 }

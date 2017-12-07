@@ -32,19 +32,28 @@ import udentric.mysql.classic.type.TextAdapter;
 import udentric.mysql.classic.type.TextAdapterSelector;
 import udentric.mysql.classic.type.TypeId;
 
-public class T0008Selector implements TextAdapterSelector {
+public class T0008Selector extends TextAdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> TextAdapter<T> get(Class<T> cls) {
-		return (TextAdapter<T>)ADAPTERS.get(cls);
+		return (TextAdapter<T>)(
+			cls != null ? ADAPTERS.get(cls) : defaultAdapter
+		);
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> TextAdapter<T> find(Object obj) {
+		return (TextAdapter<T>)findAdapter(obj, ADAPTERS);
+	}
+
+	private final TextAdapter<?> defaultAdapter = new T0008Long();
 	private final ImmutableMap<
 		Class<?>, TextAdapter<?>
 	> ADAPTERS = ImmutableMap.<
 		Class<?>, TextAdapter<?>
 	>builder().put(
-		Long.class, new T0008Long()
+		Long.class, defaultAdapter
 	).put(
 		String.class, new AnyString(TypeId.LONGLONG)
 	).build();

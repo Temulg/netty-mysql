@@ -129,34 +129,6 @@ public class FieldImpl implements Field {
 		).toString();
 	}
 
-	public <T> T textValueDecode(
-		ByteBuf src, int offset, int length, Class<T> cls
-	) {
-		return type.textAdapterSelector.get(cls).decodeValue(
-			src, offset, length, this
-		);
-	}
-
-	public void binaryValueEncode(
-		ByteBuf dst, Object value, AdapterState state, int bufSoftLimit
-	) {
-		type.binaryAdapterSelector.find(value).encodeValue(
-			dst, value, state, bufSoftLimit, this
-		);
-	}
-
-	public <T> T binaryValueDecode(
-		ByteBuf src, int offset, int length, Class<T> cls
-	) {
-		return type.binaryAdapterSelector.get(cls).decodeValue(
-			src, offset, length, this
-		);
-	}
-
-	public int binaryValueByteSize(ByteBuf src, int offset) {
-		return type.binaryValueByteSize(src, offset, this);
-	}
-
 	public final String schema;
 	public final String tableAlias;
 	public final String tableName;

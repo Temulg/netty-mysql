@@ -27,12 +27,10 @@
 
 package udentric.mysql.classic.dicta;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.DataRow;
-import udentric.mysql.classic.Channels;
+import io.netty.buffer.ByteBufAllocator;
+import udentric.mysql.classic.ColumnValueMapper;
+import udentric.mysql.classic.DataRowImpl;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.SessionInfo;
 import udentric.mysql.classic.TextDataRow;
 
 public class TextResultSet extends ResultSet {
@@ -47,13 +45,11 @@ public class TextResultSet extends ResultSet {
 	}
 
 	@Override
-	protected void handleRowData(
-		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	protected DataRowImpl initDataRow(
+		ColumnValueMapper mapper, ByteBufAllocator alloc
 	) {
-		try (DataRow r = new TextDataRow(columns, src)) {
-			rsc.acceptRow(r);
-		} catch (Exception e) {
-			Channels.throwAny(e);
-		}
+		return mapper != null
+			? new TextDataRow(columns, mapper)
+			: new TextDataRow(columns);
 	}
 }

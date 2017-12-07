@@ -25,36 +25,54 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
-import com.google.common.collect.ImmutableMap;
-import udentric.mysql.classic.type.TextAdapter;
-import udentric.mysql.classic.type.TextAdapterSelector;
+import io.netty.buffer.ByteBuf;
+import java.io.IOException;
+import java.nio.channels.ScatteringByteChannel;
+import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.type.AdapterState;
+import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-public class T0003Selector extends TextAdapterSelector {
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> get(Class<T> cls) {
-		return (TextAdapter<T>)(
-			cls != null ? ADAPTERS.get(cls) : defaultAdapter
-		);
+class AnyNioReadChannel implements BinaryAdapter<ScatteringByteChannel> {
+	AnyNioReadChannel(TypeId id_) {
+		id = id_;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> find(Object obj) {
-		return (TextAdapter<T>)findAdapter(obj, ADAPTERS);
+	public TypeId typeId() {
+		return id;
 	}
 
-	private final TextAdapter<?> defaultAdapter = new T0003Integer();
-	private final ImmutableMap<
-		Class<?>, TextAdapter<?>
-	> ADAPTERS = ImmutableMap.<
-		Class<?>, TextAdapter<?>
-	>builder().put(
-		Integer.class, defaultAdapter
-	).put(
-		String.class, new AnyString(TypeId.LONG)
-	).build();
+	@Override
+	public void encodeValue(
+		ByteBuf dst, ScatteringByteChannel value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
+	) {
+		if (dst == null) {
+			throw new IllegalStateException(
+				"suitable Channel object must be supplied"
+			);
+		}
+
+		try {
+			if (0 >= dst.writeBytes(value, bufSoftLimit)) {
+				state.markAsDone();
+			}
+		} catch (IOException e) {
+			Channels.throwAny(e);
+		}
+	}
+
+	@Override
+	public ScatteringByteChannel decodeValue(
+		ScatteringByteChannel dst, ByteBuf src, AdapterState state,
+		FieldImpl fld
+	) {
+		throw new IllegalStateException("channel is not writable");
+	}
+
+	private final TypeId id;
 }

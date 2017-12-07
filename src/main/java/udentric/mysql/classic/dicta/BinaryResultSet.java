@@ -27,13 +27,11 @@
 
 package udentric.mysql.classic.dicta;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import udentric.mysql.DataRow;
+import io.netty.buffer.ByteBufAllocator;
 import udentric.mysql.classic.BinaryDataRow;
-import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnValueMapper;
+import udentric.mysql.classic.DataRowImpl;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.SessionInfo;
 
 public class BinaryResultSet extends ResultSet {
 	public BinaryResultSet(
@@ -47,13 +45,24 @@ public class BinaryResultSet extends ResultSet {
 	}
 
 	@Override
-	protected void handleRowData(
-		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	protected void initRow(
+		ColumnValueMapper mapper, ByteBufAllocator alloc
 	) {
-		try (DataRow r = new BinaryDataRow(columns, src)) {
-			rsc.acceptRow(r);
-		} catch (Exception e) {
-			Channels.throwAny(e);
-		}
+		return mapper != null
+			? new BinaryDataRow(columns, mapper)
+			: new BinaryDataRow(columns);
 	}
+
+	@Override
+	protected void acceptRowData(ByteBuf src) {
+		
+	}
+
+	@Override
+	protected void consumeRow() {
+		rsc.acceptRow(row);
+		row.reset();
+	}
+
+	private BinaryDataRow row;
 }

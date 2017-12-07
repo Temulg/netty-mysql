@@ -27,24 +27,41 @@
 
 package udentric.mysql.classic.type;
 
-public interface BinaryAdapterSelector {
-	<T> BinaryAdapter<T> get(Class<T> cls);
+import com.google.common.collect.ImmutableMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-	<T> BinaryAdapter<T> find(Object obj);
+public abstract class BinaryAdapterSelector {
+	public abstract <T> BinaryAdapter<T> get(Class<T> cls);
 
-	static final BinaryAdapterSelector PLACEHOLDER = new BinaryAdapterSelector() {
-		@Override
-		public <T> BinaryAdapter<T> get(Class<T> cls) {
-			throw new UnsupportedOperationException(
-				"Not implemented"
-			);
-		}
-	
-		@Override
-		public <T> BinaryAdapter<T> find(Object obj) {
-			throw new UnsupportedOperationException(
-				"Not implemented"
-			);
-		}
-	};
+	public abstract <T> BinaryAdapter<T> find(Object obj);
+
+	protected BinaryAdapter<?> findAdapter(
+		Object obj,
+		ImmutableMap<Class<?>, BinaryAdapter<?>> staticAdapterMap
+	) {
+		return dynamicAdapterMap.computeIfAbsent(
+			obj.getClass(), cls -> {
+				Iterator<
+					Map.Entry<Class<?>, BinaryAdapter<?>>
+				> iter = staticAdapterMap.entrySet().iterator();
+				
+				while (iter.hasNext()) {
+					Map.Entry<
+						Class<?>, BinaryAdapter<?>
+					> entry = iter.next();
+
+					if (entry.getKey().isInstance(obj)) {
+						return entry.getValue();
+					}
+				}
+				return null;
+			}
+		);
+	}
+
+	protected final ConcurrentHashMap<
+		Class<?>, BinaryAdapter<?>
+	> dynamicAdapterMap = new ConcurrentHashMap<>();
 }

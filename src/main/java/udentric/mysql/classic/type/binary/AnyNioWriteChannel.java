@@ -25,30 +25,68 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
+import java.io.IOException;
+import java.nio.channels.GatheringByteChannel;
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TextAdapter;
+import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-class T0003Integer implements TextAdapter<Integer> {
-	@Override
-	public TypeId typeId() {
-		return TypeId.LONG;
+class AnyNioWriteChannel implements BinaryAdapter<GatheringByteChannel> {
+	AnyNioWriteChannel(TypeId id_) {
+		id = id_;
 	}
 
 	@Override
-	public Integer decodeValue(
-		Integer dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		int sz = Packet.readIntLenenc(src);
-		String s = src.readCharSequence(
-			sz, fld.encoding.charset
-		).toString();
-		state.markAsDone();
-		return Integer.parseInt(s);
+	public TypeId typeId() {
+		return id;
 	}
+
+	@Override
+	public void encodeValue(
+		ByteBuf dst, GatheringByteChannel value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
+	) {
+		throw new IllegalStateException("channel is not readable");
+	}
+
+	@Override
+	public GatheringByteChannel decodeValue(
+		GatheringByteChannel dst, ByteBuf src, AdapterState state,
+		FieldImpl fld
+	) {
+		if (dst == null) {
+			throw new IllegalStateException(
+				"suitable Channel object must be supplied"
+			);
+		}
+
+		Integer remaining = state.get();
+		if (remaining == null)
+			remaining = Packet.readIntLenenc(src);
+
+		int count = remaining;
+		if (src.readableBytes() < count)
+			count = src.readableBytes();
+
+		try {
+			src.readBytes(dst, count);
+		} catch (IOException e) {
+			Channels.throwAny(e);
+		}
+		remaining -= count;
+		if (remaining == 0)
+			state.markAsDone();
+		else
+			state.set(remaining);
+		
+		return dst;
+	}
+
+	private final TypeId id;
 }

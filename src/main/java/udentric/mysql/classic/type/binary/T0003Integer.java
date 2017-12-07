@@ -50,8 +50,10 @@ class T0003Integer implements BinaryAdapter<Integer> {
 
 	@Override
 	public Integer decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
+		Integer dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		return src.getIntLE(src.readerIndex() + offset);
+		int rv = src.readIntLE();
+		state.markAsDone();
+		return rv;
 	}
 }

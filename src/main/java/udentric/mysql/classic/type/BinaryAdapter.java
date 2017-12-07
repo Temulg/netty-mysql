@@ -44,7 +44,7 @@ public interface BinaryAdapter<T> {
 	}
 
 	default T decodeValue(
-		ByteBuf src, int offset, int length, FieldImpl fld
+		T dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
 		throw new UnsupportedOperationException(String.format(
 			"Could not decode binary value of type %s", typeId()
