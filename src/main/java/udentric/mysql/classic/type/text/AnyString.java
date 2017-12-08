@@ -30,12 +30,11 @@ package udentric.mysql.classic.type.text;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TextAdapter;
+import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-class AnyString implements TextAdapter<String> {
+class AnyString implements ValueAdapter<String> {
 	AnyString(TypeId id_) {
 		id = id_;
 	}
@@ -51,7 +50,10 @@ class AnyString implements TextAdapter<String> {
 	) {
 		State s = state.get();
 		if (s == null) {
-			int sz = Packet.readIntLenenc(src);
+			int sz = ValueAdapter.readIntLenenc(src, state);
+			if (state.dataIncomplete())
+				return null;
+
 			if (src.readableBytes() >= sz) {
 				String rv = src.readCharSequence(
 					sz, fld.encoding.charset
@@ -65,7 +67,7 @@ class AnyString implements TextAdapter<String> {
 			s.acc.addComponent(
 				true, src.readRetainedSlice(src.readableBytes())
 			);
-			state.set(s);
+			state.set(s, AnyString::releaseState);
 		} else {
 			int count = s.sz - s.acc.writerIndex();
 			if (src.readableBytes() < count)

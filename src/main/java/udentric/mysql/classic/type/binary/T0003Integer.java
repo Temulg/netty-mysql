@@ -30,10 +30,10 @@ package udentric.mysql.classic.type.binary;
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.ValueAdapter;
 
-class T0003Integer implements BinaryAdapter<Integer> {
+class T0003Integer implements ValueAdapter<Integer> {
 	@Override
 	public TypeId typeId() {
 		return TypeId.LONG;
@@ -52,8 +52,12 @@ class T0003Integer implements BinaryAdapter<Integer> {
 	public Integer decodeValue(
 		Integer dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		int rv = src.readIntLE();
-		state.markAsDone();
-		return rv;
+		if (src.readableBytes() >= 4) {
+			state.markAsDone();
+			return src.readIntLE();
+		} else {
+			state.setDataIncomplete();
+			return null;
+		}
 	}
 }

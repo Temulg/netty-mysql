@@ -45,11 +45,22 @@ public class TextResultSet extends ResultSet {
 	}
 
 	@Override
-	protected DataRowImpl initDataRow(
+	protected void initRow(
 		ColumnValueMapper mapper, ByteBufAllocator alloc
 	) {
-		return mapper != null
-			? new TextDataRow(columns, mapper)
-			: new TextDataRow(columns);
+
 	}
+
+	@Override
+	protected void acceptRowData(ByteBuf src) {
+		
+	}
+
+	@Override
+	protected void consumeRow() {
+		rsc.acceptRow(row);
+		row.reset();
+	}
+
+	private DataRowImpl row;
 }

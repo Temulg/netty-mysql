@@ -67,13 +67,13 @@ public enum TypeId {
 
 	private TypeId(int id_) {
 		id = id_;
-		textAdapterSelector = (TextAdapterSelector)loadClass(
+		textAdapterSelector = (AdapterSelector)loadClass(
 			String.format(
 				"%s.test.T%04dSelector",
 				TypeId.class.getPackage().getName(), id
-			), () -> new TextAdapterSelector() {
+			), () -> new AdapterSelector() {
 				@Override
-				public TextAdapter get(Class cls) {
+				public ValueAdapter get(Class cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Text adapter from MySQL type %s "
 						+ "to object type %s not implemented",
@@ -82,23 +82,23 @@ public enum TypeId {
 				}
 
 				@Override
-				public TextAdapter find(Object obj) {
+				public ValueAdapter find(Class cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Text adapter from object class %s "
 						+ "to MySQL type %s not implemented",
-						obj.getClass().getName(), TypeId.this.name()
+						cls.getName(), TypeId.this.name()
 					));
 				}
 			}
 		);
 
-		binaryAdapterSelector = (BinaryAdapterSelector)loadClass(
+		binaryAdapterSelector = (AdapterSelector)loadClass(
 			String.format(
 				"%s.binary.T%04dSelector",
 				TypeId.class.getPackage().getName(), id
-			), () -> new BinaryAdapterSelector() {
+			), () -> new AdapterSelector() {
 				@Override
-				public BinaryAdapter get(Class cls) {
+				public ValueAdapter get(Class cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Binary adapter from MySQL type %s "
 						+ "to object type %s not implemented",
@@ -107,11 +107,11 @@ public enum TypeId {
 				}
 
 				@Override
-				public BinaryAdapter find(Object obj) {
+				public ValueAdapter find(Class cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Binary adapter from object class %s "
 						+ "to MySQL type %s not implemented",
-						obj.getClass().getName(), TypeId.this.name()
+						cls.getName(), TypeId.this.name()
 					));
 				}
 			}
@@ -138,8 +138,8 @@ public enum TypeId {
 	> MYSQL_TYPE_BY_ID;
 
 	public final int id;
-	public final TextAdapterSelector textAdapterSelector;
-	public final BinaryAdapterSelector binaryAdapterSelector;
+	public final AdapterSelector textAdapterSelector;
+	public final AdapterSelector binaryAdapterSelector;
 
 	static {
 		ImmutableMap.Builder<

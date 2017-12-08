@@ -37,36 +37,4 @@ public class FieldSetImpl extends FieldSet {
 	public void set(int pos, FieldImpl fld) {
 		fields[pos] = fld;
 	}
-
-/*
-	public boolean hasAllFields() {
-		return fieldPos == fields.length;
-	}
-
-	public void appendField(Field f) {
-		fields[fieldPos] = f;
-		fieldPos++;
-	}
-
-	public Row parseTextRow(ByteBuf src, Encoding enc) {
-		TextRow row = new TextRow(fields.length);
-		for (int pos = 0; pos < fields.length; ++pos)
-			row.extractValue(
-				pos, Packet.readIntLenenc(src), src,
-				fields[pos].encoding
-			);
-
-		return row;
-	}
-
-	public Field getField(int pos) {
-		if (pos < 0 || pos >= fields.length) {
-			Channels.throwAny(Packet.makeErrorFromState(
-				ErrorNumbers.SQL_STATE_INVALID_COLUMN_NUMBER
-			));
-		}
-
-		return fields[pos];
-	}
-*/
 }

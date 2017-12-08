@@ -28,5 +28,7 @@
 package udentric.mysql;
 
 public interface DataRow {
+	int size();
+
 	<T> T getValue(int pos);
 }

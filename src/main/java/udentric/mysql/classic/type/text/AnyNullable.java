@@ -25,29 +25,39 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type;
+package udentric.mysql.classic.type.text;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.type.AdapterState;
+import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.ValueAdapter;
 
-public interface BinaryAdapter<T> {
-	TypeId typeId();
 
-	default void encodeValue(
-		ByteBuf dst, T value, AdapterState state,
-		int bufSoftLimit, FieldImpl fld
-	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not encode object of class %s as value of type %s",
-			value.getClass(), typeId()
-		));
+abstract class AnyNullable<T> implements ValueAdapter<T> {
+	protected AnyNullable(TypeId id) {
+		stringAdapter = new AnyString(id);
 	}
 
-	default T decodeValue(
+	@Override
+	public TypeId typeId() {
+		return stringAdapter.typeId();
+	}
+
+	@Override
+	public T decodeValue(
 		T dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		throw new UnsupportedOperationException(String.format(
-			"Could not decode binary value of type %s", typeId()
-		));
+		String s = stringAdapter.decodeValue(null, src, state, fld);
+		
+		if (s != null && !"NULL".equals(s))
+			return assignFromString(dst, s);
+		else
+			return null;
+
 	}
+
+	protected abstract T assignFromString(T dst, String value);
+
+	private final AnyString stringAdapter;
 }

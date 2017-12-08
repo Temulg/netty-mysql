@@ -28,30 +28,30 @@
 package udentric.mysql.classic.type.text;
 
 import com.google.common.collect.ImmutableMap;
-import udentric.mysql.classic.type.TextAdapter;
-import udentric.mysql.classic.type.TextAdapterSelector;
+import udentric.mysql.classic.type.AdapterSelector;
+import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-public class T0008Selector extends TextAdapterSelector {
+public class T0008Selector extends AdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> get(Class<T> cls) {
-		return (TextAdapter<T>)(
+	public <T> ValueAdapter<T> get(Class<T> cls) {
+		return (ValueAdapter<T>)(
 			cls != null ? ADAPTERS.get(cls) : defaultAdapter
 		);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> TextAdapter<T> find(Object obj) {
-		return (TextAdapter<T>)findAdapter(obj, ADAPTERS);
+	public <T> ValueAdapter<T> find(Class<T> cls) {
+		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	private final TextAdapter<?> defaultAdapter = new T0008Long();
+	private final ValueAdapter<?> defaultAdapter = new T0008Long();
 	private final ImmutableMap<
-		Class<?>, TextAdapter<?>
+		Class<?>, ValueAdapter<?>
 	> ADAPTERS = ImmutableMap.<
-		Class<?>, TextAdapter<?>
+		Class<?>, ValueAdapter<?>
 	>builder().put(
 		Long.class, defaultAdapter
 	).put(

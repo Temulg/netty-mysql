@@ -32,12 +32,11 @@ import java.io.IOException;
 import java.nio.channels.GatheringByteChannel;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.ValueAdapter;
 
-class AnyNioWriteChannel implements BinaryAdapter<GatheringByteChannel> {
+class AnyNioWriteChannel implements ValueAdapter<GatheringByteChannel> {
 	AnyNioWriteChannel(TypeId id_) {
 		id = id_;
 	}
@@ -67,8 +66,11 @@ class AnyNioWriteChannel implements BinaryAdapter<GatheringByteChannel> {
 		}
 
 		Integer remaining = state.get();
-		if (remaining == null)
-			remaining = Packet.readIntLenenc(src);
+		if (remaining == null) {
+			remaining = ValueAdapter.readIntLenenc(src, state);
+			if (state.dataIncomplete())
+				return dst;
+		}
 
 		int count = remaining;
 		if (src.readableBytes() < count)

@@ -27,41 +27,39 @@
 
 package udentric.mysql.classic.type;
 
-import com.google.common.collect.ImmutableMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import io.netty.buffer.ByteBuf;
+import java.io.EOFException;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.Packet;
 
-public abstract class TextAdapterSelector {
-	public abstract <T> TextAdapter<T> get(Class<T> cls);
+public interface ValueAdapter<T> {
+	TypeId typeId();
 
-	public abstract <T> TextAdapter<T> find(Object obj);
-
-	protected TextAdapter<?> findAdapter(
-		Object obj,
-		ImmutableMap<Class<?>, TextAdapter<?>> staticAdapterMap
+	default void encodeValue(
+		ByteBuf dst, T value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
 	) {
-		return dynamicAdapterMap.computeIfAbsent(
-			obj.getClass(), cls -> {
-				Iterator<
-					Map.Entry<Class<?>, TextAdapter<?>>
-				> iter = staticAdapterMap.entrySet().iterator();
-				
-				while (iter.hasNext()) {
-					Map.Entry<
-						Class<?>, TextAdapter<?>
-					> entry = iter.next();
-
-					if (entry.getKey().isInstance(obj)) {
-						return entry.getValue();
-					}
-				}
-				return null;
-			}
-		);
+		throw new UnsupportedOperationException(String.format(
+			"Could not encode object of class %s as value of type %s",
+			value.getClass(), typeId()
+		));
 	}
 
-	protected final ConcurrentHashMap<
-		Class<?>, TextAdapter<?>
-	> dynamicAdapterMap = new ConcurrentHashMap<>();
+	default T decodeValue(
+		T dst, ByteBuf src, AdapterState state, FieldImpl fld
+	) {
+		throw new UnsupportedOperationException(String.format(
+			"Could not decode value of type %s", typeId()
+		));
+	}
+
+	public static int readIntLenenc(ByteBuf src, AdapterState state) {
+		int rv = 0;
+		try {
+			rv = Packet.readIntLenencSafe(src);
+		} catch (EOFException e) {
+			state.setDataIncomplete();
+		}
+		return rv;
+	}
 }

@@ -32,27 +32,31 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class BinaryAdapterSelector {
-	public abstract <T> BinaryAdapter<T> get(Class<T> cls);
+public abstract class AdapterSelector {
+	public <T> ValueAdapter<T> get() {
+		return get(null);
+	}
 
-	public abstract <T> BinaryAdapter<T> find(Object obj);
+	public abstract <T> ValueAdapter<T> get(Class<T> cls);
 
-	protected BinaryAdapter<?> findAdapter(
-		Object obj,
-		ImmutableMap<Class<?>, BinaryAdapter<?>> staticAdapterMap
+	public abstract <T> ValueAdapter<T> find(Class<T> cls);
+
+	protected ValueAdapter<?> findAdapter(
+		Class<?> cls,
+		ImmutableMap<Class<?>, ValueAdapter<?>> staticAdapterMap
 	) {
 		return dynamicAdapterMap.computeIfAbsent(
-			obj.getClass(), cls -> {
+			cls, cls_ -> {
 				Iterator<
-					Map.Entry<Class<?>, BinaryAdapter<?>>
+					Map.Entry<Class<?>, ValueAdapter<?>>
 				> iter = staticAdapterMap.entrySet().iterator();
 				
 				while (iter.hasNext()) {
 					Map.Entry<
-						Class<?>, BinaryAdapter<?>
+						Class<?>, ValueAdapter<?>
 					> entry = iter.next();
 
-					if (entry.getKey().isInstance(obj)) {
+					if (entry.getKey().isAssignableFrom(cls)) {
 						return entry.getValue();
 					}
 				}
@@ -62,6 +66,6 @@ public abstract class BinaryAdapterSelector {
 	}
 
 	protected final ConcurrentHashMap<
-		Class<?>, BinaryAdapter<?>
+		Class<?>, ValueAdapter<?>
 	> dynamicAdapterMap = new ConcurrentHashMap<>();
 }

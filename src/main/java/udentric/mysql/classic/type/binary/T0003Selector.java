@@ -28,29 +28,29 @@
 package udentric.mysql.classic.type.binary;
 
 import com.google.common.collect.ImmutableMap;
-import udentric.mysql.classic.type.BinaryAdapter;
-import udentric.mysql.classic.type.BinaryAdapterSelector;
+import udentric.mysql.classic.type.AdapterSelector;
+import udentric.mysql.classic.type.ValueAdapter;
 
-public class T0003Selector extends BinaryAdapterSelector {
+public class T0003Selector extends AdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> BinaryAdapter<T> get(Class<T> cls) {
-		return (BinaryAdapter<T>)(
+	public <T> ValueAdapter<T> get(Class<T> cls) {
+		return (ValueAdapter<T>)(
 			cls != null ? ADAPTERS.get(cls) : defaultAdapter
 		);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> BinaryAdapter<T> find(Object obj) {
-		return (BinaryAdapter<T>)findAdapter(obj, ADAPTERS);
+	public <T> ValueAdapter<T> find(Class<T> cls) {
+		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	private final BinaryAdapter<?> defaultAdapter = new T0003Integer();
+	private final ValueAdapter<?> defaultAdapter = new T0003Integer();
 	private final ImmutableMap<
-		Class<?>, BinaryAdapter<?>
+		Class<?>, ValueAdapter<?>
 	> ADAPTERS = ImmutableMap.<
-		Class<?>, BinaryAdapter<?>
+		Class<?>, ValueAdapter<?>
 	>builder().put(
 		Integer.class, defaultAdapter
 	).build();

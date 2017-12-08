@@ -35,26 +35,14 @@ public class AdapterState {
 		alloc = alloc_;
 	}
 
-	public boolean done() {
-		return done;
-	}
-
+	/*-- Adapter access --*/
 	public void markAsDone() {
 		done = true;
 		release.accept(state);
 	}
 
-	public void reset() {
-		state = null;
-		release = this::defaultStateRelease;
-		done = false;
-	}
-
-	public boolean resetIfDone() {
-		if (done) {
-			reset();
-		}
-		return done;
+	public void setDataIncomplete() {
+		dataIncomplete = true;
 	}
 
 	public <T> T get() {
@@ -70,11 +58,40 @@ public class AdapterState {
 		release = release_;
 	}
 
+	/*-- Mixed access --*/
+	public boolean dataIncomplete() {
+		return dataIncomplete;
+	}
+
+	/*-- Controller access --*/
+	public void resetDataIncomplete() {
+		dataIncomplete = false;
+	}
+
+	public boolean done() {
+		return done;
+	}
+
+	public void reset() {
+		state = null;
+		release = this::defaultStateRelease;
+		done = false;
+		dataIncomplete = false;
+	}
+
+	public boolean resetIfDone() {
+		if (done) {
+			reset();
+		}
+		return done;
+	}
+
 	private void defaultStateRelease(Object obj) {
 	}
 
 	private Object state;
 	private Consumer release;
 	private boolean done;
+	private boolean dataIncomplete;
 	public final ByteBufAllocator alloc;
 }

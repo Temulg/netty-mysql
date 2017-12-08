@@ -28,14 +28,13 @@
 package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
-import java.nio.channels.FileChannel;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.ValueAdapter;
 
-class AnyByteArray implements BinaryAdapter<byte[]> {
+class AnyByteArray implements ValueAdapter<byte[]> {
 	AnyByteArray(TypeId id_) {
 		id = id_;
 	}
@@ -81,7 +80,9 @@ class AnyByteArray implements BinaryAdapter<byte[]> {
 	) {
 		Integer offset = state.get();
 		if (offset == null) {
-			int sz = Packet.readIntLenenc(src);
+			int sz = ValueAdapter.readIntLenenc(src, state);
+			if (state.dataIncomplete())
+				return dst;
 
 			if (dst == null) {
 				dst = new byte[sz];

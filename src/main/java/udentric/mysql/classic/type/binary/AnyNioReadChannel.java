@@ -33,10 +33,10 @@ import java.nio.channels.ScatteringByteChannel;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.BinaryAdapter;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.ValueAdapter;
 
-class AnyNioReadChannel implements BinaryAdapter<ScatteringByteChannel> {
+class AnyNioReadChannel implements ValueAdapter<ScatteringByteChannel> {
 	AnyNioReadChannel(TypeId id_) {
 		id = id_;
 	}

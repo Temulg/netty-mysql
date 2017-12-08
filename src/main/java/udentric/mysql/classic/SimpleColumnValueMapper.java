@@ -33,8 +33,12 @@ public class SimpleColumnValueMapper implements ColumnValueMapper {
 	}
 
 	@Override
-	public Object getValueObjectOrClass(int col) {
-		return classes[col];
+	public void initRowTypes(Class[] colTypes) {
+		int count = classes.length;
+		if (count > colTypes.length)
+			count = colTypes.length;
+
+		System.arraycopy(classes, 0, colTypes, 0, count);
 	}
 
 	private final Class[] classes;

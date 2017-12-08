@@ -31,6 +31,7 @@ import java.sql.SQLException;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import java.io.EOFException;
 import java.nio.charset.Charset;
 import udentric.mysql.ErrorNumbers;
 
@@ -85,6 +86,54 @@ public class Packet {
 		}
 	}
 
+	public static int readIntLenencSafe(ByteBuf in) throws EOFException {
+		int limit = in.readableBytes();
+		if (limit > 9)
+			return readIntLenenc(in);
+		else if (limit == 0)
+			throw new EOFException();
+
+		int pos = in.readerIndex();
+		int len = (int)in.getByte(pos) & 0xff;
+
+		if (len < 0xfb) {
+			in.skipBytes(1);
+			return len;
+		}
+
+		switch (len) {
+		case 0xfb:
+			in.skipBytes(1);
+			return 0;
+		case 0xfc:
+			if (limit < 3)
+				throw new EOFException();
+
+			in.skipBytes(1);
+			return readInt2(in);
+		case 0xfd:
+			if (limit < 4)
+				throw new EOFException();
+
+			in.skipBytes(1);
+			return in.readMediumLE();
+		case 0xfe:
+			if (limit < 9)
+				throw new EOFException();
+
+			in.skipBytes(1);
+			long llen = in.readLongLE();
+			if (llen <= Integer.MAX_VALUE) {
+				return (int)llen;
+			}
+		default:
+			Channels.throwAny(makeError(
+				ErrorNumbers.ER_MALFORMED_PACKET
+			));
+			return 0;
+		}
+	}
+
 	public static long readLong2(ByteBuf in) {
 		short v = in.readShortLE();
 		return (long)v & 0xffff;
@@ -104,6 +153,51 @@ public class Packet {
 		case 0xfd:
 			return in.readMediumLE();
 		case 0xfe:
+			return in.readLongLE();
+		default:
+			Channels.throwAny(makeError(
+				ErrorNumbers.ER_MALFORMED_PACKET
+			));
+			return 0;
+		}
+	}
+
+	public static long readLongLenencSafe(ByteBuf in) throws EOFException {
+		int limit = in.readableBytes();
+		if (limit > 9)
+			return readLongLenenc(in);
+		else if (limit == 0)
+			throw new EOFException();
+
+		int pos = in.readerIndex();
+		int len = (int)in.getByte(pos) & 0xff;
+
+		if (len < 0xfb) {
+			in.skipBytes(1);
+			return len;
+		}
+
+		switch (len) {
+		case 0xfb:
+			in.skipBytes(1);
+			return 0;
+		case 0xfc:
+			if (limit < 3)
+				throw new EOFException();
+
+			in.skipBytes(1);
+			return readLong2(in);
+		case 0xfd:
+			if (limit < 4)
+				throw new EOFException();
+
+			in.skipBytes(1);
+			return in.readMediumLE();
+		case 0xfe:
+			if (limit < 9)
+				throw new EOFException();
+
+			in.skipBytes(1);
 			return in.readLongLE();
 		default:
 			Channels.throwAny(makeError(

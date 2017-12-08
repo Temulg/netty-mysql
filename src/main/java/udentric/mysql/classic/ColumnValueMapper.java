@@ -28,5 +28,9 @@
 package udentric.mysql.classic;
 
 public interface ColumnValueMapper {
-	Object getValueObjectOrClass(int col);
+	default void initRowTypes(Class[] colTypes) {
+	}
+
+	default void initRowValues(Object[] colValues) {
+	}
 }

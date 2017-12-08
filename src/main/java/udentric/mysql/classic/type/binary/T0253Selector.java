@@ -30,33 +30,33 @@ package udentric.mysql.classic.type.binary;
 import com.google.common.collect.ImmutableMap;
 import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ScatteringByteChannel;
-import udentric.mysql.classic.type.BinaryAdapter;
-import udentric.mysql.classic.type.BinaryAdapterSelector;
+import udentric.mysql.classic.type.AdapterSelector;
+import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-public class T0253Selector extends BinaryAdapterSelector {
+public class T0253Selector extends AdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> BinaryAdapter<T> get(Class<T> cls) {
-		return (BinaryAdapter<T>)(
+	public <T> ValueAdapter<T> get(Class<T> cls) {
+		return (ValueAdapter<T>)(
 			cls != null ? ADAPTERS.get(cls) : defaultAdapter
 		);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> BinaryAdapter<T> find(Object obj) {
-		return (BinaryAdapter<T>)findAdapter(obj, ADAPTERS);
+	public <T> ValueAdapter<T> find(Class<T> cls) {
+		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	private final BinaryAdapter<?> defaultAdapter = new AnyByteArray(
+	private final ValueAdapter<?> defaultAdapter = new AnyByteArray(
 		TypeId.VAR_STRING
 	);
 
 	private final ImmutableMap<
-		Class<?>, BinaryAdapter<?>
+		Class<?>, ValueAdapter<?>
 	> ADAPTERS = ImmutableMap.<
-		Class<?>, BinaryAdapter<?>
+		Class<?>, ValueAdapter<?>
 	>builder().put(
 		byte[].class, defaultAdapter
 	).put(

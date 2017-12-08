@@ -27,28 +27,15 @@
 
 package udentric.mysql.classic.type.text;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.Packet;
-import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TextAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-class T0008Long implements TextAdapter<Long> {
-	@Override
-	public TypeId typeId() {
-		return TypeId.LONGLONG;
+class T0008Long extends AnyNullable<Long> {
+	T0008Long() {
+		super(TypeId.LONGLONG);
 	}
 
 	@Override
-	public Long decodeValue(
-		Long dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		int sz = Packet.readIntLenenc(src);
-		String s = src.readCharSequence(
-			sz, fld.encoding.charset
-		).toString();
-		state.markAsDone();
-		return Long.parseLong(s);
+	protected Long assignFromString(Long dst, String value) {
+		return Long.parseLong(value);
 	}
 }
