@@ -38,13 +38,9 @@ public class AdapterState {
 	/*-- Adapter access --*/
 	public void markAsDone() {
 		done = true;
-		release.accept(state);
 	}
 
-	public void setDataIncomplete() {
-		dataIncomplete = true;
-	}
-
+	@SuppressWarnings("unchecked") 
 	public <T> T get() {
 		return (T)state;
 	}
@@ -58,32 +54,18 @@ public class AdapterState {
 		release = release_;
 	}
 
-	/*-- Mixed access --*/
-	public boolean dataIncomplete() {
-		return dataIncomplete;
-	}
-
 	/*-- Controller access --*/
-	public void resetDataIncomplete() {
-		dataIncomplete = false;
-	}
 
 	public boolean done() {
 		return done;
 	}
 
+	@SuppressWarnings("unchecked")
 	public void reset() {
+		release.accept(state);
 		state = null;
 		release = this::defaultStateRelease;
 		done = false;
-		dataIncomplete = false;
-	}
-
-	public boolean resetIfDone() {
-		if (done) {
-			reset();
-		}
-		return done;
 	}
 
 	private void defaultStateRelease(Object obj) {
@@ -92,6 +74,5 @@ public class AdapterState {
 	private Object state;
 	private Consumer release;
 	private boolean done;
-	private boolean dataIncomplete;
 	public final ByteBufAllocator alloc;
 }

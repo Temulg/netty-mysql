@@ -142,9 +142,7 @@ public class BlobTest extends TestCase {
 				@Override
 				public void acceptRow(DataRow row) {
 					Assert.assertTrue(checkBlob(
-						row.getValue(
-							0, ByteBuf.class
-						)
+						row.getValue(0)
 					));
 				}
 

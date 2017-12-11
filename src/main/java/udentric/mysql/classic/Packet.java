@@ -31,7 +31,6 @@ import java.sql.SQLException;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import java.io.EOFException;
 import java.nio.charset.Charset;
 import udentric.mysql.ErrorNumbers;
 
@@ -86,12 +85,12 @@ public class Packet {
 		}
 	}
 
-	public static int readIntLenencSafe(ByteBuf in) throws EOFException {
+	public static int readIntLenencSafe(ByteBuf in) {
 		int limit = in.readableBytes();
 		if (limit > 9)
 			return readIntLenenc(in);
 		else if (limit == 0)
-			throw new EOFException();
+			return -1;
 
 		int pos = in.readerIndex();
 		int len = (int)in.getByte(pos) & 0xff;
@@ -107,19 +106,19 @@ public class Packet {
 			return 0;
 		case 0xfc:
 			if (limit < 3)
-				throw new EOFException();
+				return -1;
 
 			in.skipBytes(1);
 			return readInt2(in);
 		case 0xfd:
 			if (limit < 4)
-				throw new EOFException();
+				return -1;
 
 			in.skipBytes(1);
 			return in.readMediumLE();
 		case 0xfe:
 			if (limit < 9)
-				throw new EOFException();
+				return -1;
 
 			in.skipBytes(1);
 			long llen = in.readLongLE();
@@ -162,12 +161,12 @@ public class Packet {
 		}
 	}
 
-	public static long readLongLenencSafe(ByteBuf in) throws EOFException {
+	public static long readLongLenencSafe(ByteBuf in) {
 		int limit = in.readableBytes();
 		if (limit > 9)
 			return readLongLenenc(in);
 		else if (limit == 0)
-			throw new EOFException();
+			return -1;
 
 		int pos = in.readerIndex();
 		int len = (int)in.getByte(pos) & 0xff;
@@ -183,19 +182,19 @@ public class Packet {
 			return 0;
 		case 0xfc:
 			if (limit < 3)
-				throw new EOFException();
+				return -1;
 
 			in.skipBytes(1);
 			return readLong2(in);
 		case 0xfd:
 			if (limit < 4)
-				throw new EOFException();
+				return -1;
 
 			in.skipBytes(1);
 			return in.readMediumLE();
 		case 0xfe:
 			if (limit < 9)
-				throw new EOFException();
+				return -1;
 
 			in.skipBytes(1);
 			return in.readLongLE();

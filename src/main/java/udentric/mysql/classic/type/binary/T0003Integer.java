@@ -55,9 +55,7 @@ class T0003Integer implements ValueAdapter<Integer> {
 		if (src.readableBytes() >= 4) {
 			state.markAsDone();
 			return src.readIntLE();
-		} else {
-			state.setDataIncomplete();
+		} else
 			return null;
-		}
 	}
 }

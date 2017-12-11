@@ -73,21 +73,15 @@ public class NumbersTest extends TestCase {
 				@Override
 				public void acceptRow(DataRow row) {
 					Assert.assertEquals(
-						(long)row.getValue(
-							0, Long.class
-						),
+						(long)row.getValue(0),
 						Long.MIN_VALUE
 					);
 					Assert.assertEquals(
-						(long)row.getValue(
-							1, Long.class
-						),
+						(long)row.getValue(1),
 						Long.MAX_VALUE
 					);
 					Assert.assertEquals(
-						(long)row.getValue(
-							2, Long.class
-						),
+						(long)row.getValue(2),
 						TEST_BIGINT_VALUE
 					);
 				}

@@ -27,11 +27,15 @@
 
 package udentric.mysql.classic.dicta;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import java.util.function.Consumer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.BinaryDataRow;
 import udentric.mysql.classic.ColumnValueMapper;
-import udentric.mysql.classic.DataRowImpl;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.type.AdapterState;
 
 public class BinaryResultSet extends ResultSet {
 	public BinaryResultSet(
@@ -46,23 +50,52 @@ public class BinaryResultSet extends ResultSet {
 
 	@Override
 	protected void initRow(
-		ColumnValueMapper mapper, ByteBufAllocator alloc
+		ColumnValueMapper mapper_, ByteBufAllocator alloc
 	) {
-		return mapper != null
-			? new BinaryDataRow(columns, mapper)
-			: new BinaryDataRow(columns);
+		colState = new AdapterState(alloc);
+		row = BinaryDataRow.init(row, columns, mapper);
+		mapper = mapper_;
+		colDataPos = 0;
+		rowConsumed = true;
 	}
 
 	@Override
 	protected void acceptRowData(ByteBuf src) {
-		
+		if (rowConsumed) {
+			row.reset(mapper);
+			rowConsumed = false;
+			src.skipBytes(1);
+			row.readNullBitmap(src);
+		}
+
+		for (; colDataPos < columns.size(); colDataPos++) {
+			if (row.checkAndSetNull(colDataPos))
+				continue;
+
+			row.decodeValue(colDataPos, src, colState, columns);
+			if (colState.done())
+				colState.reset();
+			else
+				break;
+		}
 	}
 
 	@Override
 	protected void consumeRow() {
+		if (colDataPos < columns.size())
+			LOGGER.error(
+				"Incomplete row read: want {} columns, have {} columns",
+				columns.size(), colDataPos
+			);
+
 		rsc.acceptRow(row);
-		row.reset();
+		colDataPos = 0;
+		rowConsumed = true;
 	}
 
-	private BinaryDataRow row;
+	private static final Logger LOGGER = LogManager.getLogger(
+		TextResultSet.class
+	);
+
+	protected BinaryDataRow row;
 }

@@ -27,11 +27,14 @@
 
 package udentric.mysql.classic.dicta;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import udentric.mysql.classic.ColumnValueMapper;
-import udentric.mysql.classic.DataRowImpl;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.TextDataRow;
+import udentric.mysql.classic.type.AdapterState;
 
 public class TextResultSet extends ResultSet {
 	public TextResultSet(
@@ -46,21 +49,47 @@ public class TextResultSet extends ResultSet {
 
 	@Override
 	protected void initRow(
-		ColumnValueMapper mapper, ByteBufAllocator alloc
+		ColumnValueMapper mapper_, ByteBufAllocator alloc
 	) {
-
+		colState = new AdapterState(alloc);
+		row = TextDataRow.init(row, columns, mapper);
+		mapper = mapper_;
+		colDataPos = 0;
+		rowConsumed = true;
 	}
 
 	@Override
 	protected void acceptRowData(ByteBuf src) {
-		
+		if (rowConsumed) {
+			row.reset(mapper);
+			rowConsumed = false;
+		}
+
+		for (; colDataPos < columns.size(); colDataPos++) {
+			row.decodeValue(colDataPos, src, colState, columns);
+			if (colState.done())
+				colState.reset();
+			else
+				break;
+		}
 	}
 
 	@Override
 	protected void consumeRow() {
+		if (colDataPos < columns.size())
+			LOGGER.error(
+				"Incomplete row read: want {} columns, have {} columns",
+				columns.size(), colDataPos
+			);
+
 		rsc.acceptRow(row);
-		row.reset();
+		colDataPos = 0;
+		rowConsumed = true;
 	}
 
-	private DataRowImpl row;
+	private static final Logger LOGGER = LogManager.getLogger(
+		TextResultSet.class
+	);
+
+	protected TextDataRow row;
 }

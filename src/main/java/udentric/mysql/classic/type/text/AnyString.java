@@ -30,6 +30,7 @@ package udentric.mysql.classic.type.text;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
@@ -50,8 +51,8 @@ class AnyString implements ValueAdapter<String> {
 	) {
 		State s = state.get();
 		if (s == null) {
-			int sz = ValueAdapter.readIntLenenc(src, state);
-			if (state.dataIncomplete())
+			int sz = Packet.readIntLenencSafe(src);
+			if (sz < 0)
 				return null;
 
 			if (src.readableBytes() >= sz) {

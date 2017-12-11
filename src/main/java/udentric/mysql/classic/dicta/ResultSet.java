@@ -29,12 +29,14 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnValueMapper;
-import udentric.mysql.classic.DataRowImpl;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.FieldSetImpl;
 import udentric.mysql.classic.Packet;
@@ -42,6 +44,7 @@ import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SessionInfo;
+import udentric.mysql.classic.type.AdapterState;
 
 public abstract class ResultSet implements Dictum {
 	protected ResultSet(
@@ -205,16 +208,47 @@ public abstract class ResultSet implements Dictum {
 		}
 
 		src.skipBytes(Packet.HEADER_SIZE);
+		if (leftOver == null)
+			acceptData(src, si);
+		else
+			acceptDataWithLeftOver(src, ctx, si);
+	}
+
+	private void acceptData(ByteBuf src, SessionInfo si) {
 		boolean lastBlock = src.readableBytes() < si.packetSize;
 
 		acceptRowData(src);
 
 		if (lastBlock)
 			consumeRow();
+		else if (src.readableBytes() > 0)
+			leftOver = src.readRetainedSlice(src.readableBytes());
+	}
+
+	private void acceptDataWithLeftOver(
+		ByteBuf src, ChannelHandlerContext ctx, SessionInfo si
+	) {
+		boolean lastBlock = src.readableBytes() < si.packetSize;
+
+		src.retain();
+		CompositeByteBuf buf = ctx.alloc().compositeBuffer(2);
+		buf.addComponents(true, leftOver, src);
+		leftOver = buf;
+
+		acceptRowData(buf);
+
+		if (lastBlock) {
+			buf.release();
+			leftOver = null;
+			consumeRow();
+		} else if (buf.readableBytes() > 0) {
+			leftOver = buf.readRetainedSlice(buf.readableBytes());
+			buf.release();
+		}
 	}
 
 	protected abstract void initRow(
-		ColumnValueMapper mapper, ByteBufAllocator alloc
+		ColumnValueMapper mapper_, ByteBufAllocator alloc
 	);
 
 	protected abstract void acceptRowData(ByteBuf src);
@@ -223,8 +257,13 @@ public abstract class ResultSet implements Dictum {
 
 	@Override
 	public void handleFailure(Throwable cause) {
-		if (row != null)
-			row.reset();
+		if (colState != null)
+			colState.reset();
+
+		if (leftOver != null) {
+			leftOver.release();
+			leftOver = null;
+		}
 
 		rsc.acceptFailure(cause);
 	}
@@ -234,4 +273,9 @@ public abstract class ResultSet implements Dictum {
 	protected FieldSetImpl columns;
 	protected int lastSeqNum;
 	protected int colFieldPos;
+	protected ByteBuf leftOver;
+	protected AdapterState colState;
+	protected ColumnValueMapper mapper;
+	protected int colDataPos;
+	protected boolean rowConsumed;
 }

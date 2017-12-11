@@ -80,8 +80,8 @@ class AnyByteArray implements ValueAdapter<byte[]> {
 	) {
 		Integer offset = state.get();
 		if (offset == null) {
-			int sz = ValueAdapter.readIntLenenc(src, state);
-			if (state.dataIncomplete())
+			int sz = Packet.readIntLenencSafe(src);
+			if (sz < 0)
 				return dst;
 
 			if (dst == null) {

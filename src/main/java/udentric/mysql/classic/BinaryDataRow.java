@@ -27,53 +27,82 @@
 
 package udentric.mysql.classic;
 
+import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import udentric.mysql.DataRow;
+import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.ValueAdapter;
 
-public class DataRowImpl implements DataRow {
-	public DataRowImpl(
-		FieldSetImpl columns, ColumnValueMapper mapper, boolean binary
+public class BinaryDataRow implements DataRow {
+	@SuppressWarnings("unchecked") 
+	public static BinaryDataRow init(
+		BinaryDataRow current, FieldSetImpl columns,
+		ColumnValueMapper mapper
 	) {
-		int colCount = columns.size();
+		if (current == null || current.size() != columns.size())
+			current = new BinaryDataRow(columns.size());
+		else {
+			Arrays.fill(current.colTypes, null);
+			current.reset();
+		}
+
+		mapper.initRowTypes(current.colTypes);
+
+		for (int pos = 0; pos < current.adapters.length; pos++) {
+			FieldImpl fld = (FieldImpl)columns.get(pos);
+			if (current.colTypes[pos] != null)
+				current.adapters[pos] = fld.type.binaryAdapterSelector.find(
+					current.colTypes[pos]
+				);
+			else
+				current.adapters[pos] = fld.type.binaryAdapterSelector.get();
+		}
+
+		return current;
+	}
+
+	private BinaryDataRow(int colCount) {
 		colTypes = new Class[colCount];
 		colValues = new Object[colCount];
 		adapters = new ValueAdapter[colCount];
 		nullBitmap = new byte[(colCount + 9) / 8];
-
-		mapper.initRowTypes(colTypes);
-		if (binary)
-			initAdaptersBinary(columns, mapper);
-		else
-			initAdaptersText(columns, mapper);
 	}
 
-	private final void initAdaptersText(
-		FieldSetImpl columns, ColumnValueMapper mapper
-	) {
-		for (int pos = 0; pos < adapters.length; pos++) {
-			FieldImpl fld = (FieldImpl)columns.get(pos);
-			if (colTypes[pos] != null)
-				adapters[pos] = fld.type.textAdapterSelector.find(
-					colTypes[pos]
-				);
-			else
-				adapters[pos] = fld.type.textAdapterSelector.get();
+	public void reset() {
+		Arrays.fill(colValues, null);
+		Arrays.fill(adapters, null);
+		Arrays.fill(nullBitmap, (byte)0);
+	}
+
+	public void reset(ColumnValueMapper mapper) {
+		reset();
+		mapper.initRowValues(colValues);
+	}
+
+	public void readNullBitmap(ByteBuf src) {
+		src.readBytes(nullBitmap);
+	}
+
+	public boolean checkAndSetNull(int col) {
+		int b = nullBitmap[(col + 2) >> 3] & 0xff;
+		
+		if (0 == ((b >> ((col + 2) & 7)) & 1))
+			return false;
+		else {
+			colValues[col] = null;
+			return true;
 		}
 	}
 
-	private final void initAdaptersBinary(
-		FieldSetImpl columns, ColumnValueMapper mapper
+	@SuppressWarnings("unchecked") 
+	public void decodeValue(
+		int col, ByteBuf src, AdapterState state, FieldSetImpl columns
 	) {
-		for (int pos = 0; pos < adapters.length; pos++) {
-			FieldImpl fld = (FieldImpl)columns.get(pos);
-			if (colTypes[pos] != null)
-				adapters[pos] = fld.type.binaryAdapterSelector.find(
-					colTypes[pos]
-				);
-			else
-				adapters[pos] = fld.type.binaryAdapterSelector.get();
-		}
+		ValueAdapter a = adapters[col];
+
+		colValues[col] = a.decodeValue(
+			colValues[col], src, state, (FieldImpl)columns.get(col)
+		);
 	}
 
 	@Override
@@ -82,19 +111,13 @@ public class DataRowImpl implements DataRow {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked") 
 	public <T> T getValue(int pos) {
 		return (T)colValues[pos];
-	}
-
-	public void resetData(ColumnValueMapper mapper) {
-		Arrays.fill(colValues, null);
-		mapper.initRowValues(colValues);
-		colPos = 0;
 	}
 
 	private final Class[] colTypes;
 	private final Object[] colValues;
 	private final ValueAdapter[] adapters;
 	private final byte[] nullBitmap;
-	int colPos;
 }

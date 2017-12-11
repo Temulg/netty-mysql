@@ -59,7 +59,7 @@ class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 		} finally {
 			int remaining = msg.readableBytes();
 			if (remaining > 0) {
-				LOGGER.warn(
+				LOGGER.error(
 					"{} bytes left in incoming packet",
 					remaining
 				);

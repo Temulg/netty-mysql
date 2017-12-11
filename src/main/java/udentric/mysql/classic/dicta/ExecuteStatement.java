@@ -42,18 +42,19 @@ import udentric.mysql.classic.SessionInfo;
 import udentric.mysql.classic.prepared.CursorType;
 import udentric.mysql.classic.prepared.Statement;
 import udentric.mysql.classic.type.AdapterState;
+import udentric.mysql.classic.type.ValueAdapter;
 
 public class ExecuteStatement implements Dictum {
 	public ExecuteStatement(
 		PreparedStatement pstmt_, ResultSetConsumer rsc_,
-		Object... args_
+		Object... params_
 	) {
 		pstmt = (Statement)pstmt_;
-		parameters = (FieldSetImpl)pstmt.parameters();
+		fields = (FieldSetImpl)pstmt.parameters();
 		omitTypeDeclaration = pstmt.typesDeclared();
 		rsc = rsc_;
 
-		args = args_;
+		params = params_;
 		state = this::emitCommand;
 	}
 
@@ -78,13 +79,13 @@ public class ExecuteStatement implements Dictum {
 		dst.writeIntLE(pstmt.getServerId());
 		dst.writeByte(CursorType.NONE.mask());
 		dst.writeIntLE(1);
-		if (parameters.size() == 0)
+		if (fields.size() == 0)
 			return false;
 
 		writeNullBitmap(dst);
 		if (!omitTypeDeclaration) {
 			dst.writeByte(1);
-			parameters.forEach(fld -> {
+			fields.forEach(fld -> {
 				dst.writeByte(((FieldImpl)fld).type.id);
 				dst.writeByte(((FieldImpl)fld).paramFlags());
 			});
@@ -96,19 +97,19 @@ public class ExecuteStatement implements Dictum {
 	}
 
 	private void writeNullBitmap(ByteBuf dst) {
-		int bitCount = (parameters.size() + 7) & (~7);
+		int bitCount = (fields.size() + 7) & (~7);
 
 		for (int wPos = 0; wPos < bitCount; wPos += 8) {
 			int acc = 0;
 			for (int bPos = 0; bPos < 8; bPos++) {
 				int argPos = bPos + wPos;
-				if (argPos >= parameters.size())
+				if (argPos >= fields.size())
 					break;
 
 				if (((
-					args.length <= argPos
+					params.length <= argPos
 				) || (
-					args[argPos]==null
+					params[argPos]==null
 				)) && !pstmt.parameterPreloaded(argPos)) {
 					acc |= 1 << bPos;
 				}
@@ -124,21 +125,28 @@ public class ExecuteStatement implements Dictum {
 		return emitParamDataImpl(dst, ctx, si);
 	}
 
+	@SuppressWarnings("unchecked")
 	private boolean emitParamDataImpl(
 		ByteBuf dst, ChannelHandlerContext ctx, SessionInfo si
 	) {
 		while (true) {
-			if (appendLeftovers(dst, si))
+			if (appendLeftOver(dst, si))
 				return true;
 
 			if (paramEncoderState.done()) {
 				paramPos++;
 				paramEncoderState.reset();
-				if (paramPos >= parameters.size())
+				adapter = null;
+				if (paramPos >= fields.size())
 					return false;
 			}
 
-			if (pstmt.parameterPreloaded(paramPos)) {
+			Object param = params[paramPos];
+
+			if (
+				pstmt.parameterPreloaded(paramPos)
+				|| (param == null)
+			) {
 				paramEncoderState.markAsDone();
 				continue;
 			}
@@ -148,40 +156,45 @@ public class ExecuteStatement implements Dictum {
 			if (limit == 0)
 				return true;
 
-			((FieldImpl)(parameters.get(
-				paramPos
-			))).binaryValueEncode(
-				dst, args[paramPos], paramEncoderState, limit
+			FieldImpl fld = (FieldImpl)fields.get(paramPos);
+			if (adapter == null) {
+				adapter = fld.type.binaryAdapterSelector.find(
+					param.getClass()
+				);
+			}
+
+			adapter.encodeValue(
+				dst, param, paramEncoderState, limit, fld
 			);
 
-			if (preserveLeftovers(dst, si))
+			if (preserveLeftOver(dst, si))
 				return true;
 		}
 	}
 
-	private boolean appendLeftovers(ByteBuf dst, SessionInfo si) {
-		if (paramLeftOvers == null)
+	private boolean appendLeftOver(ByteBuf dst, SessionInfo si) {
+		if (leftOver == null)
 			return false;
 
 		int limit = si.packetSize - dst.writerIndex() + bufferStartPos;
-		if (limit > paramLeftOvers.readableBytes()) {
-			dst.writeBytes(paramLeftOvers);
-			paramLeftOvers.release();
-			paramLeftOvers = null;
+		if (limit > leftOver.readableBytes()) {
+			dst.writeBytes(leftOver);
+			leftOver.release();
+			leftOver = null;
 			return false;
 		} else {
-			dst.writeBytes(paramLeftOvers, limit);
+			dst.writeBytes(leftOver, limit);
 			return true;
 		}
 	}
 
-	private boolean preserveLeftovers(ByteBuf dst, SessionInfo si) {
+	private boolean preserveLeftOver(ByteBuf dst, SessionInfo si) {
 		int count = dst.writerIndex() - bufferStartPos;
 		if (count < si.packetSize)
 			return false;
 
 		int nextPos = bufferStartPos + si.packetSize;
-		paramLeftOvers = dst.retainedSlice(
+		leftOver = dst.retainedSlice(
 			nextPos, count - si.packetSize
 		);
 		dst.writerIndex(nextPos);
@@ -253,14 +266,15 @@ public class ExecuteStatement implements Dictum {
 	public static final int OPCODE = 23;
 
 	private final Statement pstmt;
-	private final FieldSetImpl parameters;
+	private final FieldSetImpl fields;
 	private final ResultSetConsumer rsc;
 	private final boolean omitTypeDeclaration;
-	private final Object[] args;
+	private final Object[] params;
 	private AdapterState paramEncoderState;
 	private ClientMessageEmitter state;
 	private int seqNum;
 	private int bufferStartPos;
 	private int paramPos;
-	private ByteBuf paramLeftOvers;
+	private ByteBuf leftOver;
+	private ValueAdapter adapter;
 }

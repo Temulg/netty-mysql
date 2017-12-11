@@ -73,7 +73,7 @@ public enum TypeId {
 				TypeId.class.getPackage().getName(), id
 			), () -> new AdapterSelector() {
 				@Override
-				public ValueAdapter get(Class cls) {
+				public <T> ValueAdapter<T> get(Class<T> cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Text adapter from MySQL type %s "
 						+ "to object type %s not implemented",
@@ -82,7 +82,7 @@ public enum TypeId {
 				}
 
 				@Override
-				public ValueAdapter find(Class cls) {
+				public <T> ValueAdapter<T> find(Class<T> cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Text adapter from object class %s "
 						+ "to MySQL type %s not implemented",
@@ -98,7 +98,7 @@ public enum TypeId {
 				TypeId.class.getPackage().getName(), id
 			), () -> new AdapterSelector() {
 				@Override
-				public ValueAdapter get(Class cls) {
+				public <T> ValueAdapter<T> get(Class<T> cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Binary adapter from MySQL type %s "
 						+ "to object type %s not implemented",
@@ -107,7 +107,7 @@ public enum TypeId {
 				}
 
 				@Override
-				public ValueAdapter find(Class cls) {
+				public <T> ValueAdapter<T> find(Class<T> cls) {
 					throw new UnsupportedOperationException(String.format(
 						"Binary adapter from object class %s "
 						+ "to MySQL type %s not implemented",
