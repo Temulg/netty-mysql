@@ -23,9 +23,17 @@ eclipse {
 	}
 }
 
-test {
-	useTestNG()
-	testLogging.showStandardStreams = true
+sourceSets {
+	testsuite {
+		java {
+			srcDirs = ['testsuite/test/java']
+		}
+		resources {
+			srcDirs = ['testsuite/test/resources']
+		}
+		compileClasspath += sourceSets.test.compileClasspath
+		runtimeClasspath += sourceSets.test.runtimeClasspath
+	}
 }
 
 compileJava {
@@ -39,6 +47,13 @@ tasks.withType(Test) {task ->
 			task.systemProperty(k, v)
 		}
 	}
+}
+
+task testsuiteRun(type: Test) {
+	useTestNG()
+	testLogging.showStandardStreams = true
+	setTestClassesDirs sourceSets.testsuite.output
+	classpath = sourceSets.testsuite.runtimeClasspath
 }
 
 task run(type: JavaExec) {

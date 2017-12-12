@@ -25,8 +25,10 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package testsuite.simple;
+package udentric.mysql.testsuite.simple;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.stream.ChunkedNioFile;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
@@ -42,9 +44,8 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.handler.stream.ChunkedNioFile;
-import testsuite.TestCase;
+import udentric.mysql.testsuite.TestCase;
+
 import udentric.mysql.DataRow;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;

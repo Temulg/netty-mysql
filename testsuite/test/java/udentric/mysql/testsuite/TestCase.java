@@ -25,7 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package testsuite;
+package udentric.mysql.testsuite;
 
 import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;

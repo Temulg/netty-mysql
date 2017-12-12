@@ -25,7 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package testsuite.simple;
+package udentric.mysql.testsuite.simple;
 
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
@@ -35,7 +35,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
-import testsuite.TestCase;
+import udentric.mysql.testsuite.TestCase;
 import udentric.mysql.DataRow;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
