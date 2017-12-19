@@ -33,4 +33,26 @@ public interface ColumnValueMapper {
 
 	default void initRowValues(Object[] colValues) {
 	}
+
+	public static class Simple implements ColumnValueMapper {
+		public Simple(Class[] colTypes_) {
+			colTypes = colTypes_;
+		}
+
+		@Override
+		public void initRowTypes(Class[] colTypes_) {
+			System.arraycopy(
+				colTypes, 0, colTypes_, 0, colTypes.length
+			);
+		}
+
+		private final Class[] colTypes;
+	}
+
+	public static ColumnValueMapper makeSimple(Class<?>... colTypes) {
+		return new Simple(colTypes);
+	}
+
+	public static ColumnValueMapper DEFAULT = new ColumnValueMapper() {
+	};
 }

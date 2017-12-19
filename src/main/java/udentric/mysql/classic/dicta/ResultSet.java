@@ -32,8 +32,6 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import udentric.mysql.ErrorNumbers;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnValueMapper;
@@ -162,9 +160,7 @@ public abstract class ResultSet implements Dictum {
 			}
 		} else {
 			state = this::columnDataReceived;
-			initRow(
-				rsc.acceptMetadata(columns), ctx.alloc()
-			);
+			initRow(rsc.acceptMetadata(columns), ctx.alloc());
 			columnDataReceived(src, ctx, si);
 		}
 	}

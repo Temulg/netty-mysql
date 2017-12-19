@@ -36,7 +36,7 @@ public class SyncCommands {
 	}
 
 	public static ServerAck executeUpdate(Channel ch, String sql) {
-		Future<ServerAck> sf = null;;
+		Future<ServerAck> sf = null;
 
 		try {
 			sf = Commands.executeUpdate(

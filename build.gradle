@@ -13,7 +13,7 @@ dependencies {
 	compile 'com.google.guava:guava:22.0'
 	compile 'io.netty:netty-handler:4.1.15.Final'
 	compile 'org.apache.logging.log4j:log4j-core:2.8.2'
-	testCompile 'org.testng:testng:6.11'
+	testCompile 'org.testng:testng:6.13.1'
 }
 
 eclipse {
@@ -38,7 +38,6 @@ sourceSets {
 
 compileJava {
 	options.encoding = 'UTF-8'
-	options.compilerArgs << "-Xlint:unchecked"
 }
 
 tasks.withType(Test) {task ->

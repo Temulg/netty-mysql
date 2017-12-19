@@ -37,8 +37,8 @@ import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
 
-class AnyNioWriteChannel implements ValueAdapter<GatheringByteChannel> {
-	AnyNioWriteChannel(TypeId id_) {
+public class AnyNioWriteChannel implements ValueAdapter<GatheringByteChannel> {
+	public AnyNioWriteChannel(TypeId id_) {
 		id = id_;
 	}
 

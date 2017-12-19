@@ -34,8 +34,8 @@ import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
 
-class AnyByteArray implements ValueAdapter<byte[]> {
-	AnyByteArray(TypeId id_) {
+public class AnyByteArray implements ValueAdapter<byte[]> {
+	public AnyByteArray(TypeId id_) {
 		id = id_;
 	}
 

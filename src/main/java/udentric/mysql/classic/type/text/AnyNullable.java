@@ -32,9 +32,10 @@ import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
+import udentric.mysql.classic.type.binary.AnyString;
 
 
-abstract class AnyNullable<T> implements ValueAdapter<T> {
+public abstract class AnyNullable<T> implements ValueAdapter<T> {
 	protected AnyNullable(TypeId id) {
 		stringAdapter = new AnyString(id);
 	}

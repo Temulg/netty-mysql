@@ -28,9 +28,7 @@
 package udentric.mysql.classic.type;
 
 import com.google.common.collect.ImmutableMap;
-import io.netty.buffer.ByteBuf;
 import java.util.function.Supplier;
-import udentric.mysql.classic.FieldImpl;
 
 public enum TypeId {
 	DECIMAL(0),

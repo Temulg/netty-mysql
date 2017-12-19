@@ -25,7 +25,7 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
@@ -35,8 +35,8 @@ import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
 
-class AnyString implements ValueAdapter<String> {
-	AnyString(TypeId id_) {
+public class AnyString implements ValueAdapter<String> {
+	public AnyString(TypeId id_) {
 		id = id_;
 	}
 

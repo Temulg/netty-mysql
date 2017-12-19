@@ -28,6 +28,7 @@
 package udentric.mysql.testsuite.simple;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.handler.stream.ChunkedNioFile;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -88,7 +89,8 @@ public class BlobTest extends TestCase {
 		doRetrieval();
 	}
 
-	private boolean checkBlob(ByteBuf retrBytes) {
+	private boolean checkBlob(byte[] retrBytes_) {
+		ByteBuf retrBytes = Unpooled.wrappedBuffer(retrBytes_);
 		int pos = 0;
 		try (FileChannel fc = FileChannel.open(
 			testBlobFile, StandardOpenOption.READ
@@ -129,8 +131,10 @@ public class BlobTest extends TestCase {
 
 			return retrBytes.readableBytes() == 0;
 		} catch (Exception e) {
-			Channels.throwAny(e);
+			logger.error("exception occured", e);
 			return false;
+		} finally {
+			retrBytes.release();
 		}
 	}
 
@@ -138,7 +142,7 @@ public class BlobTest extends TestCase {
 		CountDownLatch latch = new CountDownLatch(1);
 
 		channel().writeAndFlush(new Query(
-			"SELECT blobdata from BLOBTEST LIMIT 1",
+			"SELECT blobdata FROM blobtest LIMIT 1",
 			new ResultSetConsumer(){
 				@Override
 				public void acceptRow(DataRow row) {
@@ -149,8 +153,8 @@ public class BlobTest extends TestCase {
 
 				@Override
 				public void acceptFailure(Throwable cause) {
-					Assert.fail("query failed", cause);
 					latch.countDown();
+					Assert.fail("query failed", cause);
 				}
 			
 				@Override

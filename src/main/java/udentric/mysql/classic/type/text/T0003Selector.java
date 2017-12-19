@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableMap;
 import udentric.mysql.classic.type.AdapterSelector;
 import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.binary.AnyString;
 
 public class T0003Selector extends AdapterSelector {
 	@Override

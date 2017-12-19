@@ -64,15 +64,15 @@ public class AdapterState {
 	public void reset() {
 		release.accept(state);
 		state = null;
-		release = this::defaultStateRelease;
+		release = AdapterState::defaultStateRelease;
 		done = false;
 	}
 
-	private void defaultStateRelease(Object obj) {
+	private static void defaultStateRelease(Object obj) {
 	}
 
 	private Object state;
-	private Consumer release;
+	private Consumer release = AdapterState::defaultStateRelease;
 	private boolean done;
 	public final ByteBufAllocator alloc;
 }

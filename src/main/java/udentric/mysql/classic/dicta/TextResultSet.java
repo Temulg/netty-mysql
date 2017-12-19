@@ -52,8 +52,8 @@ public class TextResultSet extends ResultSet {
 		ColumnValueMapper mapper_, ByteBufAllocator alloc
 	) {
 		colState = new AdapterState(alloc);
+		mapper = mapper_ != null ? mapper_ : ColumnValueMapper.DEFAULT;
 		row = TextDataRow.init(row, columns, mapper);
-		mapper = mapper_;
 		colDataPos = 0;
 		rowConsumed = true;
 	}

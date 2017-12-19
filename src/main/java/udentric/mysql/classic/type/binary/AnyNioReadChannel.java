@@ -36,8 +36,8 @@ import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
 
-class AnyNioReadChannel implements ValueAdapter<ScatteringByteChannel> {
-	AnyNioReadChannel(TypeId id_) {
+public class AnyNioReadChannel implements ValueAdapter<ScatteringByteChannel> {
+	public AnyNioReadChannel(TypeId id_) {
 		id = id_;
 	}
 

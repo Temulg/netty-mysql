@@ -27,35 +27,7 @@
 
 package udentric.mysql.classic.type.text;
 
-import com.google.common.collect.ImmutableMap;
-import udentric.mysql.classic.type.AdapterSelector;
-import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.TypeId;
-import udentric.mysql.classic.type.binary.AnyString;
+public class T0253Selector
+extends udentric.mysql.classic.type.binary.T0253Selector {
 
-public class T0008Selector extends AdapterSelector {
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> get(Class<T> cls) {
-		return (ValueAdapter<T>)(
-			cls != null ? ADAPTERS.get(cls) : defaultAdapter
-		);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> find(Class<T> cls) {
-		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
-	}
-
-	private final ValueAdapter<?> defaultAdapter = new T0008Long();
-	private final ImmutableMap<
-		Class<?>, ValueAdapter<?>
-	> ADAPTERS = ImmutableMap.<
-		Class<?>, ValueAdapter<?>
-	>builder().put(
-		Long.class, defaultAdapter
-	).put(
-		String.class, new AnyString(TypeId.LONGLONG)
-	).build();
 }
