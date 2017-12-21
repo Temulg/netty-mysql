@@ -27,6 +27,7 @@
 
 package udentric.mysql;
 
+import com.google.common.base.MoreObjects;
 import java.nio.charset.Charset;
 
 public class Encoding {
@@ -52,6 +53,19 @@ public class Encoding {
 		Encoding other = (Encoding)other_;
 
 		return mysqlId == other.mysqlId;
+	}
+
+	@Override
+	public String toString() {
+		return MoreObjects.toStringHelper(this).add(
+			"mysqlId", mysqlId
+		).add(
+			"mysqlCharset", mysqlCharset
+		).add(
+			"mysqlCollation", mysqlCollation
+		).add(
+			"charset", charset
+		).toString();
 	}
 
 	public final int mysqlId;

@@ -67,7 +67,7 @@ public enum TypeId {
 		id = id_;
 		textAdapterSelector = (AdapterSelector)loadClass(
 			String.format(
-				"%s.test.T%04dSelector",
+				"%s.text.T%04dSelector",
 				TypeId.class.getPackage().getName(), id
 			), () -> new AdapterSelector() {
 				@Override
@@ -75,7 +75,8 @@ public enum TypeId {
 					throw new UnsupportedOperationException(String.format(
 						"Text adapter from MySQL type %s "
 						+ "to object type %s not implemented",
-						TypeId.this.name(), cls.getName()
+						TypeId.this.name(),
+						cls != null ? cls.getName() : "<unspecified>"
 					));
 				}
 
@@ -84,7 +85,8 @@ public enum TypeId {
 					throw new UnsupportedOperationException(String.format(
 						"Text adapter from object class %s "
 						+ "to MySQL type %s not implemented",
-						cls.getName(), TypeId.this.name()
+						cls != null ? cls.getName() : "<unspecified>",
+						TypeId.this.name()
 					));
 				}
 			}
@@ -100,7 +102,8 @@ public enum TypeId {
 					throw new UnsupportedOperationException(String.format(
 						"Binary adapter from MySQL type %s "
 						+ "to object type %s not implemented",
-						TypeId.this.name(), cls.getName()
+						TypeId.this.name(),
+						cls != null ? cls.getName() : "<unspecified>"
 					));
 				}
 
@@ -109,7 +112,8 @@ public enum TypeId {
 					throw new UnsupportedOperationException(String.format(
 						"Binary adapter from object class %s "
 						+ "to MySQL type %s not implemented",
-						cls.getName(), TypeId.this.name()
+						cls != null ? cls.getName() : "<unspecified>",
+						TypeId.this.name()
 					));
 				}
 			}

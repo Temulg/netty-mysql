@@ -56,7 +56,7 @@ public abstract class AdapterSelector {
 						Class<?>, ValueAdapter<?>
 					> entry = iter.next();
 
-					if (entry.getKey().isAssignableFrom(cls)) {
+					if (entry.getKey().isAssignableFrom(cls_)) {
 						return entry.getValue();
 					}
 				}

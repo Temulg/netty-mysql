@@ -50,12 +50,21 @@ public class TextDataRow implements DataRow {
 
 		for (int pos = 0; pos < current.adapters.length; pos++) {
 			FieldImpl fld = (FieldImpl)columns.get(pos);
+
 			if (current.colTypes[pos] != null)
 				current.adapters[pos] = fld.type.textAdapterSelector.find(
 					current.colTypes[pos]
 				);
 			else
 				current.adapters[pos] = fld.type.textAdapterSelector.get();
+
+			if (current.adapters[pos] == null) {
+				throw new IllegalStateException(String.format(
+					"no text data adapter for object class %s",
+					current.colTypes[pos] != null
+					? current.colTypes[pos] : "<unspecified>"
+				));
+			}
 		}
 
 		return current;
@@ -72,8 +81,8 @@ public class TextDataRow implements DataRow {
 		Arrays.fill(adapters, null);
 	}
 
-	public void reset(ColumnValueMapper mapper) {
-		reset();
+	public void initValues(ColumnValueMapper mapper) {
+		Arrays.fill(colValues, null);
 		mapper.initRowValues(colValues);
 	}
 
@@ -82,7 +91,6 @@ public class TextDataRow implements DataRow {
 		int col, ByteBuf src, AdapterState state, FieldSetImpl columns
 	) {
 		ValueAdapter a = adapters[col];
-
 		colValues[col] = a.decodeValue(
 			colValues[col], src, state, (FieldImpl)columns.get(col)
 		);

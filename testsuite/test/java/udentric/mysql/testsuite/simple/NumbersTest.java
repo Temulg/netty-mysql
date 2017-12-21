@@ -65,13 +65,11 @@ public class NumbersTest extends TestCase {
 
 	@Test
 	public void numbers() throws Exception {
-		CountDownLatch latch = new CountDownLatch(1);
-
 		channel().writeAndFlush(new Query(
 			"SELECT * from number_test",
 			new ResultSetConsumer(){
 				@Override
-				public void acceptRow(DataRow row) {
+				public void acceptRow(DataRow row) { try {
 					Assert.assertEquals(
 						(long)row.getValue(0),
 						Long.MIN_VALUE
@@ -84,24 +82,32 @@ public class NumbersTest extends TestCase {
 						(long)row.getValue(2),
 						TEST_BIGINT_VALUE
 					);
-				}
+				} catch (AssertionError err) {
+					testFailed(err);
+				}}
 
 				@Override
-				public void acceptFailure(Throwable cause) {
+				public void acceptFailure(
+					Throwable cause
+				) { try {
 					Assert.fail("query failed", cause);
-					latch.countDown();
-				}
-			
+				} catch (AssertionError err) {
+					testFailed(err);
+				}}
+
 				@Override
 				public void acceptAck(
 					ServerAck ack, boolean terminal
-				) {
+				) { try {
 					Assert.assertTrue(terminal);
-					latch.countDown();
-				}
+					testOk();
+				} catch (AssertionError err) {
+					testFailed(err);
+				}}
 			}
 		)).addListener(Channels::defaultSendListener);
-		latch.await();
+
+		waitForTest();
 	}
 
 	private static final long TEST_BIGINT_VALUE = 6147483647L;

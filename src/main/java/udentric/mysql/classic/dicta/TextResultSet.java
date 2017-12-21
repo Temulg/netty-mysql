@@ -61,7 +61,7 @@ public class TextResultSet extends ResultSet {
 	@Override
 	protected void acceptRowData(ByteBuf src) {
 		if (rowConsumed) {
-			row.reset(mapper);
+			row.initValues(mapper);
 			rowConsumed = false;
 		}
 

@@ -27,6 +27,7 @@
 
 package udentric.mysql;
 
+import com.google.common.base.MoreObjects;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -55,6 +56,13 @@ public abstract class FieldSet implements Iterable<Field> {
 
 		FieldSet other = (FieldSet)other_;
 		return Arrays.equals(fields, other.fields);
+	}
+
+	@Override
+	public String toString() {
+		return MoreObjects.toStringHelper(this).add(
+			"fields", fields
+		).toString();
 	}
 
 	@Override

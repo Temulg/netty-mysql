@@ -32,7 +32,6 @@ import com.google.common.base.MoreObjects;
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.Encoding;
 import udentric.mysql.Field;
-import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 
 import java.nio.charset.Charset;

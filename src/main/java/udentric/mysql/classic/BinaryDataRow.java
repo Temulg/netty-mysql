@@ -56,6 +56,14 @@ public class BinaryDataRow implements DataRow {
 				);
 			else
 				current.adapters[pos] = fld.type.binaryAdapterSelector.get();
+
+			if (current.adapters[pos] == null) {
+				throw new IllegalStateException(String.format(
+					"no binary data adapter for object class %s",
+					current.colTypes[pos] != null
+					? current.colTypes[pos] : "<unspecified>"
+				));
+			}
 		}
 
 		return current;
@@ -74,8 +82,9 @@ public class BinaryDataRow implements DataRow {
 		Arrays.fill(nullBitmap, (byte)0);
 	}
 
-	public void reset(ColumnValueMapper mapper) {
-		reset();
+	public void initValues(ColumnValueMapper mapper) {
+		Arrays.fill(colValues, null);
+		Arrays.fill(nullBitmap, (byte)0);
 		mapper.initRowValues(colValues);
 	}
 

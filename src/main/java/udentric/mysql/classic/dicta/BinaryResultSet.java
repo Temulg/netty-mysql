@@ -62,7 +62,7 @@ public class BinaryResultSet extends ResultSet {
 	@Override
 	protected void acceptRowData(ByteBuf src) {
 		if (rowConsumed) {
-			row.reset(mapper);
+			row.initValues(mapper);
 			rowConsumed = false;
 			src.skipBytes(1);
 			row.readNullBitmap(src);
