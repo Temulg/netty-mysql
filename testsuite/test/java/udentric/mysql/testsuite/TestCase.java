@@ -41,9 +41,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetector.Level;
-import java.util.Optional;
-import java.util.concurrent.LinkedTransferQueue;
-import org.testng.Assert;
 import org.testng.TestRunner;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -69,30 +66,6 @@ public abstract class TestCase {
 	public void afterClass(ITestContext ctx) throws Exception {
 		grp.shutdownGracefully().await();
 		grp = null;
-	}
-
-	protected void waitForTest() {
-		waitForTests(1);
-	}
-
-	protected void waitForTests(int count) {
-		for (int c = 0; c < count; c++) {
-			try {
-				testCompleted.take().ifPresent(err -> {
-					throw err;
-				});
-			} catch (InterruptedException e) {
-				Assert.fail("test not completed", e);
-			}
-		}
-	}
-
-	protected void testOk() {
-		testCompleted.put(Optional.empty());
-	}
-
-	protected void testFailed(AssertionError err) {
-		testCompleted.put(Optional.of(err));
 	}
 
 	protected boolean versionMeetsMinimum(int major, int minor) {
@@ -324,9 +297,6 @@ public abstract class TestCase {
 	private final ArrayDeque<
 		SchemaObject
 	> createdObjects = new ArrayDeque<>();
-	protected final LinkedTransferQueue<
-		Optional<AssertionError>
-	> testCompleted = new LinkedTransferQueue<>();
 	protected final Logger logger;
 	protected NioEventLoopGroup grp;
 	protected Channel channel;

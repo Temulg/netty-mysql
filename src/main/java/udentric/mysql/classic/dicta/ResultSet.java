@@ -153,14 +153,11 @@ public abstract class ResultSet implements Dictum {
 			} else {
 				src.skipBytes(4);
 				state = this::columnDataReceived;
-				initRow(
-					rsc.acceptMetadata(columns),
-					ctx.alloc()
-				);
+				doInitRow(ctx, rsc.acceptMetadata(columns));
 			}
 		} else {
 			state = this::columnDataReceived;
-			initRow(rsc.acceptMetadata(columns), ctx.alloc());
+			doInitRow(ctx, rsc.acceptMetadata(columns));
 			columnDataReceived(src, ctx, si);
 		}
 	}
@@ -240,6 +237,18 @@ public abstract class ResultSet implements Dictum {
 		} else if (buf.readableBytes() > 0) {
 			leftOver = buf.readRetainedSlice(buf.readableBytes());
 			buf.release();
+		}
+	}
+
+	private void doInitRow(
+		ChannelHandlerContext ctx, ColumnValueMapper mapper_
+	) {
+		try {
+			initRow(mapper_, ctx.alloc());
+		} catch (Exception e) {
+			Channels.discardActiveDictum(
+				ctx.channel(), e
+			);
 		}
 	}
 

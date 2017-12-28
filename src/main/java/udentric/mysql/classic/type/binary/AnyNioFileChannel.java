@@ -29,15 +29,19 @@ package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.channels.ScatteringByteChannel;
+import java.nio.channels.SeekableByteChannel;
+
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
 
-public class AnyNioReadChannel implements ValueAdapter<ScatteringByteChannel> {
-	public AnyNioReadChannel(TypeId id_) {
+public class AnyNioFileChannel implements ValueAdapter<FileChannel> {
+	public AnyNioFileChannel(TypeId id_) {
 		id = id_;
 	}
 
@@ -48,18 +52,40 @@ public class AnyNioReadChannel implements ValueAdapter<ScatteringByteChannel> {
 
 	@Override
 	public void encodeValue(
-		ByteBuf dst, ScatteringByteChannel value, AdapterState state,
+		ByteBuf dst, FileChannel value, AdapterState state,
 		int bufSoftLimit, FieldImpl fld
 	) {
-		if (dst == null) {
-			throw new IllegalStateException(
-				"suitable Channel object must be supplied"
-			);
-		}
-
 		try {
-			if (0 >= dst.writeBytes(value, bufSoftLimit)) {
-				state.markAsDone();
+			Long remaining = state.get();
+			if (remaining == null) {
+				long sz = value.size();
+				Packet.writeLongLenenc(dst, sz);
+				if (sz == 0) {
+					state.markAsDone();
+					return;
+				}
+
+				long lim = Math.min(sz, bufSoftLimit);
+				long wc = dst.writeBytes(value, (int)lim);
+				if (wc == sz) {
+					state.markAsDone();
+					return;
+				} else if (wc < 0) {
+					throw new IOException("file truncated");
+				}
+
+				state.set(sz - wc);
+			} else {
+				long lim = Math.min(remaining, bufSoftLimit);
+				long wc = dst.writeBytes(value, (int)lim);
+				if (wc == remaining) {
+					state.markAsDone();
+					return;
+				} else if (wc < 0) {
+					throw new IOException("file truncated");
+				}
+
+				state.set(remaining - wc);
 			}
 		} catch (IOException e) {
 			Channels.throwAny(e);
@@ -67,8 +93,8 @@ public class AnyNioReadChannel implements ValueAdapter<ScatteringByteChannel> {
 	}
 
 	@Override
-	public ScatteringByteChannel decodeValue(
-		ScatteringByteChannel dst, ByteBuf src, AdapterState state,
+	public FileChannel decodeValue(
+		FileChannel dst, ByteBuf src, AdapterState state,
 		FieldImpl fld
 	) {
 		throw new IllegalStateException("channel is not writable");

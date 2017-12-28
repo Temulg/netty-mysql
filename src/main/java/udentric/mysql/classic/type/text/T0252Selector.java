@@ -25,47 +25,9 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.binary;
+package udentric.mysql.classic.type.text;
 
-import com.google.common.collect.ImmutableMap;
+public class T0252Selector
+extends udentric.mysql.classic.type.binary.T0253Selector {
 
-import java.nio.channels.FileChannel;
-import java.nio.channels.GatheringByteChannel;
-
-import udentric.mysql.classic.type.AdapterSelector;
-import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.TypeId;
-
-public class T0253Selector extends AdapterSelector {
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> get(Class<T> cls) {
-		return (ValueAdapter<T>)(
-			cls != null ? ADAPTERS.get(cls) : defaultAdapter
-		);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> find(Class<T> cls) {
-		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
-	}
-
-	private final ValueAdapter<?> defaultAdapter = new AnyByteArray(
-		TypeId.VAR_STRING
-	);
-
-	private final ImmutableMap<
-		Class<?>, ValueAdapter<?>
-	> ADAPTERS = ImmutableMap.<
-		Class<?>, ValueAdapter<?>
-	>builder().put(
-		byte[].class, defaultAdapter
-	).put(
-		FileChannel.class,
-		new AnyNioFileChannel(TypeId.VAR_STRING)
-	).put(
-		GatheringByteChannel.class,
-		new AnyNioWriteChannel(TypeId.VAR_STRING)
-	).build();
 }

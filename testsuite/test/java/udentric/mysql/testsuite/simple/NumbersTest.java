@@ -28,14 +28,14 @@
 package udentric.mysql.testsuite.simple;
 
 import java.sql.SQLException;
-import java.util.concurrent.CountDownLatch;
 
-import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
 import udentric.mysql.testsuite.TestCase;
+import udentric.test.Assert;
+import udentric.test.Tester;
 import udentric.mysql.DataRow;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
@@ -65,11 +65,13 @@ public class NumbersTest extends TestCase {
 
 	@Test
 	public void numbers() throws Exception {
+		Tester.beginAsync();
+
 		channel().writeAndFlush(new Query(
 			"SELECT * from number_test",
 			new ResultSetConsumer(){
 				@Override
-				public void acceptRow(DataRow row) { try {
+				public void acceptRow(DataRow row) {
 					Assert.assertEquals(
 						(long)row.getValue(0),
 						Long.MIN_VALUE
@@ -82,32 +84,28 @@ public class NumbersTest extends TestCase {
 						(long)row.getValue(2),
 						TEST_BIGINT_VALUE
 					);
-				} catch (AssertionError err) {
-					testFailed(err);
-				}}
+				}
 
 				@Override
 				public void acceptFailure(
 					Throwable cause
-				) { try {
-					Assert.fail("query failed", cause);
-				} catch (AssertionError err) {
-					testFailed(err);
-				}}
+				) {
+					Assert.fail(
+						"query failed", cause
+					);
+				}
 
 				@Override
 				public void acceptAck(
 					ServerAck ack, boolean terminal
-				) { try {
+				) {
 					Assert.assertTrue(terminal);
-					testOk();
-				} catch (AssertionError err) {
-					testFailed(err);
-				}}
+					Assert.done();
+				}
 			}
 		)).addListener(Channels::defaultSendListener);
 
-		waitForTest();
+		Tester.endAsync(1);
 	}
 
 	private static final long TEST_BIGINT_VALUE = 6147483647L;

@@ -27,8 +27,6 @@
 
 package udentric.mysql.testsuite.simple;
 
-import org.testng.Assert;
-import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
 import udentric.mysql.testsuite.TestCase;

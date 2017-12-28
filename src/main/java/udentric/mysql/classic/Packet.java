@@ -334,6 +334,29 @@ public class Packet {
 		}
 	}
 
+	public static int writeLongLenenc(ByteBuf out, long val) {
+		/* 251 is reserved for NULL */
+
+		if (val == (val & 0xffffff)) {
+			if (val < 0xfb) {
+				out.writeByte((byte)val);
+				return 1;
+			} else if (val < 0x10000) {
+				out.writeByte(0xfc);
+				out.writeShortLE((int)val);
+				return 3;
+			} else {
+				out.writeByte(0xfd);
+				out.writeMediumLE((int)val);
+				return 4;
+			}
+		} else {
+			out.writeByte(0xfe);
+			out.writeLongLE(val);
+			return 9;
+		}
+	}
+
 	public static boolean invalidSeqNum(
 		Channel ch, ByteBuf src, int expected
 	) {

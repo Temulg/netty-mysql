@@ -14,6 +14,7 @@ dependencies {
 	compile 'io.netty:netty-handler:4.1.15.Final'
 	compile 'org.apache.logging.log4j:log4j-core:2.8.2'
 	testCompile 'org.testng:testng:6.13.1'
+	testCompile project(':service:assert')
 }
 
 eclipse {
@@ -48,11 +49,16 @@ tasks.withType(Test) {task ->
 	}
 }
 
-task testsuiteRun(type: Test) {
+task testsuiteRun(type: Test, dependsOn: 'cleanTestsuiteRun') {
 	useTestNG()
 	testLogging.showStandardStreams = true
 	setTestClassesDirs sourceSets.testsuite.output
 	classpath = sourceSets.testsuite.runtimeClasspath
+/*
+	filter {
+		includeTestsMatching '*ExampleTest'
+	}
+*/
 }
 
 task run(type: JavaExec) {

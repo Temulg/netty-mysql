@@ -36,17 +36,16 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
 import udentric.mysql.testsuite.TestCase;
-
+import udentric.test.Assert;
+import udentric.test.Tester;
 import udentric.mysql.DataRow;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
@@ -71,26 +70,24 @@ public class BlobTest extends TestCase {
 
 	@Test
 	public void byteStreamInsert() throws Exception {
-		logger.info("--1-\n");
 		PreparedStatement pstmt = SyncCommands.prepareStatement(
 			channel(),  "INSERT INTO blobtest(blobdata) VALUES (?)"
 		);
-		logger.info("--2-\n");
+
 		try (FileChannel fc = FileChannel.open(
 			testBlobFile, StandardOpenOption.READ
 		)) {
-			logger.info("--3-\n");
 			SyncCommands.executeUpdate(
 				channel(), pstmt, fc
 			);
-			logger.info("--4-\n");
 		}
-		logger.info("--5-\n");
+
 		doRetrieval();
 	}
 
-	private boolean checkBlob(byte[] retrBytes_) {
+	private void checkBlob(byte[] retrBytes_) {
 		ByteBuf retrBytes = Unpooled.wrappedBuffer(retrBytes_);
+
 		int pos = 0;
 		try (FileChannel fc = FileChannel.open(
 			testBlobFile, StandardOpenOption.READ
@@ -106,10 +103,9 @@ public class BlobTest extends TestCase {
 
 				if (retrBytes.readableBytes() < count) {
 					next.release();
-					logger.error(String.format(
+					Assert.fail(String.format(
 						"data mismatch after %d bytes",
 					pos));
-					return false;
 				}
 
 				ByteBuf cur = retrBytes.slice(
@@ -118,10 +114,9 @@ public class BlobTest extends TestCase {
 				);
 				if (0 != cur.compareTo(next)) {
 					next.release();
-					logger.error(String.format(
+					Assert.fail(String.format(
 						"data mismatch after %d bytes",
 					pos));
-					return false;
 				}
 
 				retrBytes.skipBytes(count);
@@ -129,44 +124,41 @@ public class BlobTest extends TestCase {
 				pos += count;
 			}
 
-			return retrBytes.readableBytes() == 0;
+			Assert.assertEquals(retrBytes.readableBytes(), 0);
 		} catch (Exception e) {
-			logger.error("exception occured", e);
-			return false;
+			Assert.fail("could not validate blob", e);
 		} finally {
 			retrBytes.release();
 		}
 	}
 
 	private void doRetrieval() throws Exception {
-		CountDownLatch latch = new CountDownLatch(1);
+		Tester.beginAsync();
 
 		channel().writeAndFlush(new Query(
 			"SELECT blobdata FROM blobtest LIMIT 1",
-			new ResultSetConsumer(){
+			new ResultSetConsumer() {
 				@Override
 				public void acceptRow(DataRow row) {
-					Assert.assertTrue(checkBlob(
-						row.getValue(0)
-					));
+					checkBlob(row.getValue(0));
 				}
 
 				@Override
 				public void acceptFailure(Throwable cause) {
-					latch.countDown();
 					Assert.fail("query failed", cause);
 				}
-			
+
 				@Override
 				public void acceptAck(
 					ServerAck ack, boolean terminal
 				) {
 					Assert.assertTrue(terminal);
-					latch.countDown();
+					Assert.done();
 				}
 			}
 		)).addListener(Channels::defaultSendListener);
-		latch.await();
+
+		Tester.endAsync(1);
 	}
 
 	private void createBlobFile(int size) throws IOException {
@@ -200,7 +192,7 @@ public class BlobTest extends TestCase {
 		Files.delete(testBlobFile);
 	}
 
-	private static final String TEST_BLOB_FILE_PREFIX = "nmql-testblob";
+	private static final String TEST_BLOB_FILE_PREFIX = "nmql-testblob-";
 
 	protected static Path testBlobFile;
 }
