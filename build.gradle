@@ -54,11 +54,11 @@ task testsuiteRun(type: Test, dependsOn: 'cleanTestsuiteRun') {
 	testLogging.showStandardStreams = true
 	setTestClassesDirs sourceSets.testsuite.output
 	classpath = sourceSets.testsuite.runtimeClasspath
-/*
+
 	filter {
-		includeTestsMatching '*ExampleTest'
+		includeTestsMatching '*CallableStatementTest'
 	}
-*/
+
 }
 
 task run(type: JavaExec) {

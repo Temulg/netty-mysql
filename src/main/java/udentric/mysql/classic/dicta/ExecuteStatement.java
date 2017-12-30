@@ -163,6 +163,13 @@ public class ExecuteStatement implements Dictum {
 				);
 			}
 
+			if (adapter == null) {
+				throw new IllegalStateException(String.format(
+					"no binary data adapter of type %s for object class %s",
+					fld.type, param.getClass()
+				));
+			}
+
 			adapter.encodeValue(
 				dst, param, paramEncoderState, limit, fld
 			);

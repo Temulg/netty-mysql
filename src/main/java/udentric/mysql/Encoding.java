@@ -28,7 +28,11 @@
 package udentric.mysql;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableTable;
+
 import java.nio.charset.Charset;
+import java.util.Comparator;
+import java.util.Map;
 
 public class Encoding {
 	private Encoding(
@@ -74,10 +78,37 @@ public class Encoding {
 	public final Charset charset;
 
 	public static Encoding forId(int id) {
-		return ID_TO_ENCODING[id];
+		try {
+			return ID_TO_ENCODING[
+				id >>> ENCTABLE_LEAF_BITS
+			][id & ENCTABLE_LEAF_MASK];
+		} catch (IndexOutOfBoundsException e) {
+			return null;
+		}
 	}
 
-	private static final Encoding[] ID_TO_ENCODING = new Encoding[]{
+	public static Map<String, Encoding> forCharset(String mysqlCharset) {
+		return CSET_COL_TO_ENCODING.row(mysqlCharset);
+	}
+
+	public static Map<String, Encoding> forCollation(
+		String mysqlCollation
+	) {
+		return CSET_COL_TO_ENCODING.column(mysqlCollation);
+	}
+
+	public static Encoding forCharsetAndCollation(
+		String mysqlCharset,
+		String mysqlCollation
+	) {
+		return CSET_COL_TO_ENCODING.get(mysqlCharset, mysqlCollation);
+	}
+
+	private static final int ENCTABLE_LEAF_BITS = 6;
+	private static final int ENCTABLE_LEAF_MASK
+	= (1 << ENCTABLE_LEAF_BITS) - 1;
+
+	private static final Encoding[][] ID_TO_ENCODING = {{
 		null,
 		new Encoding(1, "big5", "big5_chinese_ci", "Big5"),
 		new Encoding(2, "latin2", "latin2_czech_cs", "ISO-8859-2"),
@@ -141,7 +172,8 @@ public class Encoding {
 		new Encoding(60, "utf32", "utf32_general_ci", "UTF-32"),
 		new Encoding(61, "utf32", "utf32_bin", "UTF-32"),
 		new Encoding(62, "utf16le", "utf16le_bin", "UTF-16LE"),
-		new Encoding(63, "binary", "binary", "UTF-8"),
+		new Encoding(63, "binary", "binary", "UTF-8")
+	}, {
 		new Encoding(64, "armscii8", "armscii8_bin", "US-ASCII"),
 		new Encoding(65, "ascii", "ascii_bin", "US-ASCII"),
 		new Encoding(66, "cp1250", "cp1250_bin", "windows-1250"),
@@ -175,8 +207,8 @@ public class Encoding {
 		new Encoding(94, "latin1", "latin1_spanish_ci", "IBM850"),
 		new Encoding(95, "cp932", "cp932_japanese_ci", "windows-31j"),
 		new Encoding(96, "cp932", "cp932_bin", "windows-31j"),
-		new Encoding(97, "eucjpms", "eucjpms_japanese_ci", "EUC-JP"),
-		new Encoding(98, "eucjpms", "eucjpms_bin", "EUC-JP"),
+		new Encoding(97, "eucjpms", "eucjpms_japanese_ci", "x-eucJP-Open"),
+		new Encoding(98, "eucjpms", "eucjpms_bin", "x-eucJP-Open"),
 		new Encoding(99, "cp1250", "cp1250_polish_ci", "windows-1250"),
 		null,
 		new Encoding(101, "utf16", "utf16_unicode_ci", "UTF-16"),
@@ -200,12 +232,12 @@ public class Encoding {
 		new Encoding(119, "utf16", "utf16_hungarian_ci", "UTF-16"),
 		new Encoding(120, "utf16", "utf16_sinhala_ci", "UTF-16"),
 		new Encoding(121, "utf16", "utf16_german2_ci", "UTF-16"),
-		new Encoding(122, "utf16", "utf16_croatian_ci", "UTF-16"),
+		new Encoding(
+			122, "utf16", "utf16_croatian_mysql561_ci", "UTF-16"
+		),
 		new Encoding(123, "utf16", "utf16_unicode_520_ci", "UTF-16"),
-		new Encoding(124, "utf16", "utf16_vietnamese_ci", "UTF-16"),
-		null,
-		null,
-		null,
+		new Encoding(124, "utf16", "utf16_vietnamese_ci", "UTF-16")
+	}, {
 		new Encoding(128, "ucs2", "ucs2_unicode_ci", "UTF-16"),
 		new Encoding(129, "ucs2", "ucs2_icelandic_ci", "UTF-16"),
 		new Encoding(130, "ucs2", "ucs2_latvian_ci", "UTF-16"),
@@ -227,7 +259,9 @@ public class Encoding {
 		new Encoding(146, "ucs2", "ucs2_hungarian_ci", "UTF-16"),
 		new Encoding(147, "ucs2", "ucs2_sinhala_ci", "UTF-16"),
 		new Encoding(148, "ucs2", "ucs2_german2_ci", "UTF-16"),
-		new Encoding(149, "ucs2", "ucs2_croatian_ci", "UTF-16"),
+		new Encoding(
+			149, "ucs2", "ucs2_croatian_mysql561_ci", "UTF-16"
+		),
 		new Encoding(150, "ucs2", "ucs2_unicode_520_ci", "UTF-16"),
 		new Encoding(151, "ucs2", "ucs2_vietnamese_ci", "UTF-16"),
 		null,
@@ -259,17 +293,12 @@ public class Encoding {
 		new Encoding(178, "utf32", "utf32_hungarian_ci", "UTF-32"),
 		new Encoding(179, "utf32", "utf32_sinhala_ci", "UTF-32"),
 		new Encoding(180, "utf32", "utf32_german2_ci", "UTF-32"),
-		new Encoding(181, "utf32", "utf32_croatian_ci", "UTF-32"),
+		new Encoding(
+			181, "utf32", "utf32_croatian_mysql561_ci", "UTF-32"
+		),
 		new Encoding(182, "utf32", "utf32_unicode_520_ci", "UTF-32"),
-		new Encoding(183, "utf32", "utf32_vietnamese_ci", "UTF-32"),
-		null,
-		null,
-		null,
-		null,
-		null,
-		null,
-		null,
-		null,
+		new Encoding(183, "utf32", "utf32_vietnamese_ci", "UTF-32")
+	}, {
 		new Encoding(192, "utf8", "utf8_unicode_ci", "UTF-8"),
 		new Encoding(193, "utf8", "utf8_icelandic_ci", "UTF-8"),
 		new Encoding(194, "utf8", "utf8_latvian_ci", "UTF-8"),
@@ -291,7 +320,9 @@ public class Encoding {
 		new Encoding(210, "utf8", "utf8_hungarian_ci", "UTF-8"),
 		new Encoding(211, "utf8", "utf8_sinhala_ci", "UTF-8"),
 		new Encoding(212, "utf8", "utf8_german2_ci", "UTF-8"),
-		new Encoding(213, "utf8", "utf8_croatian_ci", "UTF-8"),
+		new Encoding(
+			213, "utf8", "utf8_croatian_mysql561_ci", "UTF-8"
+		),
 		new Encoding(214, "utf8", "utf8_unicode_520_ci", "UTF-8"),
 		new Encoding(215, "utf8", "utf8_vietnamese_ci", "UTF-8"),
 		null,
@@ -323,11 +354,160 @@ public class Encoding {
 		new Encoding(242, "utf8mb4", "utf8mb4_hungarian_ci", "UTF-8"),
 		new Encoding(243, "utf8mb4", "utf8mb4_sinhala_ci", "UTF-8"),
 		new Encoding(244, "utf8mb4", "utf8mb4_german2_ci", "UTF-8"),
-		new Encoding(245, "utf8mb4", "utf8mb4_croatian_ci", "UTF-8"),
+		new Encoding(
+			245, "utf8mb4", "utf8mb4_croatian_mysql561_ci", "UTF-8"
+		),
 		new Encoding(246, "utf8mb4", "utf8mb4_unicode_520_ci", "UTF-8"),
 		new Encoding(247, "utf8mb4", "utf8mb4_vietnamese_ci", "UTF-8"),
 		new Encoding(248, "gb18030", "gb18030_chinese_ci", "GB18030"),
 		new Encoding(249, "gb18030", "gb18030_bin", "GB18030"),
 		new Encoding(250, "gb18030", "gb18030_unicode_520_ci", "GB18030")
-	};
+	}, {
+		// 256 - 319
+	}, {
+		// 320 - 383
+	}, {
+		// 384 - 447
+	}, {
+		// 448 - 511
+	}, {
+		// 512 - 575
+	}, {
+		new Encoding(576, "utf8", "utf8_croatian_ci", "UTF-8"),
+		new Encoding(577, "utf8", "utf8_myanmar_ci", "UTF-8"),
+		new Encoding(578, "utf8", "utf8_thai_520_w2", "UTF-8"),
+		null, // 579
+		null, // 580
+		null, // 581
+		null, // 582
+		null, // 583
+		null, // 584
+		null, // 585
+		null, // 586
+		null, // 587
+		null, // 588
+		null, // 589
+		null, // 590
+		null, // 591
+		null, // 592
+		null, // 593
+		null, // 594
+		null, // 595
+		null, // 596
+		null, // 597
+		null, // 598
+		null, // 599
+		null, // 600
+		null, // 601
+		null, // 602
+		null, // 603
+		null, // 604
+		null, // 605
+		null, // 606
+		null, // 607
+		new Encoding(608, "utf8mb4", "utf8mb4_croatian_ci", "UTF-8"),
+		new Encoding(609, "utf8mb4", "utf8mb4_myanmar_ci", "UTF-8"),
+		new Encoding(610, "utf8mb4", "utf8mb4_thai_520_w2", "UTF-8"),
+	}, {
+		new Encoding(640, "ucs2", "ucs2_croatian_ci", "UTF-16"),
+		new Encoding(641, "ucs2", "ucs2_myanmar_ci", "UTF-16"),
+		new Encoding(642, "ucs2", "ucs2_thai_520_w2", "UTF-16"),
+		null, // 643
+		null, // 644
+		null, // 645
+		null, // 646
+		null, // 647
+		null, // 648
+		null, // 649
+		null, // 650
+		null, // 651
+		null, // 652
+		null, // 653
+		null, // 654
+		null, // 655
+		null, // 656
+		null, // 657
+		null, // 658
+		null, // 659
+		null, // 660
+		null, // 661
+		null, // 662
+		null, // 663
+		null, // 664
+		null, // 665
+		null, // 666
+		null, // 667
+		null, // 668
+		null, // 669
+		null, // 670
+		null, // 671
+		new Encoding(672, "utf16", "utf16_croatian_ci", "UTF-16"),
+		new Encoding(673, "utf16", "utf16_myanmar_ci", "UTF-16"),
+		new Encoding(674, "utf16", "utf16_thai_520_w2", "UTF-16")
+	}, {
+		null, // 704
+		null, // 705
+		null, // 706
+		null, // 707
+		null, // 708
+		null, // 709
+		null, // 710
+		null, // 711
+		null, // 712
+		null, // 713
+		null, // 714
+		null, // 715
+		null, // 716
+		null, // 717
+		null, // 718
+		null, // 719
+		null, // 720
+		null, // 721
+		null, // 722
+		null, // 723
+		null, // 724
+		null, // 725
+		null, // 726
+		null, // 727
+		null, // 728
+		null, // 729
+		null, // 730
+		null, // 731
+		null, // 732
+		null, // 733
+		null, // 734
+		null, // 735
+		new Encoding(736, "utf32", "utf32_croatian_ci", "UTF-32"),
+		new Encoding(737, "utf32", "utf32_myanmar_ci", "UTF-32"),
+		new Encoding(738, "utf32", "utf32_thai_520_w2", "UTF-32")
+	}};
+
+	private static final ImmutableTable<
+		String, String, Encoding
+	> CSET_COL_TO_ENCODING;
+	static {
+		ImmutableTable.Builder<
+			String, String, Encoding
+		> builder = new ImmutableTable.Builder<
+			String, String, Encoding
+		>().orderRowsBy(
+			Comparator.naturalOrder()
+		).orderColumnsBy(
+			Comparator.naturalOrder()
+		);
+
+		for (Encoding[] encLeaf: ID_TO_ENCODING) {
+			for (Encoding enc: encLeaf) {
+				if (enc == null)
+					continue;
+
+				builder.put(
+					enc.mysqlCharset, enc.mysqlCollation,
+					enc
+				);
+			}
+		}
+
+		CSET_COL_TO_ENCODING = builder.build();
+	}
 }

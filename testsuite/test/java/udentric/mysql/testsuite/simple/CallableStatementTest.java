@@ -30,11 +30,16 @@ package udentric.mysql.testsuite.simple;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
+import udentric.mysql.DataRow;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.SyncCommands;
 import udentric.mysql.classic.dicta.ExecuteStatement;
+import udentric.mysql.classic.dicta.Query;
 import udentric.mysql.testsuite.TestCase;
+import udentric.test.Assert;
 import udentric.test.Tester;
 
 public class CallableStatementTest extends TestCase {
@@ -42,9 +47,8 @@ public class CallableStatementTest extends TestCase {
 		super(Logger.getLogger(CallableStatementTest.class));
 	}
 
-/*
 	@Test
-	public void testInOutParams() throws Exception {
+	public void inOutParams() throws Exception {
 		createProcedure(
 			"testInOutParam",
 			"(IN p1 VARCHAR(255), INOUT p2 INT)\n"
@@ -54,19 +58,68 @@ public class CallableStatementTest extends TestCase {
 		);
 
 		PreparedStatement pstmt = SyncCommands.prepareStatement(
-			channel(),  "{call testInOutParam(?, ?)}"
+			channel(),  "call testInOutParam(?, ?)"
 		);
 
-		int resultPos = 0;
+		SyncCommands.executeUpdate(channel(), "set @param0 = 4");
 
 		Tester.beginAsync();
 
 		channel().writeAndFlush(new ExecuteStatement(
 			pstmt,
+			new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(
+							row.getValue(0), "abcd"
+						);
+						break;
+					case 1:
+						Assert.assertEquals(
+							row.getValue(0),
+							"zyxwabcd"
+						);
+						break;
+					}
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					if (!terminal)
+						resultPos++;
+					else {
+						Assert.assertEquals(
+							resultPos, 1
+						);
+						Assert.done();
+					}
+				}
+
+				int resultPos = 0;
+			}, "abcd", "@param0"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+
+		Tester.beginAsync();
+
+		channel().writeAndFlush(new Query(
+			"SELECT @param0",
 			new ResultSetConsumer() {
 				@Override
 				public void acceptRow(DataRow row) {
-					
+					Assert.assertEquals(
+						(int)row.getValue(0), 5
+					);
 				}
 
 				@Override
@@ -81,20 +134,13 @@ public class CallableStatementTest extends TestCase {
 					Assert.assertTrue(terminal);
 					Assert.done();
 				}
-			}, "abcd", 4
+			}
 		)).addListener(Channels::defaultSendListener);
 
 		Tester.endAsync(1);
-
-        storedProc.setString(1, "abcd");
-        storedProc.setInt(2, 4);
-        storedProc.registerOutParameter(2, Types.INTEGER);
-
-        storedProc.execute();
-
-        assertEquals(5, storedProc.getInt(2));*/
 	}
 
+/*
     public void testBatch() throws Exception {
         Connection batchedConn = null;
 

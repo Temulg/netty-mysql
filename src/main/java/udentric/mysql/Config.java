@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
+import com.google.common.base.MoreObjects;
+
 public class Config {
 	public static class Builder {
 		private Builder() {
@@ -102,6 +104,15 @@ public class Config {
 
 	public boolean containsKey(Key key) {
 		return values.containsKey(key);
+	}
+
+	@Override
+	public String toString() {
+		MoreObjects.ToStringHelper h = MoreObjects.toStringHelper(this);
+		values.forEach((k, v) -> {
+			h.add(k.name(), v.toString());
+		});
+		return h.toString();
 	}
 
 	private static abstract class Value {
@@ -189,7 +200,8 @@ public class Config {
 		maintainTimeStats(BOOLEAN_VALUE),
 		paranoid(BOOLEAN_VALUE),
 		localSocketAddress(STRING_VALUE),
-		maxPacketSize(INTEGER_VALUE);
+		maxPacketSize(INTEGER_VALUE),
+		characterEncoding(STRING_VALUE);
 
 		private Key(Value accessor_) {
 			accessor = accessor_;

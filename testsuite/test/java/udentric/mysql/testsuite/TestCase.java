@@ -30,6 +30,8 @@ package udentric.mysql.testsuite;
 import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.testng.ITestContext;
 import org.testng.annotations.AfterMethod;
@@ -86,15 +88,17 @@ public abstract class TestCase {
 		);
 	}
 
-	protected Channel channel() {
-		if (channel != null) {
-			return channel;
-		}
+	protected static Channel makeChannel(
+		Function<Config.Builder, Config.Builder
+	> cc) {
+		Config.Builder builder = Config.fromEnvironment(
+			true
+		).withValue(
+			Config.Key.DBNAME, "testsuite"
+		);
 
 		ChannelFuture chf = Channels.create(
-			Config.fromEnvironment(true).withValue(
-				Config.Key.DBNAME, "testsuite"
-			).build(),
+			cc.apply(builder).build(),
 			(new Bootstrap()).group(
 				new NioEventLoopGroup()
 			).channel(NioSocketChannel.class)
@@ -106,13 +110,25 @@ public abstract class TestCase {
 			Channels.throwAny(e);
 		}
 
-		if (chf.isSuccess()) {
-			channel = chf.channel();
-			return channel;
-		} else
+		if (chf.isSuccess())
+			return chf.channel();
+		else
 			Channels.throwAny(chf.cause());
 
 		return null;
+	}
+
+	protected static Channel makeChannel() {
+		return makeChannel(Function.identity());
+	}
+
+	protected Channel channel() {
+		if (channel != null) {
+			return channel;
+		}
+
+		channel = makeChannel();
+		return channel;
 	}
 
 	protected void createTable(
@@ -127,6 +143,20 @@ public abstract class TestCase {
 		String tableName, String columnsAndOtherStuff
 	) throws SQLException {
 		createTable(channel(), tableName, columnsAndOtherStuff);
+	}
+
+	protected void createProcedure(
+		Channel ch, String procedureName, String procedureDefn
+	) throws SQLException {
+		createSchemaObject(
+			ch, "PROCEDURE", procedureName, procedureDefn
+		);
+	}
+
+	protected void createProcedure(
+		String procedureName, String procedureDefn
+	) throws SQLException {
+		createProcedure(channel(), procedureName, procedureDefn);
 	}
 
 	protected class SchemaObject {

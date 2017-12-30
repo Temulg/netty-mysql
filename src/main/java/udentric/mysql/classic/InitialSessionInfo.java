@@ -59,7 +59,7 @@ public class InitialSessionInfo {
 	) {
 		config = config_;
 		connAttributes = connAttributes_;
-		encoding = Encoding.forId(223);
+		encoding = selectEncoding();
 		packetSize = config.getOrDefault(
 			Config.Key.maxPacketSize, 0xffffff
 		);
@@ -67,6 +67,26 @@ public class InitialSessionInfo {
 
 	public Charset charset() {
 		return encoding.charset;
+	}
+
+	private Encoding selectEncoding() {
+		String csetName = config.getOrDefault(
+			Config.Key.characterEncoding, null
+		);
+
+		if (csetName == null)
+			return Encoding.forId(223);
+
+		// handle collation
+
+		Map<String, Encoding> colMap = Encoding.forCharset(csetName);
+
+		for (Encoding enc: colMap.values()) {
+			preferLocalEncoding = true;
+			return enc;
+		}
+
+		return Encoding.forId(223);
 	}
 
 	public void onAuth(
@@ -173,7 +193,10 @@ public class InitialSessionInfo {
 			);
 		}
 
-		encoding = Encoding.forId(Packet.readInt1(src));
+		Encoding serverEncoding = Encoding.forId(Packet.readInt1(src));
+
+		if (!preferLocalEncoding)
+			encoding = serverEncoding;
 
 		src.skipBytes(2);//short statusFlags = msg.readShortLE();
 
@@ -190,7 +213,7 @@ public class InitialSessionInfo {
 			);
 			src.skipBytes(1);
 			authPluginName = Packet.readStringNT(
-				src, encoding.charset
+				src, serverEncoding.charset
 			);
 		} else {
 			s2Len = Math.max(12, src.readableBytes());
@@ -282,6 +305,7 @@ public class InitialSessionInfo {
 
 	public final Config config;
 	private final Map<String, String> connAttributes;
+	private boolean preferLocalEncoding = false;
 	public ServerVersion version;
 	public Encoding encoding;
 	public long serverCaps;

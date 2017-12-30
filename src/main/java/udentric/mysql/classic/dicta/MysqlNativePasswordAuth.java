@@ -63,8 +63,8 @@ public class MysqlNativePasswordAuth implements Dictum {
 		);
 
 		dst.writeIntLE(si.packetSize);
-		dst.writeByte(si.encoding.mysqlId);
-		dst.writeZero(23);
+		dst.writeShortLE(si.encoding.mysqlId);
+		dst.writeZero(22);
 
 		dst.writeBytes(cfg.getOrDefault(Config.Key.user, "").getBytes(
 			si.charset()
