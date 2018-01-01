@@ -27,7 +27,10 @@
 
 package udentric.mysql.classic.type.binary;
 
+import java.nio.CharBuffer;
+
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.Packet;
@@ -46,10 +49,33 @@ public class AnyString implements ValueAdapter<String> {
 	}
 
 	@Override
+	public void encodeValue(
+		ByteBuf dst, String value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
+	) {
+		ByteBuf valBuf = state.get();
+		if (valBuf == null) {
+			valBuf = ByteBufUtil.encodeString(
+				state.alloc, CharBuffer.wrap(value),
+				fld.encoding.charset
+			);
+		}
+
+		if (valBuf.readableBytes() <= bufSoftLimit) {
+			dst.writeBytes(valBuf);
+			valBuf.release();
+			state.markAsDone();
+		} else {
+			dst.writeBytes(valBuf, bufSoftLimit);
+			state.set(valBuf);
+		}
+	}
+
+	@Override
 	public String decodeValue(
 		String dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		State s = state.get();
+		DecoderState s = state.get();
 		if (s == null) {
 			int sz = Packet.readIntLenencSafe(src);
 			if (sz < 0)
@@ -64,11 +90,13 @@ public class AnyString implements ValueAdapter<String> {
 			}
 
 			
-			s = new State(sz, state.alloc.compositeBuffer());
+			s = new DecoderState(
+				sz, state.alloc.compositeBuffer()
+			);
 			s.acc.addComponent(
 				true, src.readRetainedSlice(src.readableBytes())
 			);
-			state.set(s, AnyString::releaseState);
+			state.set(s, AnyString::releaseDecoderState);
 		} else {
 			int count = s.sz - s.acc.writerIndex();
 			if (src.readableBytes() < count)
@@ -86,8 +114,8 @@ public class AnyString implements ValueAdapter<String> {
 		return null;
 	}
 
-	private static class State {
-		State(int sz_, CompositeByteBuf acc_) {
+	private static class DecoderState {
+		DecoderState(int sz_, CompositeByteBuf acc_) {
 			sz = sz_;
 			acc = acc_;
 		}
@@ -96,8 +124,8 @@ public class AnyString implements ValueAdapter<String> {
 		final CompositeByteBuf acc;
 	}
 
-	private static void releaseState(Object s_) {
-		State s = (State)s_;
+	private static void releaseDecoderState(Object s_) {
+		DecoderState s = (DecoderState)s_;
 		s.acc.release();
 	}
 

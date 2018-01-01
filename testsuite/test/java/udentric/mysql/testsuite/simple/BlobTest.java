@@ -47,10 +47,13 @@ import udentric.mysql.testsuite.TestCase;
 import udentric.test.Assert;
 import udentric.test.Tester;
 import udentric.mysql.DataRow;
+import udentric.mysql.FieldSet;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnValueMapper;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.ServerAck;
+import udentric.mysql.classic.SimpleColumnValueMapper;
 import udentric.mysql.classic.SyncCommands;
 import udentric.mysql.classic.dicta.Query;
 
@@ -139,6 +142,13 @@ public class BlobTest extends TestCase {
 			"SELECT blobdata FROM blobtest LIMIT 1",
 			new ResultSetConsumer() {
 				@Override
+				public ColumnValueMapper acceptMetadata(
+					FieldSet columns
+				) {
+					return TEST_RESULT_MAPPER;
+				}
+
+				@Override
 				public void acceptRow(DataRow row) {
 					checkBlob(row.getValue(0));
 				}
@@ -193,6 +203,8 @@ public class BlobTest extends TestCase {
 	}
 
 	private static final String TEST_BLOB_FILE_PREFIX = "nmql-testblob-";
+	private static final SimpleColumnValueMapper TEST_RESULT_MAPPER
+	= new SimpleColumnValueMapper(byte[].class);
 
 	protected static Path testBlobFile;
 }

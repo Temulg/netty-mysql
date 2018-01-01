@@ -51,7 +51,7 @@ public class T0253Selector extends AdapterSelector {
 		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	private final ValueAdapter<?> defaultAdapter = new AnyByteArray(
+	private final ValueAdapter<?> defaultAdapter = new AnyString(
 		TypeId.VAR_STRING
 	);
 
@@ -60,7 +60,9 @@ public class T0253Selector extends AdapterSelector {
 	> ADAPTERS = ImmutableMap.<
 		Class<?>, ValueAdapter<?>
 	>builder().put(
-		byte[].class, defaultAdapter
+		String.class, defaultAdapter
+	).put(
+		byte[].class, new AnyByteArray(TypeId.VAR_STRING)
 	).put(
 		FileChannel.class,
 		new AnyNioFileChannel(TypeId.VAR_STRING)
