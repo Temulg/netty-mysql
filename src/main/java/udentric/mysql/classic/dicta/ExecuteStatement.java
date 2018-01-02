@@ -158,7 +158,7 @@ public class ExecuteStatement implements Dictum {
 
 			FieldImpl fld = (FieldImpl)fields.get(paramPos);
 			if (adapter == null) {
-				adapter = fld.type.binaryAdapterSelector.find(
+				adapter = (ValueAdapter<Object>)fld.type.binaryAdapterSelector.find(
 					param.getClass()
 				);
 			}
@@ -229,9 +229,7 @@ public class ExecuteStatement implements Dictum {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
-				ServerAck ack = new ServerAck(
-					src, true, si.charset()
-				);
+				ServerAck ack = ServerAck.fromOk(src, si);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
 				)) {
@@ -283,5 +281,5 @@ public class ExecuteStatement implements Dictum {
 	private int bufferStartPos;
 	private int paramPos;
 	private ByteBuf leftOver;
-	private ValueAdapter adapter;
+	private ValueAdapter<Object> adapter;
 }

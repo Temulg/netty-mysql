@@ -69,9 +69,7 @@ public class CloseStatement implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			try {
-				ServerAck ack = new ServerAck(
-					src, true, si.charset()
-				);
+				ServerAck ack = ServerAck.fromOk(src, si);
 				ch.attr(Channels.PSTMT_TRACKER).get().discard(
 					stmt
 				);

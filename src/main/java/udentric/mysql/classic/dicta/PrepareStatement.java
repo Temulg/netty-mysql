@@ -206,6 +206,7 @@ public class PrepareStatement implements Dictum {
 
 	private void completePreparation(Channel ch) {
 		Channels.discardActiveDictum(ch);
+
 		ch.attr(Channels.PSTMT_TRACKER).get().completePrepare(
 			sql, stmtId, parameters, columns
 		);

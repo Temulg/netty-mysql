@@ -94,9 +94,7 @@ public abstract class ResultSet implements Dictum {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
-				ServerAck ack = new ServerAck(
-					src, true, si.charset()
-				);
+				ServerAck ack = ServerAck.fromOk(src, si);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
 				)) {
@@ -181,10 +179,10 @@ public abstract class ResultSet implements Dictum {
 			if (src.readableBytes() < si.packetSize) {
 				src.skipBytes(Packet.HEADER_SIZE + 1);
 
-				ServerAck ack = new ServerAck(
-					src, !si.expectEof(), si.charset()
-				);
-				
+				ServerAck ack = si.expectEof()
+					? ServerAck.fromEof(src, si)
+					: ServerAck.fromOk(src, si);
+
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
 				)) {

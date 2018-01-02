@@ -90,8 +90,11 @@ public class InitialSessionInfo {
 	}
 
 	public void onAuth(
-		ServerAck ack, ChannelHandlerContext ctx, ChannelPromise chp
+		ByteBuf msg, ChannelHandlerContext ctx, ChannelPromise chp
 	) {
+		SessionInfo si = new SessionInfo(this);
+		ServerAck ack = ServerAck.fromOk(msg, si);
+
 		LOGGER.debug(() -> {
 			return new ParameterizedMessage(
 				"authenticated: {}", ack.info
@@ -101,7 +104,7 @@ public class InitialSessionInfo {
 		Channel ch = ctx.channel();
 		Channels.discardActiveDictum(ch);
 
-		ch.attr(Channels.SESSION_INFO).set(new SessionInfo(this));
+		ch.attr(Channels.SESSION_INFO).set(si);
 		ch.attr(Channels.INITIAL_SESSION_INFO).set(null);
 
 		String schema = config.getOrDefault(

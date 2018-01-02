@@ -71,9 +71,7 @@ public class ResetStatement implements Dictum {
 		switch (type) {
 		case Packet.OK:
 			try {
-				ServerAck ack = new ServerAck(
-					src, true, si.charset()
-				);
+				ServerAck ack = ServerAck.fromOk(src, si);
 				Channels.discardActiveDictum(ch);
 				sp.setSuccess(ack);
 			} catch (Exception e) {

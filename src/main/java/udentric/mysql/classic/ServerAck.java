@@ -27,22 +27,82 @@
 
 package udentric.mysql.classic;
 
-import java.nio.charset.Charset;
-
 import com.google.common.base.MoreObjects;
 
 import io.netty.buffer.ByteBuf;
 
 public class ServerAck	{
-	public ServerAck(ByteBuf msg, boolean okPacket, Charset cs) {
-		rows = okPacket ? Packet.readLongLenenc(msg) : 0;
-		insertId = okPacket ? Packet.readLongLenenc(msg) : 0;
-		srvStatus = msg.readShortLE();
-		warnCount = Packet.readInt2(msg);
+	public static ServerAck fromOk(ByteBuf msg, SessionInfo si) {
+		long rows = Packet.readLongLenenc(msg);
+		long insertId = Packet.readLongLenenc(msg);
+		short srvStatus = 0;
+		short warnCount = 0;
+		String info = "";
+		SessionStateInfo stateInfo = SessionStateInfo.EMPTY;
 
-		info = okPacket ? msg.readCharSequence(
-			msg.readableBytes(), cs
-		).toString() : "";
+		if (ClientCapability.PROTOCOL_41.get(si.clientCaps)) {
+			srvStatus = msg.readShortLE();
+			warnCount = msg.readShortLE();
+		} else if (ClientCapability.TRANSACTIONS.get(si.clientCaps)) {
+			srvStatus = msg.readShortLE();
+		}
+
+		if (ClientCapability.SESSION_TRACK.get(si.clientCaps)) {
+			int sz = Packet.readIntLenenc(msg);
+			if (sz > 0) {
+				info = msg.readCharSequence(
+					sz, si.charset()
+				).toString();
+			}
+
+			if (ServerStatus.SESSION_STATE_CHANGED.get(
+				srvStatus
+			)) {
+				stateInfo = new SessionStateInfo(
+					msg, si.charset()
+				);
+			}
+		} else {
+			info = msg.readCharSequence(
+				msg.readableBytes(), si.charset()
+			).toString();
+		}
+
+		return new ServerAck(
+			rows, insertId, srvStatus, warnCount, info, stateInfo
+		);
+	}
+
+	private ServerAck(
+		long rows_, long insertId_, short srvStatus_, short warnCount_,
+		String info_, SessionStateInfo stateInfo_
+	) {
+		rows = rows_;
+		insertId = insertId_;
+		srvStatus = srvStatus_;
+		warnCount = warnCount_;
+		info = info_;
+		stateInfo = stateInfo_;
+	}
+
+	public static ServerAck fromEof(ByteBuf msg, SessionInfo si) {
+		if (ClientCapability.PROTOCOL_41.get(si.clientCaps)) {
+			return new ServerAck(
+				msg.readShortLE(),
+				msg.readShortLE()
+			);
+		} else {
+			return new ServerAck((short)0, (short)0);
+		}
+	}
+
+	private ServerAck(short warnCount_, short srvStatus_) {
+		rows = 0;
+		insertId = 0;
+		srvStatus = srvStatus_;
+		warnCount = warnCount_;
+		info = "";
+		stateInfo = SessionStateInfo.EMPTY;
 	}
 
 	@Override
@@ -52,17 +112,20 @@ public class ServerAck	{
 		).add(
 			"insertId", insertId
 		).add(
-			"srvStatus", srvStatus
+			"srvStatus", Integer.toHexString(srvStatus)
 		).add(
 			"warnCount", warnCount
 		).add(
 			"info", info
+		).add(
+			"stateInfo", stateInfo
 		).toString();
 	}
 
 	public final long rows;
 	public final long insertId;
 	public final short srvStatus;
-	public final int warnCount;
+	public final short warnCount;
 	public final String info;
+	public final SessionStateInfo stateInfo;
 }

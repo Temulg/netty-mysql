@@ -27,6 +27,8 @@
 
 package udentric.mysql.testsuite.simple;
 
+import java.sql.SQLException;
+
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
@@ -82,11 +84,25 @@ public class CallableStatementTest extends TestCase {
 							"zyxwabcd"
 						);
 						break;
+					case 2:
+						Assert.assertEquals(
+							(int)row.getValue(0), 1
+						);
+						break;
 					}
 				}
 
 				@Override
 				public void acceptFailure(Throwable cause) {
+					if (cause instanceof SQLException) {
+						SQLException ex = (SQLException)cause;
+						logger.error(String.format(
+							"SQL error %s - %s",
+							ex.getSQLState(),
+							ex.getErrorCode()
+						));
+					}
+
 					Assert.fail("query failed", cause);
 				}
 
@@ -98,7 +114,7 @@ public class CallableStatementTest extends TestCase {
 						resultPos++;
 					else {
 						Assert.assertEquals(
-							resultPos, 1
+							resultPos, 3
 						);
 						Assert.done();
 					}
@@ -118,7 +134,7 @@ public class CallableStatementTest extends TestCase {
 				@Override
 				public void acceptRow(DataRow row) {
 					Assert.assertEquals(
-						(int)row.getValue(0), 5
+						(long)row.getValue(0), 4
 					);
 				}
 

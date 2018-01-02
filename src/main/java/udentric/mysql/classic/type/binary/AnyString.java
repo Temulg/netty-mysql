@@ -59,6 +59,7 @@ public class AnyString implements ValueAdapter<String> {
 				state.alloc, CharBuffer.wrap(value),
 				fld.encoding.charset
 			);
+			Packet.writeIntLenenc(dst, valBuf.readableBytes());
 		}
 
 		if (valBuf.readableBytes() <= bufSoftLimit) {

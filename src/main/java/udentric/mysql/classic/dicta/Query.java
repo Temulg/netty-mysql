@@ -70,9 +70,7 @@ public class Query implements Dictum {
 		case Packet.OK:
 			src.skipBytes(Packet.HEADER_SIZE + 1);
 			try {
-				ServerAck ack = new ServerAck(
-					src, true, si.charset()
-				);
+				ServerAck ack = ServerAck.fromOk(src, si);
 				if (ServerStatus.MORE_RESULTS_EXISTS.get(
 					ack.srvStatus
 				)) {
