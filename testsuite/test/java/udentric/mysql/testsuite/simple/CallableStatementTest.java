@@ -27,8 +27,6 @@
 
 package udentric.mysql.testsuite.simple;
 
-import java.sql.SQLException;
-
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
@@ -37,9 +35,9 @@ import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.ServerAck;
+import udentric.mysql.classic.ServerStatus;
 import udentric.mysql.classic.SyncCommands;
 import udentric.mysql.classic.dicta.ExecuteStatement;
-import udentric.mysql.classic.dicta.Query;
 import udentric.mysql.testsuite.TestCase;
 import udentric.test.Assert;
 import udentric.test.Tester;
@@ -47,6 +45,55 @@ import udentric.test.Tester;
 public class CallableStatementTest extends TestCase {
 	public CallableStatementTest() {
 		super(Logger.getLogger(CallableStatementTest.class));
+	}
+
+	@Test
+	public void noParams() throws Exception {
+		createProcedure(
+			"testSPNoParams", "()\nBEGIN\nSELECT 1;\nend\n"
+		);
+
+		PreparedStatement pstmt = SyncCommands.prepareStatement(
+			channel(),  "call testSPNoParams()"
+		);
+
+		Tester.beginAsync();
+
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						(long)row.getValue(0), 1L
+					);
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					if (!terminal)
+						resultPos++;
+					else {
+						Assert.assertEquals(
+							resultPos, 1
+						);
+						Assert.assertTrue(terminal);
+						Assert.done();
+					}
+				}
+
+				int resultPos = 0;
+			}
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
 	}
 
 	@Test
@@ -62,8 +109,6 @@ public class CallableStatementTest extends TestCase {
 		PreparedStatement pstmt = SyncCommands.prepareStatement(
 			channel(),  "call testInOutParam(?, ?)"
 		);
-
-		SyncCommands.executeUpdate(channel(), "set @param0 = 4");
 
 		Tester.beginAsync();
 
@@ -86,23 +131,19 @@ public class CallableStatementTest extends TestCase {
 						break;
 					case 2:
 						Assert.assertEquals(
-							(int)row.getValue(0), 1
+							(int)row.getValue(0), 5
 						);
 						break;
+					default:
+						Assert.fail(
+							"unexpected result set "
+							+ resultPos
+						);
 					}
 				}
 
 				@Override
 				public void acceptFailure(Throwable cause) {
-					if (cause instanceof SQLException) {
-						SQLException ex = (SQLException)cause;
-						logger.error(String.format(
-							"SQL error %s - %s",
-							ex.getSQLState(),
-							ex.getErrorCode()
-						));
-					}
-
 					Assert.fail("query failed", cause);
 				}
 
@@ -110,6 +151,13 @@ public class CallableStatementTest extends TestCase {
 				public void acceptAck(
 					ServerAck ack, boolean terminal
 				) {
+					if (resultPos == 2)
+						Assert.assertTrue(
+							ServerStatus.PS_OUT_PARAMS.get(
+								ack.srvStatus
+							)
+						);
+
 					if (!terminal)
 						resultPos++;
 					else {
@@ -121,20 +169,33 @@ public class CallableStatementTest extends TestCase {
 				}
 
 				int resultPos = 0;
-			}, "abcd", "@param0"
+			}, "abcd", "4"
 		)).addListener(Channels::defaultSendListener);
 
 		Tester.endAsync(1);
+	}
+
+	@Test
+	public void outParams() throws Exception {
+		createProcedure(
+			"testOutParam",
+			"(x int, out y int)\nbegin\ndeclare z int;"
+			+ "\nset z = x+1, y = z;\nend\n"
+		);
+
+		PreparedStatement pstmt = SyncCommands.prepareStatement(
+			channel(),  "call testOutParam(?, ?)"
+		);
 
 		Tester.beginAsync();
 
-		channel().writeAndFlush(new Query(
-			"SELECT @param0",
-			new ResultSetConsumer() {
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer(){
 				@Override
 				public void acceptRow(DataRow row) {
 					Assert.assertEquals(
-						(long)row.getValue(0), 4
+						(int)row.getValue(0), 6
 					);
 				}
 
@@ -147,15 +208,105 @@ public class CallableStatementTest extends TestCase {
 				public void acceptAck(
 					ServerAck ack, boolean terminal
 				) {
-					Assert.assertTrue(terminal);
-					Assert.done();
+					if (!terminal)
+						resultPos++;
+					else {
+						Assert.assertEquals(
+							resultPos, 1
+						);
+						Assert.assertTrue(terminal);
+						Assert.done();
+					}
 				}
-			}
+
+				int resultPos = 0;
+			}, "5"
 		)).addListener(Channels::defaultSendListener);
 
 		Tester.endAsync(1);
 	}
 
+	@Test
+	public void resultSet() throws Exception {
+		createTable("testSpResultTbl1", "(field1 INT)");
+		
+		SyncCommands.executeUpdate(
+			channel(),
+			"INSERT INTO testSpResultTbl1 VALUES (1), (2)"
+		);
+		
+		createTable("testSpResultTbl2", "(field2 varchar(255))");
+
+		SyncCommands.executeUpdate(
+			channel(),
+			"INSERT INTO testSpResultTbl2 VALUES ('abc'), ('def')"
+		);
+
+		createProcedure(
+			"testSpResult",
+			"()\nBEGIN\n"
+			+ "SELECT field2 FROM testSpResultTbl2 WHERE field2='abc';\n"
+			+ "UPDATE testSpResultTbl1 SET field1=2;\n"
+			+ "SELECT field2 FROM testSpResultTbl2 WHERE field2='def';\n"
+			+ "end\n"
+		);
+
+		PreparedStatement pstmt = SyncCommands.prepareStatement(
+			channel(),  "call testSpResult()"
+		);
+
+		Tester.beginAsync();
+
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(
+							row.getValue(0), "abc"
+						);
+						break;
+					case 1:
+						Assert.assertEquals(
+							row.getValue(0), "def"
+						);
+						break;
+					default:
+						Assert.fail(
+							"unexpected result set "
+							+ resultPos
+						);
+					}
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					if (!terminal)
+						resultPos++;
+					else {
+						Assert.assertEquals(
+							resultPos, 2
+						);
+						Assert.done();
+					}
+				}
+
+				int resultPos = 0;
+			}
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+	
 /*
     public void testBatch() throws Exception {
         Connection batchedConn = null;
@@ -216,256 +367,7 @@ public class CallableStatementTest extends TestCase {
         }
     }
 
-    public void testOutParams() throws Exception {
-        CallableStatement storedProc = null;
 
-        createProcedure("testOutParam", "(x int, out y int)\nbegin\ndeclare z int;\nset z = x+1, y = z;\nend\n");
+*/
 
-        storedProc = this.conn.prepareCall("{call testOutParam(?, ?)}");
-
-        storedProc.setInt(1, 5);
-        storedProc.registerOutParameter(2, Types.INTEGER);
-
-        storedProc.execute();
-
-        System.out.println(storedProc);
-
-        int indexedOutParamToTest = storedProc.getInt(2);
-
-        int namedOutParamToTest = storedProc.getInt("y");
-
-        assertTrue("Named and indexed parameter are not the same", indexedOutParamToTest == namedOutParamToTest);
-        assertTrue("Output value not returned correctly", indexedOutParamToTest == 6);
-
-        // Start over, using named parameters, this time
-        storedProc.clearParameters();
-        storedProc.setInt("x", 32);
-        storedProc.registerOutParameter("y", Types.INTEGER);
-
-        storedProc.execute();
-
-        indexedOutParamToTest = storedProc.getInt(2);
-        namedOutParamToTest = storedProc.getInt("y");
-
-        assertTrue("Named and indexed parameter are not the same", indexedOutParamToTest == namedOutParamToTest);
-        assertTrue("Output value not returned correctly", indexedOutParamToTest == 33);
-
-        try {
-            storedProc.registerOutParameter("x", Types.INTEGER);
-            assertTrue("Should not be able to register an out parameter on a non-out parameter", true);
-        } catch (SQLException sqlEx) {
-            if (!MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT.equals(sqlEx.getSQLState())) {
-                throw sqlEx;
-            }
-        }
-
-        try {
-            storedProc.getInt("x");
-            assertTrue("Should not be able to retreive an out parameter on a non-out parameter", true);
-        } catch (SQLException sqlEx) {
-            if (!MysqlErrorNumbers.SQL_STATE_COLUMN_NOT_FOUND.equals(sqlEx.getSQLState())) {
-                throw sqlEx;
-            }
-        }
-
-        try {
-            storedProc.registerOutParameter(1, Types.INTEGER);
-            assertTrue("Should not be able to register an out parameter on a non-out parameter", true);
-        } catch (SQLException sqlEx) {
-            if (!MysqlErrorNumbers.SQL_STATE_ILLEGAL_ARGUMENT.equals(sqlEx.getSQLState())) {
-                throw sqlEx;
-            }
-        }
-    }
-
-    public void testResultSet() throws Exception {
-        CallableStatement storedProc = null;
-
-        createTable("testSpResultTbl1", "(field1 INT)");
-        this.stmt.executeUpdate("INSERT INTO testSpResultTbl1 VALUES (1), (2)");
-        createTable("testSpResultTbl2", "(field2 varchar(255))");
-        this.stmt.executeUpdate("INSERT INTO testSpResultTbl2 VALUES ('abc'), ('def')");
-
-        createProcedure("testSpResult", "()\nBEGIN\nSELECT field2 FROM testSpResultTbl2 WHERE field2='abc';\n"
-                + "UPDATE testSpResultTbl1 SET field1=2;\nSELECT field2 FROM testSpResultTbl2 WHERE field2='def';\nend\n");
-
-        storedProc = this.conn.prepareCall("{call testSpResult()}");
-
-        storedProc.execute();
-
-        this.rs = storedProc.getResultSet();
-
-        ResultSetMetaData rsmd = this.rs.getMetaData();
-
-        assertTrue(rsmd.getColumnCount() == 1);
-        assertTrue("field2".equals(rsmd.getColumnName(1)));
-        assertTrue(rsmd.getColumnType(1) == Types.VARCHAR);
-
-        assertTrue(this.rs.next());
-
-        assertTrue("abc".equals(this.rs.getString(1)));
-
-        // TODO: This does not yet work in MySQL 5.0
-        // assertTrue(!storedProc.getMoreResults());
-        // assertTrue(storedProc.getUpdateCount() == 2);
-        assertTrue(storedProc.getMoreResults());
-
-        ResultSet nextResultSet = storedProc.getResultSet();
-
-        rsmd = nextResultSet.getMetaData();
-
-        assertTrue(rsmd.getColumnCount() == 1);
-        assertTrue("field2".equals(rsmd.getColumnName(1)));
-        assertTrue(rsmd.getColumnType(1) == Types.VARCHAR);
-
-        assertTrue(nextResultSet.next());
-
-        assertTrue("def".equals(nextResultSet.getString(1)));
-
-        nextResultSet.close();
-
-        this.rs.close();
-
-        storedProc.execute();
-    }
-
-    public void testSPParse() throws Exception {
-
-        CallableStatement storedProc = null;
-
-        createProcedure("testSpParse", "(IN FOO VARCHAR(15))\nBEGIN\nSELECT 1;\nend\n");
-
-        storedProc = this.conn.prepareCall("{call testSpParse()}");
-        storedProc.close();
-    }
-
-    public void testSPNoParams() throws Exception {
-
-        CallableStatement storedProc = null;
-
-        createProcedure("testSPNoParams", "()\nBEGIN\nSELECT 1;\nend\n");
-
-        storedProc = this.conn.prepareCall("{call testSPNoParams()}");
-        storedProc.execute();
-    }
-
-    public void testSPCache() throws Exception {
-        CallableStatement storedProc = null;
-
-        createProcedure("testSpParse", "(IN FOO VARCHAR(15))\nBEGIN\nSELECT 1;\nend\n");
-
-        int numIterations = 10;
-
-        long startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < numIterations; i++) {
-            storedProc = this.conn.prepareCall("{call testSpParse(?)}");
-            storedProc.close();
-        }
-
-        long elapsedTime = System.currentTimeMillis() - startTime;
-
-        System.out.println("Standard parsing/execution: " + elapsedTime + " ms");
-
-        storedProc = this.conn.prepareCall("{call testSpParse(?)}");
-        storedProc.setString(1, "abc");
-        this.rs = storedProc.executeQuery();
-
-        assertTrue(this.rs.next());
-        assertTrue(this.rs.getInt(1) == 1);
-
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_cacheCallableStmts, "true");
-
-        Connection cachedSpConn = getConnectionWithProps(props);
-
-        startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < numIterations; i++) {
-            storedProc = cachedSpConn.prepareCall("{call testSpParse(?)}");
-            storedProc.close();
-        }
-
-        elapsedTime = System.currentTimeMillis() - startTime;
-
-        System.out.println("Cached parse stage: " + elapsedTime + " ms");
-
-        storedProc = cachedSpConn.prepareCall("{call testSpParse(?)}");
-        storedProc.setString(1, "abc");
-        this.rs = storedProc.executeQuery();
-
-        assertTrue(this.rs.next());
-        assertTrue(this.rs.getInt(1) == 1);
-    }
-
-    public void testOutParamsNoBodies() throws Exception {
-        CallableStatement storedProc = null;
-
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_noAccessToProcedureBodies, "true");
-
-        Connection spConn = getConnectionWithProps(props);
-
-        createProcedure("testOutParam", "(x int, out y int)\nbegin\ndeclare z int;\nset z = x+1, y = z;\nend\n");
-
-        storedProc = spConn.prepareCall("{call testOutParam(?, ?)}");
-
-        storedProc.setInt(1, 5);
-        storedProc.registerOutParameter(2, Types.INTEGER);
-
-        storedProc.execute();
-
-        int indexedOutParamToTest = storedProc.getInt(2);
-
-        assertTrue("Output value not returned correctly", indexedOutParamToTest == 6);
-
-        storedProc.clearParameters();
-        storedProc.setInt(1, 32);
-        storedProc.registerOutParameter(2, Types.INTEGER);
-
-        storedProc.execute();
-
-        indexedOutParamToTest = storedProc.getInt(2);
-
-        assertTrue("Output value not returned correctly", indexedOutParamToTest == 33);
-    }
-
-   public void testParameterParser() throws Exception {
-        CallableStatement cstmt = null;
-
-        try {
-
-            createTable("t1", "(id   char(16) not null default '', data int not null)");
-            createTable("t2", "(s   char(16),  i   int,  d   double)");
-
-            createProcedure("foo42", "() insert into test.t1 values ('foo', 42);");
-            this.conn.prepareCall("{CALL foo42()}");
-            this.conn.prepareCall("{CALL foo42}");
-
-            createProcedure("bar", "(x char(16), y int, z DECIMAL(10)) insert into test.t1 values (x, y);");
-            cstmt = this.conn.prepareCall("{CALL bar(?, ?, ?)}");
-
-            ParameterMetaData md = cstmt.getParameterMetaData();
-            assertEquals(3, md.getParameterCount());
-            assertEquals(Types.CHAR, md.getParameterType(1));
-            assertEquals(Types.INTEGER, md.getParameterType(2));
-            assertEquals(Types.DECIMAL, md.getParameterType(3));
-
-            cstmt.close();
-
-            createProcedure("p", "() label1: WHILE @a=0 DO SET @a=1; END WHILE");
-            this.conn.prepareCall("{CALL p()}");
-
-            createFunction("f", "() RETURNS INT NO SQL return 1; ");
-            cstmt = this.conn.prepareCall("{? = CALL f()}");
-
-            md = cstmt.getParameterMetaData();
-            assertEquals(Types.INTEGER, md.getParameterType(1));
-        } finally {
-            if (cstmt != null) {
-                cstmt.close();
-            }
-        }
-    }
-    */
 }

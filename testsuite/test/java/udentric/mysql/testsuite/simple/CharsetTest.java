@@ -27,9 +27,6 @@
 
 package udentric.mysql.testsuite.simple;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;

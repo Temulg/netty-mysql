@@ -109,7 +109,7 @@ public class ExecuteStatement implements Dictum {
 				if (((
 					params.length <= argPos
 				) || (
-					params[argPos]==null
+					params[argPos] == null
 				)) && !pstmt.parameterPreloaded(argPos)) {
 					acc |= 1 << bPos;
 				}
@@ -141,7 +141,9 @@ public class ExecuteStatement implements Dictum {
 					return false;
 			}
 
-			Object param = params[paramPos];
+			Object param = paramPos < params.length
+				? params[paramPos]
+				: null;
 
 			if (
 				pstmt.parameterPreloaded(paramPos)
