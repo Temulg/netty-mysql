@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,51 +27,33 @@
 
 package udentric.mysql.classic.type.binary;
 
-import com.google.common.collect.ImmutableMap;
-
-import java.nio.channels.FileChannel;
-import java.nio.channels.GatheringByteChannel;
-import java.time.temporal.TemporalAccessor;
-
-import udentric.mysql.classic.type.AdapterSelector;
-import udentric.mysql.classic.type.ValueAdapter;
+import io.netty.buffer.ByteBuf;
+import java.time.LocalDateTime;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.ValueAdapter;
 
-public class T0253Selector extends AdapterSelector {
+class T0007LocalDateTime implements ValueAdapter<LocalDateTime> {
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> get(Class<T> cls) {
-		return (ValueAdapter<T>)(
-			cls != null ? ADAPTERS.get(cls) : defaultAdapter
-		);
+	public TypeId typeId() {
+		return TypeId.TIMESTAMP;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> find(Class<T> cls) {
-		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
+	public void encodeValue(
+		ByteBuf dst, LocalDateTime value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
+	) {
+		
+		
 	}
 
-	private final ValueAdapter<?> defaultAdapter = new AnyString(
-		TypeId.VAR_STRING
-	);
-
-	private final ImmutableMap<
-		Class<?>, ValueAdapter<?>
-	> ADAPTERS = ImmutableMap.<
-		Class<?>, ValueAdapter<?>
-	>builder().put(
-		String.class, defaultAdapter
-	).put(
-		byte[].class, new AnyByteArray(TypeId.VAR_STRING)
-	).put(
-		TemporalAccessor.class,
-		new AnyTemporalString(TypeId.VAR_STRING)
-	).put(
-		FileChannel.class,
-		new AnyNioFileChannel(TypeId.VAR_STRING)
-	).put(
-		GatheringByteChannel.class,
-		new AnyNioWriteChannel(TypeId.VAR_STRING)
-	).build();
+	@Override
+	public LocalDateTime decodeValue(
+		LocalDateTime dst, ByteBuf src, AdapterState state,
+		FieldImpl fld
+	) {
+		
+	}
 }

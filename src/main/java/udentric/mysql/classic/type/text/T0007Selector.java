@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,19 +25,17 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.binary;
+package udentric.mysql.classic.type.text;
 
 import com.google.common.collect.ImmutableMap;
-
-import java.nio.channels.FileChannel;
-import java.nio.channels.GatheringByteChannel;
-import java.time.temporal.TemporalAccessor;
-
+import java.time.Instant;
+import java.time.LocalDateTime;
 import udentric.mysql.classic.type.AdapterSelector;
 import udentric.mysql.classic.type.ValueAdapter;
 import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.binary.AnyString;
 
-public class T0253Selector extends AdapterSelector {
+public class T0007Selector extends AdapterSelector {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> ValueAdapter<T> get(Class<T> cls) {
@@ -52,26 +50,16 @@ public class T0253Selector extends AdapterSelector {
 		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	private final ValueAdapter<?> defaultAdapter = new AnyString(
-		TypeId.VAR_STRING
-	);
-
+	private final ValueAdapter<?> defaultAdapter = new T0007LocalDateTime();
 	private final ImmutableMap<
 		Class<?>, ValueAdapter<?>
 	> ADAPTERS = ImmutableMap.<
 		Class<?>, ValueAdapter<?>
 	>builder().put(
-		String.class, defaultAdapter
+		LocalDateTime.class, defaultAdapter
 	).put(
-		byte[].class, new AnyByteArray(TypeId.VAR_STRING)
+		Instant.class, new T0007Instant()
 	).put(
-		TemporalAccessor.class,
-		new AnyTemporalString(TypeId.VAR_STRING)
-	).put(
-		FileChannel.class,
-		new AnyNioFileChannel(TypeId.VAR_STRING)
-	).put(
-		GatheringByteChannel.class,
-		new AnyNioWriteChannel(TypeId.VAR_STRING)
+		String.class, new AnyString(TypeId.TIMESTAMP)
 	).build();
 }
