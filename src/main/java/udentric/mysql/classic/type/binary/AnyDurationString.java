@@ -25,47 +25,68 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
+
 package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
-import java.time.LocalDateTime;
+import io.netty.buffer.ByteBufUtil;
+import java.nio.CharBuffer;
+import java.time.Duration;
 import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TimeUtils;
-import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
+import udentric.mysql.classic.type.TypeId;
 
-class T0007LocalDateTime implements ValueAdapter<LocalDateTime> {
-	@Override
+public class AnyDurationString implements ValueAdapter<Duration> {
+        public AnyDurationString(TypeId id_) {
+                id = id_;
+        }
+		@Override
 	public TypeId typeId() {
-		return byteArrayAdapter.typeId();
+		return id;
 	}
 
 	@Override
 	public void encodeValue(
-		ByteBuf dst, LocalDateTime value, AdapterState state,
+		ByteBuf dst, Duration value, AdapterState state,
 		int bufSoftLimit, FieldImpl fld
 	) {
-		byteArrayAdapter.encodeValue(
-			dst, TimeUtils.encodeBinary(value),
-			state, bufSoftLimit, fld
+		ByteBuf valBuf = ByteBufUtil.encodeString(
+			state.alloc,
+			CharBuffer.wrap(TimeUtils.formatString(value)),
+			fld.encoding.charset
 		);
+		Packet.writeIntLenenc(dst, valBuf.readableBytes());
+		dst.writeBytes(valBuf);
+		valBuf.release();
+		state.markAsDone();
 	}
 
 	@Override
-	public LocalDateTime decodeValue(
-		LocalDateTime dst, ByteBuf src, AdapterState state,
+	public Duration decodeValue(
+		Duration dst, ByteBuf src, AdapterState state,
 		FieldImpl fld
 	) {
-		byte[] valBuf = byteArrayAdapter.decodeValue(
-			null, src, state, fld
-		);
-		if (!state.done())
-			return null;
+		Integer sz = state.get();
 
-		return TimeUtils.decodeDateTime(valBuf);
+		if (sz == null) {
+			sz = Packet.readIntLenencSafe(src);
+			if (sz < 0)
+				return null;
+		}
+
+		if (src.readableBytes() >= sz) {
+			state.markAsDone();
+			return TimeUtils.parseDuration(
+				src.readCharSequence(sz, fld.encoding.charset)
+			);	
+		} else {
+			state.set(sz);
+			return null;
+		}
 	}
 
-	private final AnyShortLPByteArray byteArrayAdapter
-	= new AnyShortLPByteArray(TypeId.TIMESTAMP);
+	private final TypeId id;
 }

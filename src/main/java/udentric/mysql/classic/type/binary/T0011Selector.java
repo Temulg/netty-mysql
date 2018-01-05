@@ -25,15 +25,12 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
 import com.google.common.collect.ImmutableMap;
-import java.time.Duration;
 import java.time.LocalTime;
 import udentric.mysql.classic.type.AdapterSelector;
 import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.TypeId;
-import udentric.mysql.classic.type.binary.AnyString;
 
 public class T0011Selector extends AdapterSelector {
 	@Override
@@ -57,9 +54,5 @@ public class T0011Selector extends AdapterSelector {
 		Class<?>, ValueAdapter<?>
 	>builder().put(
 		LocalTime.class, defaultAdapter
-	).put(
-		Duration.class, new T0011Duration()
-	).put(
-		String.class, new AnyString(TypeId.TIME)
 	).build();
 }

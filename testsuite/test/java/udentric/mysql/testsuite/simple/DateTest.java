@@ -27,11 +27,7 @@
 
 package udentric.mysql.testsuite.simple;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 import udentric.mysql.DataRow;
@@ -76,7 +72,9 @@ public class DateTest extends TestCase {
 				public void acceptAck(
 					ServerAck ack, boolean terminal
 				) {
-					Assert.assertEquals(ack.rows, 1);
+					Assert.assertEquals(
+						ack.affectedRows, 1
+					);
 					Assert.done();
 				}
 

@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableMap;
 
 import java.nio.channels.FileChannel;
 import java.nio.channels.GatheringByteChannel;
+import java.time.Duration;
 import java.time.temporal.TemporalAccessor;
 
 import udentric.mysql.classic.type.AdapterSelector;
@@ -67,6 +68,8 @@ public class T0253Selector extends AdapterSelector {
 	).put(
 		TemporalAccessor.class,
 		new AnyTemporalString(TypeId.VAR_STRING)
+	).put(
+		Duration.class, new AnyDurationString(TypeId.VAR_STRING)
 	).put(
 		FileChannel.class,
 		new AnyNioFileChannel(TypeId.VAR_STRING)

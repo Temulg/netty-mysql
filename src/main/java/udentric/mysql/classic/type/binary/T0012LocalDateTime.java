@@ -25,41 +25,47 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
-import com.google.common.collect.ImmutableMap;
-import java.time.Duration;
-import java.time.LocalTime;
-import udentric.mysql.classic.type.AdapterSelector;
-import udentric.mysql.classic.type.ValueAdapter;
+import io.netty.buffer.ByteBuf;
+import java.time.LocalDateTime;
+import udentric.mysql.classic.FieldImpl;
+import udentric.mysql.classic.type.AdapterState;
+import udentric.mysql.classic.type.TimeUtils;
 import udentric.mysql.classic.type.TypeId;
-import udentric.mysql.classic.type.binary.AnyString;
+import udentric.mysql.classic.type.ValueAdapter;
 
-public class T0011Selector extends AdapterSelector {
+class T0012LocalDateTime implements ValueAdapter<LocalDateTime> {
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> get(Class<T> cls) {
-		return (ValueAdapter<T>)(
-			cls != null ? ADAPTERS.get(cls) : defaultAdapter
+	public TypeId typeId() {
+		return byteArrayAdapter.typeId();
+	}
+
+	@Override
+	public void encodeValue(
+		ByteBuf dst, LocalDateTime value, AdapterState state,
+		int bufSoftLimit, FieldImpl fld
+	) {
+		byteArrayAdapter.encodeValue(
+			dst, TimeUtils.encodeBinary(value), state,
+			bufSoftLimit, fld
 		);
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T> ValueAdapter<T> find(Class<T> cls) {
-		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
+	public LocalDateTime decodeValue(
+		LocalDateTime dst, ByteBuf src, AdapterState state,
+		FieldImpl fld
+	) {
+		byte[] valBuf = byteArrayAdapter.decodeValue(
+			null, src, state, fld
+		);
+		if (!state.done())
+			return null;
+
+		return TimeUtils.decodeDateTime(valBuf);
 	}
 
-	private final ValueAdapter<?> defaultAdapter = new T0011LocalTime();
-	private final ImmutableMap<
-		Class<?>, ValueAdapter<?>
-	> ADAPTERS = ImmutableMap.<
-		Class<?>, ValueAdapter<?>
-	>builder().put(
-		LocalTime.class, defaultAdapter
-	).put(
-		Duration.class, new T0011Duration()
-	).put(
-		String.class, new AnyString(TypeId.TIME)
-	).build();
+	private final AnyShortLPByteArray byteArrayAdapter
+	= new AnyShortLPByteArray(TypeId.DATETIME);
 }

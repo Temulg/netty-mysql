@@ -74,10 +74,10 @@ public class ServerAck	{
 	}
 
 	private ServerAck(
-		long rows_, long insertId_, short srvStatus_, short warnCount_,
-		String info_, SessionStateInfo stateInfo_
+		long affectedRows_, long insertId_, short srvStatus_,
+		short warnCount_, String info_, SessionStateInfo stateInfo_
 	) {
-		rows = rows_;
+		affectedRows = affectedRows_;
 		insertId = insertId_;
 		srvStatus = srvStatus_;
 		warnCount = warnCount_;
@@ -97,7 +97,7 @@ public class ServerAck	{
 	}
 
 	private ServerAck(short warnCount_, short srvStatus_) {
-		rows = 0;
+		affectedRows = 0;
 		insertId = 0;
 		srvStatus = srvStatus_;
 		warnCount = warnCount_;
@@ -108,7 +108,7 @@ public class ServerAck	{
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this).add(
-			"rows", rows
+			"affectedRows", affectedRows
 		).add(
 			"insertId", insertId
 		).add(
@@ -122,7 +122,7 @@ public class ServerAck	{
 		).toString();
 	}
 
-	public final long rows;
+	public final long affectedRows;
 	public final long insertId;
 	public final short srvStatus;
 	public final short warnCount;
