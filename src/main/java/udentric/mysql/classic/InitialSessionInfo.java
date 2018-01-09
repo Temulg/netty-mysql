@@ -118,7 +118,9 @@ public class InitialSessionInfo {
 			return;
 		}
 
-		Promise<ServerAck> sp = Channels.newServerPromise(ch);
+		Promise<
+			udentric.mysql.ServerAck
+		> sp = Channels.newServerPromise(ch);
 
 		sp.addListener(sf -> {
 			if (sf.isSuccess())

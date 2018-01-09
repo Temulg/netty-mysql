@@ -31,7 +31,7 @@ import com.google.common.base.MoreObjects;
 
 import io.netty.buffer.ByteBuf;
 
-public class ServerAck	{
+public class ServerAck implements udentric.mysql.ServerAck {
 	public static ServerAck fromOk(ByteBuf msg, SessionInfo si) {
 		long rows = Packet.readLongLenenc(msg);
 		long insertId = Packet.readLongLenenc(msg);
@@ -103,6 +103,11 @@ public class ServerAck	{
 		warnCount = warnCount_;
 		info = "";
 		stateInfo = SessionStateInfo.EMPTY;
+	}
+
+	@Override
+	public long affectedRows() {
+		return affectedRows;
 	}
 
 	@Override

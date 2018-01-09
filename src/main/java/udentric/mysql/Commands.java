@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,7 +27,26 @@
 
 package udentric.mysql;
 
-public interface MysqlString {
-	default void release() {
+import io.netty.channel.Channel;
+import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.Future;
+
+public interface Commands {
+	Future<PreparedStatement> prepareStatement(String sql);
+
+	Future<ServerAck> executeUpdate(String sql);
+
+	Future<ServerAck> executeUpdate(
+		PreparedStatement pstmt, Object... args
+	);
+
+	public static Commands with(Channel ch) {
+		return ch.attr(COMMAND_ADAPTER).get();
 	}
+
+	public static final AttributeKey<
+		Commands
+	> COMMAND_ADAPTER = AttributeKey.valueOf(
+		"udentric.mysql.Commands"
+	);
 }

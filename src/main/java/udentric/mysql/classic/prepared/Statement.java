@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,25 +27,82 @@
 
 package udentric.mysql.classic.prepared;
 
-import udentric.mysql.PreparedStatement;
+import io.netty.channel.Channel;
+import java.util.BitSet;
 
-public interface Statement extends PreparedStatement {
-	int getServerId();
+import udentric.mysql.FieldSet;
+import udentric.mysql.classic.FieldSetImpl;
 
-	default boolean typesDeclared() {
-		return false;
+public class Statement implements udentric.mysql.PreparedStatement {
+	public Statement(
+		String sql_, int srvId_, Channel ch_,
+		FieldSetImpl parameters_,
+		FieldSetImpl columns_
+	) {
+		sql = sql_;
+		srvId = srvId_;
+		ch = ch_;
+		parameters = parameters_;
+		columns = columns_;
+		parameterPreloaded = new BitSet(parameters.size());
 	}
-	
-	default void typesDeclared(boolean v) {
+
+	public void check(Channel ch_) {
+		if (ch != ch_)
+			throw new IllegalStateException(
+				"statement was prepared for different channel"
+			);
+
+		if (discarded)
+			throw new IllegalStateException(
+				"statement is unusable"
+			);
 	}
-	
-	default void markParameterPreloaded(int pos) {
+
+	public void discard() {
+		discarded = true;
 	}
-	
-	default boolean parameterPreloaded(int pos) {
-		return false;
+
+	public boolean typesDeclared() {
+		return typesDeclared;
 	}
-	
-	default void resetPreloaded() {
+
+	public void typesDeclared(boolean v) {
+		typesDeclared = v;
 	}
+
+	public void markParameterPreloaded(int pos) {
+		parameterPreloaded.set(pos);
+	}
+
+	public boolean parameterPreloaded(int pos) {
+		return parameterPreloaded.get(pos);
+	}
+
+	public void resetPreloaded() {
+		parameterPreloaded.clear();
+	}
+
+	public int getServerId() {
+		return srvId;
+	}
+
+	@Override
+	public FieldSet parameters() {
+		return parameters;
+	}
+
+	@Override
+	public FieldSet columns() {
+		return columns;
+	}
+
+	private final String sql;
+	private final int srvId;
+	private final Channel ch;
+	private final FieldSetImpl parameters;
+	private final FieldSetImpl columns;
+	private final BitSet parameterPreloaded;
+	private boolean typesDeclared;
+	private boolean discarded;
 }

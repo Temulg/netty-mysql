@@ -51,6 +51,7 @@ public class CloseStatement implements Dictum {
 	public boolean emitClientMessage(
 		ByteBuf dst, ChannelHandlerContext ctx
 	) {
+		stmt.check(ctx.channel());
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(stmt.getServerId());
 		return false;
@@ -70,9 +71,7 @@ public class CloseStatement implements Dictum {
 		case Packet.OK:
 			try {
 				ServerAck ack = ServerAck.fromOk(src, si);
-				ch.attr(Channels.PSTMT_TRACKER).get().discard(
-					stmt
-				);
+				stmt.discard();
 				Channels.discardActiveDictum(ch);
 				sp.setSuccess(ack);
 			} catch (Exception e) {

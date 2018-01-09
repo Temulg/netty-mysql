@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -42,7 +42,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.pool.ChannelPoolHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.DefaultPromise;
@@ -50,17 +49,9 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
 import udentric.mysql.Config;
 import udentric.mysql.classic.dicta.Dictum;
-import udentric.mysql.classic.prepared.StatementTracker;
 
 public class Channels {
 	private Channels() {
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T extends Throwable> void throwAny(
-		Throwable t
-	) throws T {
-		throw (T)t;
 	}
 
 	public static ChannelFuture create(
@@ -81,18 +72,12 @@ public class Channels {
 		return create(config, bs, Collections.emptyMap());
 	}
 
-	public PoolHandler newPoolHandler(
-		Config config, Map<String, String> connAttrs
-	) {
-		return new PoolHandler(config, combineAttributes(connAttrs));
-	}
-
-	public PoolHandler newPoolHandler(Config config) {
-		return newPoolHandler(config, Collections.emptyMap());
-	}
-
-	public static Promise<ServerAck> newServerPromise(Channel ch) {
-		return new DefaultPromise<ServerAck>(ch.eventLoop());
+	public static Promise<
+		udentric.mysql.ServerAck
+	> newServerPromise(Channel ch) {
+		return new DefaultPromise<
+			udentric.mysql.ServerAck
+		>(ch.eventLoop());
 	}
 
 	public static void discardActiveDictum(Channel ch, Throwable cause) {
@@ -156,12 +141,10 @@ public class Channels {
 		}
 	}
 
-	private static void initChannel(
-		Channel ch, InitialSessionInfo si, boolean pooled
-	) {
+	private static void initChannel(Channel ch, InitialSessionInfo si) {
 		ch.attr(INITIAL_SESSION_INFO).set(si);
-		ch.attr(PSTMT_TRACKER).set(
-			new udentric.mysql.classic.prepared.singular.StatementTracker()
+		ch.attr(udentric.mysql.Commands.COMMAND_ADAPTER).set(
+			new Commands(ch)
 		);
 
 		ch.pipeline().addLast(
@@ -184,38 +167,10 @@ public class Channels {
 
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
-			Channels.initChannel(ch, si, false);
+			Channels.initChannel(ch, si);
 		}
 
 		private final InitialSessionInfo si;
-	}
-
-	public static class PoolHandler implements ChannelPoolHandler {
-		private PoolHandler(
-			Config config_, Map<String, String> connAttrs_
-		) {
-			config = config_;
-			connAttrs = connAttrs_;
-		}
-
-		@Override
-		public void channelReleased(Channel ch) throws Exception {
-		}
-
-
-		@Override
-		public void channelAcquired(Channel ch) throws Exception {
-		}
-
-		public void channelCreated(Channel ch) throws Exception {
-			InitialSessionInfo si = new InitialSessionInfo(
-				config, connAttrs
-			);
-			initChannel(ch, si, true);
-		}
-
-		private final Config config;
-		private final Map<String, String> connAttrs;
 	}
 
 	public static final int MYSQL_PROTOCOL_VERSION = 10;
@@ -224,11 +179,6 @@ public class Channels {
 		SessionInfo
 	> SESSION_INFO = AttributeKey.valueOf(
 		"udentric.mysql.classic.SessionInfo"
-	);
-	public static final AttributeKey<
-		StatementTracker
-	> PSTMT_TRACKER = AttributeKey.valueOf(
-		"udentric.mysql.classic.prepared.StatementTracker"
 	);
 	public static final AttributeKey<
 		InitialSessionInfo

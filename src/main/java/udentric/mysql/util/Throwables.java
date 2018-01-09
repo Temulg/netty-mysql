@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,46 +27,14 @@
 
 package udentric.mysql.util;
 
-import java.util.Arrays;
-
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.Encoding;
-import udentric.mysql.MysqlString;
-
-public class ByteArrayString implements MysqlString {
-	public ByteArrayString(ByteBuf in, int length, Encoding enc_) {
-		bytes = new byte[length];
-		in.readBytes(bytes);
-		enc = enc_;
+public class Throwables {
+	private Throwables() {
 	}
 
-	@Override
-	public String toString() {
-		return new String(bytes, enc.charset);
+	@SuppressWarnings("unchecked")
+	public static <T extends Throwable> RuntimeException propagate(
+		Throwable t
+	) throws T {
+		throw (T)t;
 	}
-
-	@Override
-	public final boolean equals(Object other_) {
-		if (this == other_)
-			return true;
-
-		if (!(other_ instanceof ByteArrayString))
-			return false;
-
-		ByteArrayString other = (ByteArrayString)other_;
-		return enc.compatible(other.enc) && Arrays.equals(
-			other.bytes, bytes
-		);
-	}
-
-	public byte[] getBytes() {
-		return bytes;
-	}
-
-	public int size() {
-		return bytes.length;
-	}
-
-	private final byte[] bytes;
-	private final Encoding enc;
 }

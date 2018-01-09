@@ -51,6 +51,7 @@ public class ResetStatement implements Dictum {
 	public boolean emitClientMessage(
 		ByteBuf dst, ChannelHandlerContext ctx
 	) {
+		stmt.check(ctx.channel());
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(stmt.getServerId());
 		return false;

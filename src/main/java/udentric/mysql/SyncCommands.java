@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,11 +25,11 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql;
 
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
-import udentric.mysql.PreparedStatement;
+import udentric.mysql.util.Throwables;
 
 public class SyncCommands {
 	private SyncCommands() {
@@ -39,18 +39,15 @@ public class SyncCommands {
 		Future<ServerAck> sf = null;
 
 		try {
-			sf = Commands.executeUpdate(
-				ch, sql
-			).await();
+			sf = Commands.with(ch).executeUpdate(sql).await();
 		} catch (InterruptedException e) {
-			Channels.throwAny(e);
+			Throwables.propagate(e);
 		}
 
 		if (sf.isSuccess())
 			return sf.getNow();
 		else {
-			Channels.throwAny(sf.cause());
-			return null;
+			throw Throwables.propagate(sf.cause());
 		}
 	}
 
@@ -60,18 +57,17 @@ public class SyncCommands {
 		Future<PreparedStatement> psp = null;
 
 		try {
-			psp = Commands.prepareStatement(
-				ch, sql
+			psp = Commands.with(ch).prepareStatement(
+				sql
 			).await();
 		} catch (InterruptedException e) {
-			Channels.throwAny(e);
+			Throwables.propagate(e);
 		}
 
 		if (psp.isSuccess())
 			return psp.getNow();
 		else {
-			Channels.throwAny(psp.cause());
-			return null;
+			throw Throwables.propagate(psp.cause());
 		}
 	}
 
@@ -81,18 +77,17 @@ public class SyncCommands {
 		Future<ServerAck> sf = null;;
 
 		try {
-			sf = Commands.executeUpdate(
-				ch, pstmt, args
+			sf = Commands.with(ch).executeUpdate(
+				pstmt, args
 			).await();
 		} catch (InterruptedException e) {
-			Channels.throwAny(e);
+			Throwables.propagate(e);
 		}
 
 		if (sf.isSuccess())
 			return sf.getNow();
 		else {
-			Channels.throwAny(sf.cause());
-			return null;
+			throw Throwables.propagate(sf.cause());
 		}
 	}
 }

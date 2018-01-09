@@ -38,7 +38,7 @@ public interface ResultSetConsumer {
 	default void acceptRow(DataRow row) {
 	}
 
-	void acceptAck(ServerAck ack, boolean terminal);
+	void acceptAck(udentric.mysql.ServerAck ack, boolean terminal);
 
 	void acceptFailure(Throwable cause);
 }

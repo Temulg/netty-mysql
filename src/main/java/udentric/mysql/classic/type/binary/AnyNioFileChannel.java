@@ -39,6 +39,7 @@ import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
+import udentric.mysql.util.Throwables;
 
 public class AnyNioFileChannel implements ValueAdapter<FileChannel> {
 	public AnyNioFileChannel(TypeId id_) {
@@ -88,7 +89,7 @@ public class AnyNioFileChannel implements ValueAdapter<FileChannel> {
 				state.set(remaining - wc);
 			}
 		} catch (IOException e) {
-			Channels.throwAny(e);
+			Throwables.propagate(e);
 		}
 	}
 

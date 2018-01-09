@@ -33,6 +33,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import java.nio.charset.Charset;
 import udentric.mysql.ErrorNumbers;
+import udentric.mysql.util.Throwables;
 
 public class Packet {
 	private Packet() {}
@@ -78,10 +79,9 @@ public class Packet {
 				return (int)llen;
 			}
 		default:
-			Channels.throwAny(makeError(
+			throw Throwables.propagate(makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
 			));
-			return 0;
 		}
 	}
 
@@ -126,10 +126,9 @@ public class Packet {
 				return (int)llen;
 			}
 		default:
-			Channels.throwAny(makeError(
+			throw Throwables.propagate(makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
 			));
-			return 0;
 		}
 	}
 
@@ -154,10 +153,9 @@ public class Packet {
 		case 0xfe:
 			return in.readLongLE();
 		default:
-			Channels.throwAny(makeError(
+			throw Throwables.propagate(makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
 			));
-			return 0;
 		}
 	}
 
@@ -199,17 +197,16 @@ public class Packet {
 			in.skipBytes(1);
 			return in.readLongLE();
 		default:
-			Channels.throwAny(makeError(
+			throw Throwables.propagate(makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
 			));
-			return 0;
 		}
 	}
 
 	public static String readStringNT(ByteBuf in, Charset cs) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			Channels.throwAny(makeError(
+			Throwables.propagate(makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
 			));
 
@@ -250,7 +247,7 @@ public class Packet {
 			);
 			return;
 		default:
-			Channels.throwAny(makeError(
+			Throwables.propagate(makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
 			));
 		}
@@ -279,10 +276,9 @@ public class Packet {
 			).toString();
 		}
 
-		Channels.throwAny(makeError(
+		throw Throwables.propagate(makeError(
 			ErrorNumbers.ER_MALFORMED_PACKET
 		));
-		return "";
 	}
 
 	public static void skipBytesLenenc(ByteBuf in) {
@@ -306,7 +302,7 @@ public class Packet {
 			return;
 		}
 
-		Channels.throwAny(makeError(
+		Throwables.propagate(makeError(
 			ErrorNumbers.ER_MALFORMED_PACKET
 		));
 	}

@@ -38,6 +38,7 @@ import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.FieldSetImpl;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.SessionInfo;
+import udentric.mysql.classic.prepared.Statement;
 
 public class PrepareStatement implements Dictum {
 	public PrepareStatement(String sql_, Promise<PreparedStatement> psp_) {
@@ -207,9 +208,9 @@ public class PrepareStatement implements Dictum {
 	private void completePreparation(Channel ch) {
 		Channels.discardActiveDictum(ch);
 
-		ch.attr(Channels.PSTMT_TRACKER).get().completePrepare(
-			sql, stmtId, parameters, columns
-		);
+		psp.setSuccess(new Statement(
+			sql, stmtId, ch, parameters, columns
+		));
 	}
 
 	@Override

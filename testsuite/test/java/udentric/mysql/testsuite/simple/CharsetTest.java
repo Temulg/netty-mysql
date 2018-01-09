@@ -34,10 +34,10 @@ import org.testng.log4testng.Logger;
 import io.netty.channel.Channel;
 import udentric.mysql.Config;
 import udentric.mysql.DataRow;
+import udentric.mysql.ServerAck;
+import udentric.mysql.SyncCommands;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.ServerAck;
-import udentric.mysql.classic.SyncCommands;
 
 import udentric.mysql.classic.dicta.Query;
 import udentric.mysql.testsuite.TestCase;
@@ -46,7 +46,7 @@ import udentric.test.Tester;
 
 public class CharsetTest extends TestCase {
 	public CharsetTest() {
-		super(Logger.getLogger(CallableStatementTest.class));
+		super(Logger.getLogger(CharsetTest.class));
 	}
 
 	@Test

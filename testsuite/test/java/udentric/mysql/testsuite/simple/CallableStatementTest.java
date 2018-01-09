@@ -32,11 +32,11 @@ import org.testng.log4testng.Logger;
 
 import udentric.mysql.DataRow;
 import udentric.mysql.PreparedStatement;
+import udentric.mysql.ServerAck;
+import udentric.mysql.SyncCommands;
 import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ResultSetConsumer;
-import udentric.mysql.classic.ServerAck;
 import udentric.mysql.classic.ServerStatus;
-import udentric.mysql.classic.SyncCommands;
 import udentric.mysql.classic.dicta.ExecuteStatement;
 import udentric.mysql.testsuite.TestCase;
 import udentric.test.Assert;
@@ -149,8 +149,11 @@ public class CallableStatementTest extends TestCase {
 
 				@Override
 				public void acceptAck(
-					ServerAck ack, boolean terminal
+					ServerAck ack_, boolean terminal
 				) {
+					udentric.mysql.classic.ServerAck ack
+					= (udentric.mysql.classic.ServerAck)ack_;
+
 					if (resultPos == 2)
 						Assert.assertTrue(
 							ServerStatus.PS_OUT_PARAMS.get(

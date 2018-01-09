@@ -75,6 +75,8 @@ public class ExecuteStatement implements Dictum {
 	private boolean emitCommand(
 		ByteBuf dst, ChannelHandlerContext ctx, SessionInfo si
 	) {
+		pstmt.check(ctx.channel());
+
 		dst.writeByte(OPCODE);
 		dst.writeIntLE(pstmt.getServerId());
 		dst.writeByte(CursorType.NONE.mask());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,20 +25,8 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.prepared;
+package udentric.mysql;
 
-import io.netty.channel.Channel;
-import io.netty.util.concurrent.Promise;
-import udentric.mysql.FieldSet;
-import udentric.mysql.PreparedStatement;
-
-public interface StatementTracker {
-	Promise<PreparedStatement> beginPrepare(Channel ch, String sql);
-
-	void completePrepare(
-		String sql, int remoteId, FieldSet parameters,
-		FieldSet columns
-	);
-
-	void discard(PreparedStatement stmt);
+public interface ServerAck {
+	long affectedRows();
 }

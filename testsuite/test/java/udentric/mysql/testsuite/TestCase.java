@@ -30,7 +30,6 @@ package udentric.mysql.testsuite;
 import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.testng.ITestContext;
@@ -47,8 +46,9 @@ import org.testng.TestRunner;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import udentric.mysql.Config;
+import udentric.mysql.SyncCommands;
 import udentric.mysql.classic.Channels;
-import udentric.mysql.classic.SyncCommands;
+import udentric.mysql.util.Throwables;
 
 public abstract class TestCase {
 	protected TestCase(Logger logger_) {
@@ -107,15 +107,13 @@ public abstract class TestCase {
 		try {
 			chf.await();
 		} catch (InterruptedException e) {
-			Channels.throwAny(e);
+			Throwables.propagate(e);
 		}
 
 		if (chf.isSuccess())
 			return chf.channel();
 		else
-			Channels.throwAny(chf.cause());
-
-		return null;
+			throw Throwables.propagate(chf.cause());
 	}
 
 	protected static Channel makeChannel() {
@@ -132,17 +130,29 @@ public abstract class TestCase {
 	}
 
 	protected void createTable(
-		Channel ch, String tableName, String columnsAndOtherStuff
+		Channel ch, String tableName, String... extra
 	) throws SQLException {
-		createSchemaObject(
-			ch, "TABLE", tableName, columnsAndOtherStuff
-		);
+		switch (extra.length) {
+		case 1:
+			createSchemaObject(
+				ch, "TABLE", tableName, extra[0]
+			);
+		case 2:
+			createSchemaObject(
+				ch, "TABLE", tableName, extra[0],
+				"ENGINE = " + extra[1]
+			);
+		default:
+			throw new IllegalArgumentException(
+				"incorrect number of extra args"
+			);
+		}
 	}
 
 	protected void createTable(
-		String tableName, String columnsAndOtherStuff
+		String tableName, String... extra
 	) throws SQLException {
-		createTable(channel(), tableName, columnsAndOtherStuff);
+		createTable(channel(), tableName, extra);
 	}
 
 	protected void createProcedure(
@@ -199,16 +209,22 @@ public abstract class TestCase {
 
 	protected void createSchemaObject(
 		Channel ch, String objectType, String objectName,
-		String columnsAndOtherStuff
+		String... extra
 	) throws SQLException {
 		createdObjects.offerLast(
 			new SchemaObject(ch, objectType, objectName)
 		);
 
-		String sql = String.format(
-			"CREATE  %s %s %s", objectType, objectName,
-			columnsAndOtherStuff
-		);
+		StringBuilder sb = new StringBuilder();
+		sb.append("CREATE ").append(
+			objectType
+		).append(' ').append(objectName);
+
+		for (String s: extra) {
+			sb.append(' ').append(s);
+		}
+
+		String sql = sb.toString();
 
 		try {
 			SyncCommands.executeUpdate(ch, sql);
