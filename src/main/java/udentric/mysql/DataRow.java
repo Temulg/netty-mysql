@@ -30,5 +30,11 @@ package udentric.mysql;
 public interface DataRow {
 	int size();
 
+	FieldSet columns();
+
 	<T> T getValue(int pos);
+
+	default <T> T getValue(String name) {
+		return getValue(columns().columnNameToPos(name));
+	};
 }

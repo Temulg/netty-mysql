@@ -61,6 +61,11 @@ public class FieldImpl implements Field {
 		src.skipBytes(2);
 	}
 
+	@Override
+	public String name() {
+		return columnName;
+	}
+
 	public int paramFlags() {
 		return 0;
 	}

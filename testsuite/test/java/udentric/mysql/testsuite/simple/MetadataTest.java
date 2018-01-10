@@ -29,7 +29,16 @@ package udentric.mysql.testsuite.simple;
 
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
+import udentric.mysql.DataRow;
+import udentric.mysql.MetadataQueries;
+import udentric.mysql.PreparedStatement;
+import udentric.mysql.ServerAck;
+import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.dicta.ExecuteStatement;
 import udentric.mysql.testsuite.TestCase;
+import udentric.test.Assert;
+import udentric.test.Tester;
 
 public class MetadataTest extends TestCase {
 	public MetadataTest() {
@@ -107,68 +116,161 @@ public class MetadataTest extends TestCase {
 	public void foreignKeys() throws Exception {
 		createTestTables();
 
-            DatabaseMetaData dbmd = this.conn.getMetaData();
-            this.rs = dbmd.getImportedKeys(null, null, "child");
+		PreparedStatement pstmt = MetadataQueries.importedKeys(
+			channel()
+		).get();
 
-            while (this.rs.next()) {
-                String pkColumnName = this.rs.getString("PKCOLUMN_NAME");
-                String fkColumnName = this.rs.getString("FKCOLUMN_NAME");
-                assertTrue("Primary Key not returned correctly ('" + pkColumnName + "' != 'parent_id')", pkColumnName.equalsIgnoreCase("parent_id"));
-                assertTrue("Foreign Key not returned correctly ('" + fkColumnName + "' != 'parent_id_fk')", fkColumnName.equalsIgnoreCase("parent_id_fk"));
-            }
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					String pkColumnName = row.getValue(
+						"PKCOLUMN_NAME"
+					);
+					String fkColumnName = row.getValue(
+						"FKCOLUMN_NAME"
+					);
+					Assert.assertEquals(
+						pkColumnName, "parent_id"
+					);
+					Assert.assertEquals(
+						fkColumnName, "parent_id_fk"
+					);
+				}
 
-            this.rs.close();
-            this.rs = dbmd.getExportedKeys(null, null, "parent");
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
 
-            while (this.rs.next()) {
-                String pkColumnName = this.rs.getString("PKCOLUMN_NAME");
-                String fkColumnName = this.rs.getString("FKCOLUMN_NAME");
-                String fkTableName = this.rs.getString("FKTABLE_NAME");
-                assertTrue("Primary Key not returned correctly ('" + pkColumnName + "' != 'parent_id')", pkColumnName.equalsIgnoreCase("parent_id"));
-                assertTrue("Foreign Key table not returned correctly for getExportedKeys ('" + fkTableName + "' != 'child')",
-                        fkTableName.equalsIgnoreCase("child"));
-                assertTrue("Foreign Key not returned correctly for getExportedKeys ('" + fkColumnName + "' != 'parent_id_fk')",
-                        fkColumnName.equalsIgnoreCase("parent_id_fk"));
-            }
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}	
+			},
+			"testsuite", "child"
+		)).addListener(Channels::defaultSendListener);
 
-            this.rs.close();
+		Tester.endAsync(1);
 
-            this.rs = dbmd.getCrossReference(null, null, "cpd_foreign_3", null, null, "cpd_foreign_4");
+		pstmt = MetadataQueries.exportedKeys(channel()).get();
 
-            assertTrue(this.rs.next());
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					String pkColumnName = row.getValue(
+						"PKCOLUMN_NAME"
+					);
+					String fkColumnName = row.getValue(
+						"FKCOLUMN_NAME"
+					);
+					String fkTableName = row.getValue(
+						"FKTABLE_NAME"
+					);
+					Assert.assertEquals(
+						pkColumnName, "parent_id"
+					);
+					Assert.assertEquals(
+						fkTableName, "child"
+					);
+					Assert.assertEquals(
+						fkColumnName, "parent_id_fk"
+					);
+				}
 
-            String pkColumnName = this.rs.getString("PKCOLUMN_NAME");
-            String pkTableName = this.rs.getString("PKTABLE_NAME");
-            String fkColumnName = this.rs.getString("FKCOLUMN_NAME");
-            String fkTableName = this.rs.getString("FKTABLE_NAME");
-            String deleteAction = cascadeOptionToString(this.rs.getInt("DELETE_RULE"));
-            String updateAction = cascadeOptionToString(this.rs.getInt("UPDATE_RULE"));
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
 
-            assertEquals(pkColumnName, "cpd_foreign_1_id");
-            assertEquals(pkTableName, "cpd_foreign_3");
-            assertEquals(fkColumnName, "cpd_foreign_1_id");
-            assertEquals(fkTableName, "cpd_foreign_4");
-            assertEquals(deleteAction, "NO ACTION");
-            assertEquals(updateAction, "CASCADE");
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+			},
+			"testsuite", "child"
+		)).addListener(Channels::defaultSendListener);
 
-            this.rs.close();
-            this.rs = null;
-        } finally {
-            if (this.rs != null) {
-                this.rs.close();
-                this.rs = null;
-            }
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS parent");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS cpd_foreign_4");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS cpd_foreign_3");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS cpd_foreign_2");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS cpd_foreign_1");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS fktable2");
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS fktable1");
-        }
+		Tester.endAsync(1);
 
-    }
+		pstmt = MetadataQueries.crossReference(channel()).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					String pkColumnName = row.getValue(
+						"PKCOLUMN_NAME"
+					);
+					String pkTableName = row.getValue(
+						"PKTABLE_NAME"
+					);
+					String fkColumnName = row.getValue(
+						"FKCOLUMN_NAME"
+					);
+					String fkTableName = row.getValue(
+						"FKTABLE_NAME"
+					);
+					String deleteAction = row.getValue(
+						"DELETE_RULE"
+					);
+					String updateAction = row.getValue(
+						"UPDATE_RULE"
+					);
+
+					Assert.assertEquals(
+						pkColumnName, "cpd_foreign_1_id"
+					);
+					Assert.assertEquals(
+						pkTableName, "cpd_foreign_3"
+					);
+					Assert.assertEquals(
+						fkColumnName, "cpd_foreign_1_id"
+					);
+					Assert.assertEquals(
+						fkTableName, "cpd_foreign_4"
+					);
+					Assert.assertEquals(
+						deleteAction, "NO ACTION"
+					);
+					Assert.assertEquals(
+						updateAction, "CASCADE"
+					);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}				
+			},
+			"testsuite", "cpd_foreign_3", "testsuite",
+			"cpd_foreign_4"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+
 /*
     public void testGetPrimaryKeys() throws SQLException {
         try {

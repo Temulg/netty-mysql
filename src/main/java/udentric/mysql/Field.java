@@ -28,4 +28,5 @@
 package udentric.mysql;
 
 public interface Field {
+	String name();
 }

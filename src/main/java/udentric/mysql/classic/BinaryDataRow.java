@@ -30,6 +30,7 @@ package udentric.mysql.classic;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import udentric.mysql.DataRow;
+import udentric.mysql.FieldSet;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.ValueAdapter;
 
@@ -40,10 +41,11 @@ public class BinaryDataRow implements DataRow {
 		ColumnValueMapper mapper
 	) {
 		if (current == null || current.size() != columns.size())
-			current = new BinaryDataRow(columns.size());
+			current = new BinaryDataRow(columns);
 		else {
 			Arrays.fill(current.colTypes, null);
 			current.reset();
+			current.columns = columns;
 		}
 
 		mapper.initRowTypes(current.colTypes);
@@ -69,7 +71,9 @@ public class BinaryDataRow implements DataRow {
 		return current;
 	}
 
-	private BinaryDataRow(int colCount) {
+	private BinaryDataRow(FieldSetImpl columns_) {
+		columns = columns_;
+		int colCount = columns.size();
 		colTypes = new Class[colCount];
 		colValues = new Object[colCount];
 		adapters = new ValueAdapter[colCount];
@@ -120,11 +124,17 @@ public class BinaryDataRow implements DataRow {
 	}
 
 	@Override
+	public FieldSet columns() {
+		return columns;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked") 
 	public <T> T getValue(int pos) {
 		return (T)colValues[pos];
 	}
 
+	private FieldSetImpl columns;
 	private final Class[] colTypes;
 	private final Object[] colValues;
 	private final ValueAdapter[] adapters;

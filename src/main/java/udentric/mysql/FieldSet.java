@@ -29,6 +29,7 @@ package udentric.mysql;
 
 import com.google.common.base.MoreObjects;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 
 public abstract class FieldSet implements Iterable<Field> {
@@ -42,6 +43,17 @@ public abstract class FieldSet implements Iterable<Field> {
 
 	public Field get(int pos) {
 		return fields[pos];
+	}
+
+	public Integer columnNameToPos(String name) {
+		if (fieldPosByName == null) {
+			fieldPosByName = new HashMap<>();
+			for (int pos = 0; pos < fields.length; pos++) {
+				fieldPosByName.put(fields[pos].name(), pos);
+			}
+		}
+
+		return fieldPosByName.get(name);
 	}
 
 	@Override
@@ -84,4 +96,5 @@ public abstract class FieldSet implements Iterable<Field> {
 	}
 
 	protected final Field[] fields;
+	protected HashMap<String, Integer> fieldPosByName;
 }

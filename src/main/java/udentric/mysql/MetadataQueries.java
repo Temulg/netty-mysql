@@ -31,7 +31,6 @@ import io.netty.channel.Channel;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.Promise;
 import io.netty.util.concurrent.SucceededFuture;
 import java.util.EnumMap;
 
@@ -43,6 +42,14 @@ public class MetadataQueries {
 		return getMap(ch).get(QueryType.IMPORTED_KEYS, ch);
 	}
 
+	public static Future<PreparedStatement> exportedKeys(Channel ch) {
+		return getMap(ch).get(QueryType.EXPORTED_KEYS, ch);
+	}
+
+	public static Future<PreparedStatement> crossReference(Channel ch) {
+		return getMap(ch).get(QueryType.CROSS_REFERENCE, ch);
+	}
+
 	private static QueryMap getMap(Channel ch) {
 		Attribute<QueryMap> attr = ch.attr(METADATA_QUERY_MAP);
 		QueryMap qm = attr.get();
@@ -52,11 +59,7 @@ public class MetadataQueries {
 		return qm;
 	}
 
-	private static enum QueryType {
-		IMPORTED_KEYS;
-	}
-
-	private static class QueryMap {
+		private static class QueryMap {
 		QueryMap(Channel ch_) {
 			ch = ch_;
 		}
@@ -68,15 +71,14 @@ public class MetadataQueries {
 			if (p != null)
 				return p;
 
-			Promise<PreparedStatement> pp = ch.eventLoop().<
-				PreparedStatement
-			>newPromise();
+			Future<PreparedStatement> pp = Commands.with(
+				ch
+			).prepareStatement(type.query());
+			stmtMap.put(type, pp);
 			pp.addListener(fp -> {
 				stmtPrepared(type, fp);
 			});
-			stmtMap.put(type, pp);
 
-			
 			return pp;
 		}
 
@@ -111,4 +113,76 @@ public class MetadataQueries {
 	> METADATA_QUERY_MAP = AttributeKey.valueOf(
 		"udentric.mysql.MetadataQueries.QueryMap"
 	);
+
+	private static enum QueryType {
+		IMPORTED_KEYS {
+			@Override
+			String query() {
+				return  KEY_QUERY_COMMON
+				+ "USING (CONSTRAINT_NAME, TABLE_NAME) "
+				+ "JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS R "
+				+ "ON (R.CONSTRAINT_NAME = B.CONSTRAINT_NAME "
+				+ "AND R.TABLE_NAME = B.TABLE_NAME "
+				+ "AND R.CONSTRAINT_SCHEMA = B.TABLE_SCHEMA) "
+				+ "WHERE B.CONSTRAINT_TYPE = 'FOREIGN KEY' "
+				+ "AND A.TABLE_SCHEMA LIKE ? AND A.TABLE_NAME = ? "
+				+ "AND A.REFERENCED_TABLE_SCHEMA IS NOT NULL "
+				+ "ORDER BY A.REFERENCED_TABLE_SCHEMA, "
+				+ "A.REFERENCED_TABLE_NAME, A.ORDINAL_POSITION";
+			}
+		}, EXPORTED_KEYS {
+			@Override
+			String query() {
+				return KEY_QUERY_COMMON
+				+ "USING (TABLE_SCHEMA, TABLE_NAME, CONSTRAINT_NAME) "
+				+ "JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS R "
+				+ "ON (R.CONSTRAINT_NAME = B.CONSTRAINT_NAME "
+				+ "AND R.TABLE_NAME = B.TABLE_NAME "
+				+ "AND R.CONSTRAINT_SCHEMA = B.TABLE_SCHEMA) "
+				+ "WHERE B.CONSTRAINT_TYPE = 'FOREIGN KEY' "
+				+ "AND A.REFERENCED_TABLE_SCHEMA LIKE ? "
+				+ "AND A.REFERENCED_TABLE_NAME = ? "
+				+ "ORDER BY A.TABLE_SCHEMA, A.TABLE_NAME, "
+				+ "A.ORDINAL_POSITION";
+			}			
+		}, CROSS_REFERENCE {
+			@Override
+			String query() {
+				return KEY_QUERY_COMMON
+				+ "USING (TABLE_SCHEMA, TABLE_NAME, CONSTRAINT_NAME) "
+				+ "JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS R "
+				+ "ON (R.CONSTRAINT_NAME = B.CONSTRAINT_NAME "
+				+ "AND R.TABLE_NAME = B.TABLE_NAME "
+				+ "AND R.CONSTRAINT_SCHEMA = B.TABLE_SCHEMA) "
+				+ "WHERE B.CONSTRAINT_TYPE = 'FOREIGN KEY' "
+				+ "AND A.REFERENCED_TABLE_SCHEMA LIKE ? "
+				+ "AND A.REFERENCED_TABLE_NAME = ? "
+				+ "AND A.TABLE_SCHEMA LIKE ? "
+				+ "AND A.TABLE_NAME = ? "
+				+ "ORDER BY A.TABLE_SCHEMA, A.TABLE_NAME, "
+				+ "A.ORDINAL_POSITION";
+			}
+		};
+
+		abstract String query();
+		private static final String KEY_QUERY_COMMON
+		= "SELECT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT, "
+		+ "A.REFERENCED_TABLE_NAME AS PKTABLE_NAME, "
+		+ "A.REFERENCED_COLUMN_NAME AS PKCOLUMN_NAME, "
+		+ "A.TABLE_SCHEMA AS FKTABLE_CAT, "
+		+ "A.TABLE_NAME AS FKTABLE_NAME, "
+		+ "A.COLUMN_NAME AS FKCOLUMN_NAME, "
+		+ "A.ORDINAL_POSITION AS KEY_SEQ, "
+		+ "R.UPDATE_RULE AS UPDATE_RULE, "
+		+ "R.DELETE_RULE AS DELETE_RULE, "
+		+ "A.CONSTRAINT_NAME AS FK_NAME, "
+		+ "(SELECT CONSTRAINT_NAME FROM "
+		+ "INFORMATION_SCHEMA.TABLE_CONSTRAINTS "
+		+ "WHERE TABLE_SCHEMA = A.REFERENCED_TABLE_SCHEMA "
+		+ "AND TABLE_NAME = A.REFERENCED_TABLE_NAME "
+		+ "AND CONSTRAINT_TYPE IN ('UNIQUE', 'PRIMARY KEY') "
+		+ "LIMIT 1) AS PK_NAME "
+		+ "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE A "
+		+ "JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS B ";
+	}
 }
