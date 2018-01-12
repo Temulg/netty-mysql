@@ -30,6 +30,7 @@ package udentric.mysql.testsuite;
 import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.function.Function;
 
 import org.testng.ITestContext;
@@ -45,6 +46,8 @@ import io.netty.util.ResourceLeakDetector.Level;
 import org.testng.TestRunner;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+
 import udentric.mysql.Config;
 import udentric.mysql.SyncCommands;
 import udentric.mysql.classic.Channels;
@@ -137,11 +140,13 @@ public abstract class TestCase {
 			createSchemaObject(
 				ch, "TABLE", tableName, extra[0]
 			);
+			break;
 		case 2:
 			createSchemaObject(
 				ch, "TABLE", tableName, extra[0],
 				"ENGINE = " + extra[1]
 			);
+			break;
 		default:
 			throw new IllegalArgumentException(
 				"incorrect number of extra args"
@@ -153,6 +158,12 @@ public abstract class TestCase {
 		String tableName, String... extra
 	) throws SQLException {
 		createTable(channel(), tableName, extra);
+	}
+
+	protected void createView(
+		String viewName, String viewDefn
+	) throws SQLException {
+		createSchemaObject(channel(), "VIEW", viewName, viewDefn);
 	}
 
 	protected void createProcedure(
@@ -171,13 +182,14 @@ public abstract class TestCase {
 
 	protected class SchemaObject {
 		SchemaObject(
-			Channel ch, String type_, String name_
+			Channel ch_, String type_, String name_
 		) throws SQLException {
+			ch = ch_;
 			type = type_;
 			name = name_;
 
 			try {
-				drop(ch);
+				drop();
 			} catch (SQLException e) {
 				if (!e.getMessage().startsWith(
 					"Operation DROP USER failed"
@@ -186,7 +198,7 @@ public abstract class TestCase {
 			}
 		}
 
-		void drop(Channel ch) throws SQLException {
+		void drop() throws SQLException {
 			if (
 				!type.equalsIgnoreCase("USER")
 				|| versionMeetsMinimum(ch, 5, 7, 8)
@@ -203,6 +215,7 @@ public abstract class TestCase {
 			SyncCommands.executeUpdate(ch, "flush privileges");
 		}
 
+		final Channel ch;
 		final String type;
 		final String name;
 	}
@@ -250,90 +263,19 @@ public abstract class TestCase {
 		}
 	}
 
-	/*
 	@BeforeMethod
 	public void setUp() {
-
-		conn = DriverManager.getConnection(dbUrl, props);
-
-		//this.sha256Conn = sha256Url == null ? null : DriverManager.getConnection(sha256Url, props);
-
-		serverVersion = conn.getServerVersion();
-
-		stmt = conn.createStatement();
-
-		try {
-			if (dbUrl.indexOf("mysql") != -1) {
-				this.rs = this.stmt.executeQuery("SELECT VERSION()");
-				this.rs.next();
-				logDebug("Connected to " + this.rs.getString(1));
-			} else {
-				logDebug("Connected to " + this.conn.getMetaData().getDatabaseProductName() + " / " + this.conn.getMetaData().getDatabaseProductVersion());
-			}
-		} finally {
-			if (this.rs != null) {
-				this.rs.close();
-				this.rs = null;
-			}
-		}
-
-		this.isOnCSFS = !this.conn.getMetaData().storesLowerCaseIdentifiers();
-
-		if (this.sha256Conn != null) {
-			this.sha256Stmt = this.sha256Conn.createStatement();
-
-			try {
-				if (sha256Url.indexOf("mysql") != -1) {
-					this.sha256Rs = this.sha256Stmt.executeQuery("SELECT VERSION()");
-					this.sha256Rs.next();
-					logDebug("Connected to " + this.sha256Rs.getString(1));
-				} else {
-					logDebug("Connected to " + this.sha256Conn.getMetaData().getDatabaseProductName() + " / "
-					+ this.sha256Conn.getMetaData().getDatabaseProductVersion());
-				}
-			} finally {
-				if (this.sha256Rs != null) {
-					this.sha256Rs.close();
-					this.sha256Rs = null;
-				}
-			}
-		}
 	}
-	*/
 
 	@AfterMethod
 	public void tearDown() throws Exception {
-/*
-		if (System.getProperty(
-			PropertyDefinitions.SYSP_testsuite_retainArtifacts
-		) == null) {
-			Statement st = this.conn == null || this.conn.isClosed() ? getNewConnection().createStatement() : this.conn.createStatement();
-			Statement sha256st;
-			if (this.sha256Conn == null || this.sha256Conn.isClosed()) {
-				Connection c = getNewSha256Connection();
-				sha256st = c == null ? null : c.createStatement();
-			} else {
-				sha256st = this.sha256Conn.createStatement();
-			}
+		for (
+			SchemaObject s = createdObjects.pollLast();
+			s != null;
+			s = createdObjects.pollLast()
+		)
+			s.drop();
 
-			for (int i = 0; i < this.createdObjects.size(); i++) {
-				String[] objectInfo = this.createdObjects.get(i);
-
-				try {
-					dropSchemaObject(st, objectInfo[0], objectInfo[1]);
-				} catch (SQLException SQLE) {}
-
-				try {
-					dropSchemaObject(sha256st, objectInfo[0], objectInfo[1]);
-				} catch (SQLException SQLE) {}
-			}
-
-			st.close();
-			if (sha256st != null) {
-				sha256st.close();
-			}
-		}
-*/
 		if (channel != null) {
 			channel.close().await();
 			channel = null;

@@ -29,11 +29,19 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.channel.ChannelHandlerContext;
+
+import java.sql.PseudoColumnUsage;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.BinaryDataRow;
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnValueMapper;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.SessionInfo;
 import udentric.mysql.classic.type.AdapterState;
 
 public class BinaryResultSet extends ResultSet {
@@ -45,6 +53,11 @@ public class BinaryResultSet extends ResultSet {
 
 	public BinaryResultSet(int lastSeqNum_, ResultSetConsumer rsc_) {
 		super(lastSeqNum_, rsc_);
+	}
+
+	public BinaryResultSet withStatement(PreparedStatement pstmt_) {
+		pstmt = pstmt_;
+		return this;
 	}
 
 	@Override
@@ -92,9 +105,20 @@ public class BinaryResultSet extends ResultSet {
 		rowConsumed = true;
 	}
 
+	@Override
+	protected void fetchFromCursor(
+		ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channels.discardActiveDictum(ctx.channel());
+		ctx.channel().writeAndFlush(new FetchStatementResult(
+			pstmt, columns, rsc
+		)).addListener(Channels::defaultSendListener);
+	}
+
 	private static final Logger LOGGER = LogManager.getLogger(
-		TextResultSet.class
+		BinaryResultSet.class
 	);
 
 	protected BinaryDataRow row;
+	protected PreparedStatement pstmt;
 }

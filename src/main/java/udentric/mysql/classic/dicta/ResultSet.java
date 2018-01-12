@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -149,9 +149,19 @@ public abstract class ResultSet implements Dictum {
 					)
 				);
 			} else {
-				src.skipBytes(4);
-				state = this::columnDataReceived;
-				doInitRow(ctx, rsc.acceptMetadata(columns));
+				ServerAck ack = ServerAck.fromEof(src, si);
+
+				if (ServerStatus.CURSOR_EXISTS.get(
+					ack.srvStatus
+				)) {
+					fetchFromCursor(ctx, si);
+				} else {
+					state = this::columnDataReceived;
+					doInitRow(
+						ctx,
+						rsc.acceptMetadata(columns)
+					);
+				}
 			}
 		} else {
 			state = this::columnDataReceived;
@@ -188,6 +198,10 @@ public abstract class ResultSet implements Dictum {
 				)) {
 					state = this::beginNextRs;
 					rsc.acceptAck(ack, false);
+				} else if (ServerStatus.CURSOR_EXISTS.get(
+					ack.srvStatus
+				)) {
+					fetchFromCursor(ctx, si);
 				} else {
 					Channels.discardActiveDictum(
 						ctx.channel()
@@ -270,6 +284,10 @@ public abstract class ResultSet implements Dictum {
 
 		rsc.acceptFailure(cause);
 	}
+
+	protected abstract void fetchFromCursor(
+		ChannelHandlerContext ctx, SessionInfo si
+	);
 
 	protected final ResultSetConsumer rsc;
 	protected ServerMessageConsumer state;

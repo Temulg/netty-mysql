@@ -38,6 +38,10 @@ public interface ResultSetConsumer {
 	default void acceptRow(DataRow row) {
 	}
 
+	default int rowFetchCount() {
+		return 16;
+	}
+
 	void acceptAck(udentric.mysql.ServerAck ack, boolean terminal);
 
 	void acceptFailure(Throwable cause);

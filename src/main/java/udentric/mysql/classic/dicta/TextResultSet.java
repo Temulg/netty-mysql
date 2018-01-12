@@ -29,10 +29,15 @@ package udentric.mysql.classic.dicta;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.channel.ChannelHandlerContext;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.ColumnValueMapper;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.SessionInfo;
 import udentric.mysql.classic.TextDataRow;
 import udentric.mysql.classic.type.AdapterState;
 
@@ -85,6 +90,18 @@ public class TextResultSet extends ResultSet {
 		rsc.acceptRow(row);
 		colDataPos = 0;
 		rowConsumed = true;
+	}
+
+	@Override
+	protected void fetchFromCursor(
+		ChannelHandlerContext ctx, SessionInfo si
+	) {
+		Channels.discardActiveDictum(
+			ctx.channel(),
+			new IllegalStateException(
+				"cursor fetch not implemented"
+			)
+		);
 	}
 
 	private static final Logger LOGGER = LogManager.getLogger(

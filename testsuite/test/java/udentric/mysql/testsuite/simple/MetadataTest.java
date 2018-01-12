@@ -29,6 +29,8 @@ package udentric.mysql.testsuite.simple;
 
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
+
+import io.netty.util.concurrent.Future;
 import udentric.mysql.DataRow;
 import udentric.mysql.MetadataQueries;
 import udentric.mysql.PreparedStatement;
@@ -76,9 +78,9 @@ public class MetadataTest extends TestCase {
 			"(cpd_foreign_1_id int(8) not null, "
 			+ "cpd_foreign_2_id int(8) not null, "
 			+ "key(cpd_foreign_1_id),"
-                        + "key(cpd_foreign_2_id), "
+			+ "key(cpd_foreign_2_id), "
 			+ "primary key (cpd_foreign_1_id, cpd_foreign_2_id), "
-                        + "foreign key (cpd_foreign_1_id) references "
+			+ "foreign key (cpd_foreign_1_id) references "
 			+ "cpd_foreign_1(id), foreign key (cpd_foreign_2_id) "
 			+ "references cpd_foreign_2(id))",
 			"InnoDB"
@@ -88,10 +90,10 @@ public class MetadataTest extends TestCase {
 			"(cpd_foreign_1_id int(8) not null, "
 			+ "cpd_foreign_2_id int(8) not null, "
 			+ "key(cpd_foreign_1_id),"
-                        + "key(cpd_foreign_2_id), "
+			+ "key(cpd_foreign_2_id), "
 			+ "primary key (cpd_foreign_1_id, cpd_foreign_2_id), "
 			+ "foreign key (cpd_foreign_1_id, cpd_foreign_2_id) "
-                        + "references cpd_foreign_3("
+			+ "references cpd_foreign_3("
 			+ "cpd_foreign_1_id, cpd_foreign_2_id) "
 			+ "ON DELETE RESTRICT ON UPDATE CASCADE)",
 			"InnoDB"
@@ -138,6 +140,7 @@ public class MetadataTest extends TestCase {
 					Assert.assertEquals(
 						fkColumnName, "parent_id_fk"
 					);
+					resultPos++;
 				}
 
 				@Override
@@ -145,13 +148,16 @@ public class MetadataTest extends TestCase {
 					ServerAck ack, boolean terminal
 				) {
 					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
 					Assert.done();
 				}
 
 				@Override
 				public void acceptFailure(Throwable cause) {
 					Assert.fail("query failed", cause);
-				}	
+				}
+
+				int resultPos = 0;
 			},
 			"testsuite", "child"
 		)).addListener(Channels::defaultSendListener);
@@ -184,6 +190,7 @@ public class MetadataTest extends TestCase {
 					Assert.assertEquals(
 						fkColumnName, "parent_id_fk"
 					);
+					resultPos++;
 				}
 
 				@Override
@@ -191,6 +198,7 @@ public class MetadataTest extends TestCase {
 					ServerAck ack, boolean terminal
 				) {
 					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
 					Assert.done();
 				}
 
@@ -198,8 +206,10 @@ public class MetadataTest extends TestCase {
 				public void acceptFailure(Throwable cause) {
 					Assert.fail("query failed", cause);
 				}
+
+				int resultPos = 0;
 			},
-			"testsuite", "child"
+			"testsuite", "parent"
 		)).addListener(Channels::defaultSendListener);
 
 		Tester.endAsync(1);
@@ -232,23 +242,40 @@ public class MetadataTest extends TestCase {
 					);
 
 					Assert.assertEquals(
-						pkColumnName, "cpd_foreign_1_id"
-					);
-					Assert.assertEquals(
 						pkTableName, "cpd_foreign_3"
-					);
-					Assert.assertEquals(
-						fkColumnName, "cpd_foreign_1_id"
 					);
 					Assert.assertEquals(
 						fkTableName, "cpd_foreign_4"
 					);
 					Assert.assertEquals(
-						deleteAction, "NO ACTION"
+						deleteAction, "RESTRICT"
 					);
 					Assert.assertEquals(
 						updateAction, "CASCADE"
 					);
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(
+							pkColumnName,
+							"cpd_foreign_1_id"
+						);
+						Assert.assertEquals(
+							fkColumnName,
+							"cpd_foreign_1_id"
+						);	
+						break;
+					case 1:
+						Assert.assertEquals(
+							pkColumnName,
+							"cpd_foreign_2_id"
+						);
+						Assert.assertEquals(
+							fkColumnName,
+							"cpd_foreign_2_id"
+						);	
+						break;
+					}
+					resultPos++;
 				}
 
 				@Override
@@ -256,13 +283,16 @@ public class MetadataTest extends TestCase {
 					ServerAck ack, boolean terminal
 				) {
 					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 2);
 					Assert.done();
 				}
 
 				@Override
 				public void acceptFailure(Throwable cause) {
 					Assert.fail("query failed", cause);
-				}				
+				}
+
+				int resultPos = 0;
 			},
 			"testsuite", "cpd_foreign_3", "testsuite",
 			"cpd_foreign_4"
@@ -271,107 +301,166 @@ public class MetadataTest extends TestCase {
 		Tester.endAsync(1);
 	}
 
+	@Test
+	public void getPrimaryKeys() throws Exception {
+		createTable(
+			"multikey",
+			"(d INT NOT NULL, b INT NOT NULL, a INT NOT NULL, "
+			+ "c INT NOT NULL, PRIMARY KEY (d, b, a, c))"
+		);
+
+		PreparedStatement pstmt = MetadataQueries.primaryKeys(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					String keyName = row.getValue(
+						"COLUMN_NAME"
+					);
+					long keySeq = row.getValue("KEY_SEQ");
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(keySeq, 1);
+						Assert.assertEquals(
+							keyName, "d"
+						);
+						break;
+					case 1:
+						Assert.assertEquals(keySeq, 2);
+						Assert.assertEquals(
+							keyName, "b"
+						);
+						break;
+					case 2:
+						Assert.assertEquals(keySeq, 3);
+						Assert.assertEquals(
+							keyName, "a"
+						);
+						break;
+					case 3:
+						Assert.assertEquals(keySeq, 4);
+						Assert.assertEquals(
+							keyName, "c"
+						);
+						break;
+					}
+					resultPos++;
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 4);
+					Assert.done();
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				int resultPos = 0;
+			},
+			"testsuite", "multikey"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+
+	@Test
+	public void viewMetaData() throws Exception {
+		createTable("testViewMetaData", "(field1 INT)");
+		createView(
+			"vTestViewMetaData",
+			"AS SELECT field1 FROM testViewMetaData"
+		);
+
+		PreparedStatement pstmt = MetadataQueries.tables(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					String name = row.getValue(1);
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(
+							name,
+							"testViewMetaData"
+						);
+						break;
+					case 1:
+						Assert.assertEquals(
+							name,
+							"vTestViewMetaData"
+						);
+						break;
+					}
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(ServerAck ack, boolean terminal) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 2);
+					Assert.done();
+				}
+
+				int resultPos = 0;
+			},
+			"testsuite", "%ViewMetaData", "TABLE", "VIEW"
+		)).addListener(Channels::defaultSendListener);
+		Tester.endAsync(1);
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					String name = row.getValue(1);
+					Assert.assertEquals(
+						name,
+						"testViewMetaData"
+					);
+
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(ServerAck ack, boolean terminal) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos = 0;
+			},
+			"testsuite", "%ViewMetaData", "TABLE"
+		)).addListener(Channels::defaultSendListener);
+		Tester.endAsync(1);
+	}
+
 /*
-    public void testGetPrimaryKeys() throws SQLException {
-        try {
-            createTable("multikey", "(d INT NOT NULL, b INT NOT NULL, a INT NOT NULL, c INT NOT NULL, PRIMARY KEY (d, b, a, c))");
-            DatabaseMetaData dbmd = this.conn.getMetaData();
-            this.rs = dbmd.getPrimaryKeys(this.conn.getCatalog(), "", "multikey");
-
-            short[] keySeqs = new short[4];
-            String[] columnNames = new String[4];
-            int i = 0;
-
-            while (this.rs.next()) {
-                this.rs.getString("TABLE_NAME");
-                columnNames[i] = this.rs.getString("COLUMN_NAME");
-
-                this.rs.getString("PK_NAME");
-                keySeqs[i] = this.rs.getShort("KEY_SEQ");
-                i++;
-            }
-
-            if ((keySeqs[0] != 3) && (keySeqs[1] != 2) && (keySeqs[2] != 4) && (keySeqs[3] != 1)) {
-                fail("Keys returned in wrong order");
-            }
-        } finally {
-            if (this.rs != null) {
-                try {
-                    this.rs.close();
-                } catch (SQLException sqlEx) {
-  
-                }
-            }
-        }
-    }
-
-    private static String cascadeOptionToString(int option) {
-        switch (option) {
-            case DatabaseMetaData.importedKeyCascade:
-                return "CASCADE";
-
-            case DatabaseMetaData.importedKeySetNull:
-                return "SET NULL";
-
-            case DatabaseMetaData.importedKeyRestrict:
-                return "RESTRICT";
-
-            case DatabaseMetaData.importedKeyNoAction:
-                return "NO ACTION";
-        }
-
-        return "SET DEFAULT";
-    }
-
-
-    public void testViewMetaData() throws SQLException {
-        try {
-            this.rs = this.conn.getMetaData().getTableTypes();
-
-            while (this.rs.next()) {
-                if ("VIEW".equalsIgnoreCase(this.rs.getString(1))) {
-
-                    this.stmt.executeUpdate("DROP VIEW IF EXISTS vTestViewMetaData");
-                    createTable("testViewMetaData", "(field1 INT)");
-                    this.stmt.executeUpdate("CREATE VIEW vTestViewMetaData AS SELECT field1 FROM testViewMetaData");
-
-                    ResultSet tablesRs = null;
-
-                    try {
-                        tablesRs = this.conn.getMetaData().getTables(this.conn.getCatalog(), null, "%ViewMetaData", new String[] { "TABLE", "VIEW" });
-                        assertTrue(tablesRs.next());
-                        assertTrue("testViewMetaData".equalsIgnoreCase(tablesRs.getString(3)));
-                        assertTrue(tablesRs.next());
-                        assertTrue("vTestViewMetaData".equalsIgnoreCase(tablesRs.getString(3)));
-
-                    } finally {
-                        if (tablesRs != null) {
-                            tablesRs.close();
-                        }
-                    }
-
-                    try {
-                        tablesRs = this.conn.getMetaData().getTables(this.conn.getCatalog(), null, "%ViewMetaData", new String[] { "TABLE" });
-                        assertTrue(tablesRs.next());
-                        assertTrue("testViewMetaData".equalsIgnoreCase(tablesRs.getString(3)));
-                        assertTrue(!tablesRs.next());
-                    } finally {
-                        if (tablesRs != null) {
-                            tablesRs.close();
-                        }
-                    }
-                    break;
-                }
-            }
-
-        } finally {
-            if (this.rs != null) {
-                this.rs.close();
-            }
-            this.stmt.executeUpdate("DROP VIEW IF EXISTS vTestViewMetaData");
-        }
-    }
-
     public void testRSMDIsReadOnly() throws Exception {
         try {
             this.rs = this.stmt.executeQuery("SELECT 1");

@@ -38,7 +38,16 @@ public class MetadataQueries {
 	private MetadataQueries() {
 	}
 
+	public static Future<PreparedStatement> tables(Channel ch) {
+		return getMap(ch).get(QueryType.TABLES, ch);
+	}
+
+	public static Future<PreparedStatement> primaryKeys(Channel ch) {
+		return getMap(ch).get(QueryType.PRIMARY_KEYS, ch);
+	}
+
 	public static Future<PreparedStatement> importedKeys(Channel ch) {
+		System.err.format("-y0- %s\n", ch);
 		return getMap(ch).get(QueryType.IMPORTED_KEYS, ch);
 	}
 
@@ -53,13 +62,17 @@ public class MetadataQueries {
 	private static QueryMap getMap(Channel ch) {
 		Attribute<QueryMap> attr = ch.attr(METADATA_QUERY_MAP);
 		QueryMap qm = attr.get();
+
 		if (qm == null)
-			return attr.setIfAbsent(new QueryMap(ch));
+			qm = attr.setIfAbsent(new QueryMap(ch));
+
+		if (qm == null)
+			qm = attr.get();
 
 		return qm;
 	}
 
-		private static class QueryMap {
+	private static class QueryMap {
 		QueryMap(Channel ch_) {
 			ch = ch_;
 		}
@@ -74,6 +87,7 @@ public class MetadataQueries {
 			Future<PreparedStatement> pp = Commands.with(
 				ch
 			).prepareStatement(type.query());
+
 			stmtMap.put(type, pp);
 			pp.addListener(fp -> {
 				stmtPrepared(type, fp);
@@ -115,6 +129,40 @@ public class MetadataQueries {
 	);
 
 	private static enum QueryType {
+		TABLES {
+			@Override
+			String query() {
+				return "SELECT TABLE_SCHEMA AS TABLE_CAT, "
+				+ "TABLE_NAME, CASE WHEN "
+				+ "TABLE_TYPE='BASE TABLE' THEN CASE WHEN "
+				+ "TABLE_SCHEMA = 'mysql' "
+				+ "OR TABLE_SCHEMA = 'performance_schema' "
+				+ "THEN 'SYSTEM TABLE' ELSE 'TABLE' END WHEN "
+				+ "TABLE_TYPE='TEMPORARY' THEN 'LOCAL_TEMPORARY' "
+				+ "ELSE TABLE_TYPE END AS TABLE_TYPE, "
+				+ "TABLE_COMMENT AS REMARKS "
+				+ "FROM INFORMATION_SCHEMA.TABLES WHERE "
+				+ "TABLE_SCHEMA LIKE ? "
+				+ "AND TABLE_NAME LIKE ? "
+				+ "HAVING TABLE_TYPE IN (?, ?, ?, ?, ?) "
+				+ "ORDER BY TABLE_TYPE, TABLE_SCHEMA, TABLE_NAME";
+			}
+		},
+		PRIMARY_KEYS {
+			@Override
+			String query() {
+				return "SELECT TABLE_SCHEMA AS TABLE_CAT, "
+				+ "TABLE_NAME, COLUMN_NAME, "
+				+ "SEQ_IN_INDEX AS KEY_SEQ, "
+				+ "'PRIMARY' AS PK_NAME "
+				+ "FROM INFORMATION_SCHEMA.STATISTICS "
+				+ "WHERE TABLE_SCHEMA LIKE ? "
+				+ "AND TABLE_NAME LIKE ? "
+				+ "AND INDEX_NAME='PRIMARY' "
+				+ "ORDER BY TABLE_SCHEMA, TABLE_NAME, "
+				+ "INDEX_NAME, SEQ_IN_INDEX";
+			}
+		},
 		IMPORTED_KEYS {
 			@Override
 			String query() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -221,6 +221,7 @@ public class ExecuteStatement implements Dictum {
 		))
 			return;
 
+		pstmt.resetPreloaded();
 		seqNum = Packet.getSeqNum(src);
 		Channel ch = ctx.channel();
 		SessionInfo si = Channels.sessionInfo(ch);
@@ -240,7 +241,7 @@ public class ExecuteStatement implements Dictum {
 					ch.attr(Channels.ACTIVE_DICTUM).set(
 						new BinaryResultSet(
 							seqNum, rsc
-						)
+						).withStatement(pstmt)
 					);
 					rsc.acceptAck(ack, false);
 				} else {
@@ -262,7 +263,7 @@ public class ExecuteStatement implements Dictum {
 			ch.attr(Channels.ACTIVE_DICTUM).set(
 				new BinaryResultSet(
 					Packet.readIntLenenc(src), seqNum, rsc
-				)
+				).withStatement(pstmt)
 			);
 		}
 	}
