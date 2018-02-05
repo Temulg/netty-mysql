@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,39 +25,40 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TypeId;
+import java.util.BitSet;
+
+import com.google.common.collect.ImmutableMap;
+import udentric.mysql.classic.type.AdapterSelector;
 import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.binary.AnyString;
+import udentric.mysql.classic.type.TypeId;
 
-
-public abstract class AnyNullable<T> implements ValueAdapter<T> {
-	protected AnyNullable(TypeId id) {
-		stringAdapter = new AnyString(id);
+public class T0016Selector extends AdapterSelector {
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> ValueAdapter<T> get(Class<T> cls) {
+		return (ValueAdapter<T>)(
+			cls != null ? ADAPTERS.get(cls) : defaultAdapter
+		);
 	}
 
 	@Override
-	public TypeId typeId() {
-		return stringAdapter.typeId();
+	@SuppressWarnings("unchecked")
+	public <T> ValueAdapter<T> find(Class<T> cls) {
+		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	@Override
-	public T decodeValue(
-		T dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		String s = stringAdapter.decodeValue(null, src, state, fld);
-		
-		if (s != null)
-			return assignFromString(dst, s);
-		else
-			return null;
-	}
-
-	protected abstract T assignFromString(T dst, String value);
-
-	private final AnyString stringAdapter;
+	private final ValueAdapter<?> defaultAdapter = new T0016BitSet();
+	private final ImmutableMap<
+		Class<?>, ValueAdapter<?>
+	> ADAPTERS = ImmutableMap.<
+		Class<?>, ValueAdapter<?>
+	>builder().put(
+		BitSet.class, defaultAdapter
+	).put(
+		Boolean.class, new T0016Boolean()
+	).put(
+		byte[].class, new AnyByteArray(TypeId.BIT)
+	).build();
 }

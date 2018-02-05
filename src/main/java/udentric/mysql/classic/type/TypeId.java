@@ -125,7 +125,7 @@ public enum TypeId {
 			Class<?> cls = TypeId.class.getClassLoader().loadClass(
 				name
 			);
-			return cls.newInstance();
+			return cls.getDeclaredConstructor().newInstance();
 		} catch (ReflectiveOperationException e) {
 			return def.get();
 		}

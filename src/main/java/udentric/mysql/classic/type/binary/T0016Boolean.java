@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,39 +25,40 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.text;
+package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.binary.AnyString;
 
-
-public abstract class AnyNullable<T> implements ValueAdapter<T> {
-	protected AnyNullable(TypeId id) {
-		stringAdapter = new AnyString(id);
+class T0016Boolean implements ValueAdapter<Boolean> {
+	T0016Boolean() {
+		arrayAdapter = new AnyByteArray(TypeId.BIT);
 	}
 
 	@Override
 	public TypeId typeId() {
-		return stringAdapter.typeId();
+		return arrayAdapter.typeId();
 	}
 
 	@Override
-	public T decodeValue(
-		T dst, ByteBuf src, AdapterState state, FieldImpl fld
+	public Boolean decodeValue(
+		Boolean dst, ByteBuf src, AdapterState state, FieldImpl fld
 	) {
-		String s = stringAdapter.decodeValue(null, src, state, fld);
-		
-		if (s != null)
-			return assignFromString(dst, s);
-		else
+		byte[] b = arrayAdapter.decodeValue(null, src, state, fld);
+
+		if (fld.length != 1)
+			throw new IllegalStateException(
+				"Multi-bit bitset is not representable as boolean"
+			);
+
+		if (b == null)
 			return null;
+
+		return b[0] != 0;
 	}
 
-	protected abstract T assignFromString(T dst, String value);
-
-	private final AnyString stringAdapter;
+	private final AnyByteArray arrayAdapter;
 }

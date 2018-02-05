@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,37 +27,7 @@
 
 package udentric.mysql.classic.type.text;
 
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TypeId;
-import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.binary.AnyString;
+public class T0016Selector
+extends udentric.mysql.classic.type.binary.T0016Selector {
 
-
-public abstract class AnyNullable<T> implements ValueAdapter<T> {
-	protected AnyNullable(TypeId id) {
-		stringAdapter = new AnyString(id);
-	}
-
-	@Override
-	public TypeId typeId() {
-		return stringAdapter.typeId();
-	}
-
-	@Override
-	public T decodeValue(
-		T dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		String s = stringAdapter.decodeValue(null, src, state, fld);
-		
-		if (s != null)
-			return assignFromString(dst, s);
-		else
-			return null;
-	}
-
-	protected abstract T assignFromString(T dst, String value);
-
-	private final AnyString stringAdapter;
 }

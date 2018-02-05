@@ -30,10 +30,7 @@ package udentric.mysql.classic.type.binary;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.channels.ScatteringByteChannel;
-import java.nio.channels.SeekableByteChannel;
 
-import udentric.mysql.classic.Channels;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.Packet;
 import udentric.mysql.classic.type.AdapterState;

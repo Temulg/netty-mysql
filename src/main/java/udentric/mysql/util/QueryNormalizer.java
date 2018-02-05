@@ -27,8 +27,6 @@
 
 package udentric.mysql.util;
 
-import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
@@ -54,7 +52,7 @@ public class QueryNormalizer extends QueryTokenizer {
 		serverSupportsFractionalSecond = serverSupportsFractionalSecond_;
 	}
 
-	public CharSequence normalize() throws SQLException {
+	public CharSequence normalize() {
 		if (srcLastPos == 0)
 			return null;
 
@@ -139,7 +137,7 @@ public class QueryNormalizer extends QueryTokenizer {
 
 	private CharSequence formatTimestamp(
 		CharSequence val, CharSequence orig
-	) {
+	) {/*
 		Timestamp ts = Timestamp.valueOf(val.toString());
 
 		return ZonedDateTime.of(
@@ -147,7 +145,8 @@ public class QueryNormalizer extends QueryTokenizer {
 		).format(
 			serverSupportsFractionalSecond
 			? MYSQL_DATE_TIME_FRAC : MYSQL_DATE_TIME
-		);
+		);*/
+		return "--bad--";
 	}
 
 	private CharSequence formatTime(CharSequence val, CharSequence orig) {

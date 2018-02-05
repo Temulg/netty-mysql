@@ -47,7 +47,6 @@ public class MetadataQueries {
 	}
 
 	public static Future<PreparedStatement> importedKeys(Channel ch) {
-		System.err.format("-y0- %s\n", ch);
 		return getMap(ch).get(QueryType.IMPORTED_KEYS, ch);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,13 +27,11 @@
 
 package udentric.mysql.classic;
 
-import java.sql.SQLException;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import java.nio.charset.Charset;
 import udentric.mysql.ErrorNumbers;
-import udentric.mysql.util.Throwables;
+import udentric.mysql.SqlException;
 
 public class Packet {
 	private Packet() {}
@@ -68,7 +66,7 @@ public class Packet {
 
 		switch (len) {
 		case 0xfb:
-			return 0;
+			return LENENC_NULL;
 		case 0xfc:
 			return readInt2(in);
 		case 0xfd:
@@ -79,9 +77,9 @@ public class Packet {
 				return (int)llen;
 			}
 		default:
-			throw Throwables.propagate(makeError(
+			throw makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
-			));
+			);
 		}
 	}
 
@@ -90,7 +88,7 @@ public class Packet {
 		if (limit > 9)
 			return readIntLenenc(in);
 		else if (limit == 0)
-			return -1;
+			return LENENC_INCOMPLETE;
 
 		int pos = in.readerIndex();
 		int len = (int)in.getByte(pos) & 0xff;
@@ -103,22 +101,22 @@ public class Packet {
 		switch (len) {
 		case 0xfb:
 			in.skipBytes(1);
-			return 0;
+			return LENENC_NULL;
 		case 0xfc:
 			if (limit < 3)
-				return -1;
+				return LENENC_INCOMPLETE;
 
 			in.skipBytes(1);
 			return readInt2(in);
 		case 0xfd:
 			if (limit < 4)
-				return -1;
+				return LENENC_INCOMPLETE;
 
 			in.skipBytes(1);
 			return in.readMediumLE();
 		case 0xfe:
 			if (limit < 9)
-				return -1;
+				return LENENC_INCOMPLETE;
 
 			in.skipBytes(1);
 			long llen = in.readLongLE();
@@ -126,9 +124,9 @@ public class Packet {
 				return (int)llen;
 			}
 		default:
-			throw Throwables.propagate(makeError(
+			throw makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
-			));
+			);
 		}
 	}
 
@@ -145,7 +143,7 @@ public class Packet {
 
 		switch (len) {
 		case 0xfb:
-			return 0;
+			return LENENC_NULL;
 		case 0xfc:
 			return readLong2(in);
 		case 0xfd:
@@ -153,9 +151,9 @@ public class Packet {
 		case 0xfe:
 			return in.readLongLE();
 		default:
-			throw Throwables.propagate(makeError(
+			throw makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
-			));
+			);
 		}
 	}
 
@@ -164,7 +162,7 @@ public class Packet {
 		if (limit > 9)
 			return readLongLenenc(in);
 		else if (limit == 0)
-			return -1;
+			return LENENC_INCOMPLETE;
 
 		int pos = in.readerIndex();
 		int len = (int)in.getByte(pos) & 0xff;
@@ -177,80 +175,42 @@ public class Packet {
 		switch (len) {
 		case 0xfb:
 			in.skipBytes(1);
-			return 0;
+			return LENENC_NULL;
 		case 0xfc:
 			if (limit < 3)
-				return -1;
+				return LENENC_INCOMPLETE;
 
 			in.skipBytes(1);
 			return readLong2(in);
 		case 0xfd:
 			if (limit < 4)
-				return -1;
+				return LENENC_INCOMPLETE;
 
 			in.skipBytes(1);
 			return in.readMediumLE();
 		case 0xfe:
 			if (limit < 9)
-				return -1;
+				return LENENC_INCOMPLETE;
 
 			in.skipBytes(1);
 			return in.readLongLE();
 		default:
-			throw Throwables.propagate(makeError(
+			throw makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
-			));
+			);
 		}
 	}
 
 	public static String readStringNT(ByteBuf in, Charset cs) {
 		int len = in.bytesBefore((byte)0);
 		if (len < 0)
-			Throwables.propagate(makeError(
+			throw makeError(
 				ErrorNumbers.ER_MALFORMED_PACKET
-			));
+			);
 
 		String rv = in.readCharSequence(len, cs).toString();
 		in.skipBytes(1);
 		return rv;
-	}
-
-	public static void getRangeLenenc(
-		int[] rangeVec, int vecPos, ByteBuf in, int bufOffset
-	) {
-		int offset = in.readerIndex() + bufOffset;
-		int len = 0xff & in.getByte(offset);
-		offset++;
-		if (len < 0xfb) {
-			rangeVec[vecPos] = offset;
-			rangeVec[vecPos + 1] = len;
-			return;
-		}
-
-		switch (len) {
-		case 0xfb:
-			rangeVec[vecPos] = offset;
-			rangeVec[vecPos + 1] = 0;
-			return;
-		case 0xfc:
-			rangeVec[vecPos] = offset + 2;
-			rangeVec[vecPos + 1] = 0xffff & in.getShortLE(offset);
-			return;
-		case 0xfd:
-			rangeVec[vecPos] = offset + 3;
-			rangeVec[vecPos + 1] = in.getMediumLE(offset);
-			return;
-		case 0xfe:
-			rangeVec[vecPos] = offset + 8;
-			rangeVec[vecPos + 1] = Math.toIntExact(
-				in.getLongLE(offset)
-			);
-			return;
-		default:
-			Throwables.propagate(makeError(
-				ErrorNumbers.ER_MALFORMED_PACKET
-			));
-		}
 	}
 
 	public static String readStringLenenc(ByteBuf in, Charset cs) {
@@ -261,7 +221,7 @@ public class Packet {
 
 		switch (len) {
 		case 0xfb:
-			return "";
+			return null;
 		case 0xfc:
 			return in.readCharSequence(
 				readInt2(in), cs
@@ -276,9 +236,7 @@ public class Packet {
 			).toString();
 		}
 
-		throw Throwables.propagate(makeError(
-			ErrorNumbers.ER_MALFORMED_PACKET
-		));
+		throw makeError(ErrorNumbers.ER_MALFORMED_PACKET);
 	}
 
 	public static void skipBytesLenenc(ByteBuf in) {
@@ -302,14 +260,10 @@ public class Packet {
 			return;
 		}
 
-		Throwables.propagate(makeError(
-			ErrorNumbers.ER_MALFORMED_PACKET
-		));
+		throw makeError(ErrorNumbers.ER_MALFORMED_PACKET);
 	}
 
 	public static int writeIntLenenc(ByteBuf out, int val) {
-		/* 251 is reserved for NULL */
-
 		if (val == (val & 0xffffff)) {
 			if (val < 0xfb) {
 				out.writeByte(val);
@@ -331,8 +285,6 @@ public class Packet {
 	}
 
 	public static int writeLongLenenc(ByteBuf out, long val) {
-		/* 251 is reserved for NULL */
-
 		if (val == (val & 0xffffff)) {
 			if (val < 0xfb) {
 				out.writeByte((byte)val);
@@ -365,29 +317,29 @@ public class Packet {
 			return false;
 	}
 
-	public static SQLException makeError(int errno) {
+	public static SqlException makeError(int errno) {
 		String xOpen = ErrorNumbers.mysqlToSqlState(errno);
-		return new SQLException(
+		return new SqlException(
 			ErrorNumbers.get(xOpen), xOpen, errno
 		);
 	}
 
-	public static SQLException makeError(int errno, String extra) {
+	public static SqlException makeError(int errno, String extra) {
 		String xOpen = ErrorNumbers.mysqlToSqlState(errno);
-		return new SQLException(
+		return new SqlException(
 			String.format(
 				"%s (%s)", ErrorNumbers.get(xOpen), extra
 			), xOpen, errno
 		);
 	}
 
-	public static SQLException makeErrorFromState(String state) {
-		return new SQLException(
+	public static SqlException makeErrorFromState(String state) {
+		return new SqlException(
 			ErrorNumbers.get(state), state
 		);
 	}
 
-	public static SQLException parseError(
+	public static SqlException parseError(
 		ByteBuf msg, Charset cs
 	) {
 		int errno = readInt2(msg);
@@ -411,7 +363,7 @@ public class Packet {
 		} else
 			xOpen = ErrorNumbers.mysqlToSqlState(errno);
 
-		return new SQLException(srvErrMsg, xOpen, errno, null);
+		return new SqlException(srvErrMsg, xOpen, errno);
 	}
 
 	public static final int HEADER_SIZE = 4;
@@ -419,4 +371,7 @@ public class Packet {
 	public static final int FILE_REQUEST = 0xfb;
 	public static final int EOF = 0xfe;
 	public static final int ERR = 0xff;
+	public static final int LENENC_INCOMPLETE = -1;
+	public static final int LENENC_NULL = -2;
+	public static final byte LENENC_NULL_VALUE = (byte)0xfb;
 }

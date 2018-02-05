@@ -30,14 +30,18 @@ package udentric.mysql.testsuite.simple;
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
-import io.netty.util.concurrent.Future;
 import udentric.mysql.DataRow;
+import udentric.mysql.FieldSet;
 import udentric.mysql.MetadataQueries;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.ServerAck;
+import udentric.mysql.SyncCommands;
 import udentric.mysql.classic.Channels;
+import udentric.mysql.classic.ColumnValueMapper;
 import udentric.mysql.classic.ResultSetConsumer;
+import udentric.mysql.classic.SimpleColumnValueMapper;
 import udentric.mysql.classic.dicta.ExecuteStatement;
+import udentric.mysql.classic.dicta.Query;
 import udentric.mysql.testsuite.TestCase;
 import udentric.test.Assert;
 import udentric.test.Tester;
@@ -460,132 +464,183 @@ public class MetadataTest extends TestCase {
 		Tester.endAsync(1);
 	}
 
+	@Test
+	public void bitType() throws Exception {
+		createTable(
+			"testBitType", "(field1 BIT, field2 BIT, field3 BIT)"
+		);
+		SyncCommands.executeUpdate(
+			channel(), 
+			"INSERT INTO testBitType VALUES (1, 0, NULL)"
+		);
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new Query(
+			"SELECT field1, field2, field3 FROM testBitType",
+			new ResultSetConsumer() {
+				@Override
+				public ColumnValueMapper acceptMetadata(
+					FieldSet columns
+				) {
+					return new SimpleColumnValueMapper(
+						Boolean.class,
+						Boolean.class,
+						Boolean.class
+					);
+				}
+
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertTrue(row.getValue(0));
+					Assert.assertFalse(row.getValue(1));
+					Assert.assertEquals(
+						(Boolean)row.getValue(2), null
+					);
+				}
+	
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);	
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
+			}
+		)).addListener(Channels::defaultSendListener);
+		Tester.endAsync(1);
+
+
+		PreparedStatement pstmt = SyncCommands.prepareStatement(
+			channel(), 
+			"SELECT field1, field2, field3 FROM testBitType"
+		);
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public ColumnValueMapper acceptMetadata(
+					FieldSet columns
+				) {
+					return new SimpleColumnValueMapper(
+						Boolean.class,
+						Boolean.class,
+						Boolean.class
+					);
+				}
+
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertTrue(row.getValue(0));
+					Assert.assertFalse(row.getValue(1));
+					Assert.assertEquals(
+						(Boolean)row.getValue(2), null
+					);
+				}
+	
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);	
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
+			}
+		)).addListener(Channels::defaultSendListener);
+		Tester.endAsync(1);
+	}
+
+	@Test
+	public void tinyInt1IsBit() throws Exception {
+		createTable("testTinyint1IsBit", "(field1 TINYINT(1))");
+		SyncCommands.executeUpdate(
+			channel(), "INSERT INTO testTinyint1IsBit VALUES (1)"
+		);
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new Query(
+			"SELECT field1 FROM testTinyint1IsBit",
+			new ResultSetConsumer(){
+				@Override
+				public ColumnValueMapper acceptMetadata(
+					FieldSet columns
+				) {
+					return new SimpleColumnValueMapper(
+						Boolean.class
+					);
+				}
+
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertTrue(row.getValue(0));
+				}
+	
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);	
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
+			}
+		)).addListener(Channels::defaultSendListener);
+		Tester.endAsync(1);
+
+		PreparedStatement pstmt = SyncCommands.prepareStatement(
+			channel(), "SELECT field1 FROM testTinyint1IsBit"
+		);
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt,
+			new ResultSetConsumer(){
+				@Override
+				public ColumnValueMapper acceptMetadata(
+					FieldSet columns
+				) {
+					return new SimpleColumnValueMapper(
+						Boolean.class
+					);
+				}
+
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertTrue(row.getValue(0));
+				}
+	
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);	
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.done();
+				}
+			}
+		)).addListener(Channels::defaultSendListener);
+		Tester.endAsync(1);
+	}
+
+
 /*
-    public void testRSMDIsReadOnly() throws Exception {
-        try {
-            this.rs = this.stmt.executeQuery("SELECT 1");
-
-            ResultSetMetaData rsmd = this.rs.getMetaData();
-
-            assertTrue(rsmd.isReadOnly(1));
-
-            try {
-                createTable("testRSMDIsReadOnly", "(field1 INT)");
-                this.stmt.executeUpdate("INSERT INTO testRSMDIsReadOnly VALUES (1)");
-
-                this.rs = this.stmt.executeQuery("SELECT 1, field1 + 1, field1 FROM testRSMDIsReadOnly");
-                rsmd = this.rs.getMetaData();
-
-                assertTrue(rsmd.isReadOnly(1));
-                assertTrue(rsmd.isReadOnly(2));
-                assertTrue(!rsmd.isReadOnly(3));
-            } finally {
-            }
-        } finally {
-            if (this.rs != null) {
-                this.rs.close();
-            }
-        }
-    }
-
-    public void testBitType() throws Exception {
-        try {
-            createTable("testBitType", "(field1 BIT, field2 BIT, field3 BIT)");
-            this.stmt.executeUpdate("INSERT INTO testBitType VALUES (1, 0, NULL)");
-            this.rs = this.stmt.executeQuery("SELECT field1, field2, field3 FROM testBitType");
-            this.rs.next();
-
-            assertTrue(((Boolean) this.rs.getObject(1)).booleanValue());
-            assertTrue(!((Boolean) this.rs.getObject(2)).booleanValue());
-            assertEquals(this.rs.getObject(3), null);
-
-            System.out.println(this.rs.getObject(1) + ", " + this.rs.getObject(2) + ", " + this.rs.getObject(3));
-
-            this.rs = this.conn.prepareStatement("SELECT field1, field2, field3 FROM testBitType").executeQuery();
-            this.rs.next();
-
-            assertTrue(((Boolean) this.rs.getObject(1)).booleanValue());
-            assertTrue(!((Boolean) this.rs.getObject(2)).booleanValue());
-
-            assertEquals(this.rs.getObject(3), null);
-            byte[] asBytesTrue = this.rs.getBytes(1);
-            byte[] asBytesFalse = this.rs.getBytes(2);
-            byte[] asBytesNull = this.rs.getBytes(3);
-
-            assertEquals(asBytesTrue[0], 1);
-            assertEquals(asBytesFalse[0], 0);
-            assertEquals(asBytesNull, null);
-
-            createTable("testBitField", "(field1 BIT(9))");
-            this.rs = this.stmt.executeQuery("SELECT field1 FROM testBitField");
-            System.out.println(this.rs.getMetaData().getColumnClassName(1));
-        } finally {
-        }
-    }
-
-    public void testSupportsSelectForUpdate() throws Exception {
-        boolean supportsForUpdate = this.conn.getMetaData().supportsSelectForUpdate();
-
-        assertTrue(supportsForUpdate);
-    }
-
-    public void testTinyint1IsBit() throws Exception {
-        String tableName = "testTinyint1IsBit";
-        // Can't use 'BIT' or boolean
-        createTable(tableName, "(field1 TINYINT(1))");
-        this.stmt.executeUpdate("INSERT INTO " + tableName + " VALUES (1)");
-
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_tinyInt1isBit, "true");
-        props.setProperty(PropertyDefinitions.PNAME_transformedBitIsBoolean, "true");
-        Connection boolConn = getConnectionWithProps(props);
-
-        this.rs = boolConn.createStatement().executeQuery("SELECT field1 FROM " + tableName);
-        checkBitOrBooleanType(false);
-
-        this.rs = boolConn.prepareStatement("SELECT field1 FROM " + tableName).executeQuery();
-        checkBitOrBooleanType(false);
-
-        this.rs = boolConn.getMetaData().getColumns(boolConn.getCatalog(), null, tableName, "field1");
-        assertTrue(this.rs.next());
-
-        assertEquals(Types.BOOLEAN, this.rs.getInt("DATA_TYPE"));
-
-        assertEquals("BOOLEAN", this.rs.getString("TYPE_NAME"));
-
-        props.clear();
-        props.setProperty(PropertyDefinitions.PNAME_transformedBitIsBoolean, "false");
-        props.setProperty(PropertyDefinitions.PNAME_tinyInt1isBit, "true");
-
-        Connection bitConn = getConnectionWithProps(props);
-
-        this.rs = bitConn.createStatement().executeQuery("SELECT field1 FROM " + tableName);
-        checkBitOrBooleanType(true);
-
-        this.rs = bitConn.prepareStatement("SELECT field1 FROM " + tableName).executeQuery();
-        checkBitOrBooleanType(true);
-
-        this.rs = bitConn.getMetaData().getColumns(boolConn.getCatalog(), null, tableName, "field1");
-        assertTrue(this.rs.next());
-
-        assertEquals(Types.BIT, this.rs.getInt("DATA_TYPE"));
-
-        assertEquals("BIT", this.rs.getString("TYPE_NAME"));
-    }
-
-    private void checkBitOrBooleanType(boolean usingBit) throws SQLException {
-
-        assertTrue(this.rs.next());
-        assertEquals("java.lang.Boolean", this.rs.getObject(1).getClass().getName());
-        if (!usingBit) {
-            assertEquals(Types.BOOLEAN, this.rs.getMetaData().getColumnType(1));
-        } else {
-            assertEquals(Types.BIT, this.rs.getMetaData().getColumnType(1));
-        }
-
-        assertEquals("java.lang.Boolean", this.rs.getMetaData().getColumnClassName(1));
-    }
-
     public void testGetPrimaryKeysUsingInfoShcema() throws Exception {
         createTable("t1", "(c1 int(1) primary key)");
         Properties props = new Properties();

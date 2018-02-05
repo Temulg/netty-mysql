@@ -79,8 +79,13 @@ public class AnyString implements ValueAdapter<String> {
 		DecoderState s = state.get();
 		if (s == null) {
 			int sz = Packet.readIntLenencSafe(src);
-			if (sz < 0)
+			switch (sz) {
+			case Packet.LENENC_INCOMPLETE:
 				return null;
+			case Packet.LENENC_NULL:
+				state.markAsDone();
+				return null;
+			}
 
 			if (src.readableBytes() >= sz) {
 				String rv = src.readCharSequence(

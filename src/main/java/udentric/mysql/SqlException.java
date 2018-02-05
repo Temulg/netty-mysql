@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-/*
+ /*
  * May contain portions of MySQL Connector/J implementation
  *
  * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -24,40 +24,24 @@
  * the GPLv2 as it is applied to this software, see the FOSS License Exception
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
+package udentric.mysql;
 
-package udentric.mysql.classic.type.text;
-
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TypeId;
-import udentric.mysql.classic.type.ValueAdapter;
-import udentric.mysql.classic.type.binary.AnyString;
-
-
-public abstract class AnyNullable<T> implements ValueAdapter<T> {
-	protected AnyNullable(TypeId id) {
-		stringAdapter = new AnyString(id);
+public class SqlException extends RuntimeException {
+	public SqlException(String reason_, String state_, int code_) {
+		reason = reason_;
+		state = state_;
+		code = code_;
 	}
 
-	@Override
-	public TypeId typeId() {
-		return stringAdapter.typeId();
+	public SqlException(String reason_, String state_) {
+		reason = reason_;
+		state = state_;
+		code = 0;
 	}
 
-	@Override
-	public T decodeValue(
-		T dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		String s = stringAdapter.decodeValue(null, src, state, fld);
-		
-		if (s != null)
-			return assignFromString(dst, s);
-		else
-			return null;
-	}
+	static final long serialVersionUID = 0xa4a2f866d25e465aL;
 
-	protected abstract T assignFromString(T dst, String value);
-
-	private final AnyString stringAdapter;
+	private final String reason;
+	private final String state;
+	private final int code;
 }

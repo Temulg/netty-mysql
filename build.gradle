@@ -1,5 +1,3 @@
-import org.gradle.plugins.ide.eclipse.model.AccessRule
-
 plugins {
 	id 'java'
 	id 'eclipse'
@@ -7,14 +5,15 @@ plugins {
 
 repositories {
 	mavenLocal()
-	jcenter()
+	mavenCentral()
 }
 
 dependencies {
-	compile 'org.apache.logging.log4j:log4j-api:2.8.2'
-	compile 'com.google.guava:guava:22.0'
-	compile 'io.netty:netty-handler:4.1.15.Final'
-	compile 'org.apache.logging.log4j:log4j-core:2.8.2'
+	compile 'org.apache.logging.log4j:log4j-api:2.10.0'
+	compile 'org.apache.logging.log4j:log4j-core:2.10.0'
+	compile 'com.google.guava:guava:24.0-jre'
+	compile 'io.netty:netty-handler:4.1.20.Final'
+
 	testCompile 'org.testng:testng:6.13.1'
 	testCompile project(':service:assert')
 }
@@ -23,18 +22,6 @@ eclipse {
 	classpath {
 		downloadSources = true
 		downloadJavadoc = true
-/*
-		file {
-			whenMerged {
-				def jre = entries.find {
-					it.path.contains 'org.eclipse.jdt.launching.JRE_CONTAINER'
-				}
-				jre.accessRules.add(
-					new AccessRule('accessible', 'sun/**')
-				)
-			}
-		}
-*/
 	}
 }
 
@@ -70,7 +57,7 @@ task testsuiteRun(type: Test, dependsOn: 'cleanTestsuiteRun') {
 	classpath = sourceSets.testsuite.runtimeClasspath
 
 	filter {
-		includeTestsMatching '*CallableStatementTest'
+		includeTestsMatching '*MetadataTest'
 	}
 
 }

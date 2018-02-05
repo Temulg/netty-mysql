@@ -1,83 +1,131 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry path="bin" kind="output"/>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="src" path="src/test/java"/>
 	<classpathentry kind="src" path="src/test/resources"/>
 	<classpathentry kind="src" path="src/main/resources"/>
 	<classpathentry kind="src" path="testsuite/test/java"/>
 	<classpathentry kind="src" path="testsuite/test/resources"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8/"/>
+	<classpathentry output="bin/main" kind="src" path="src/main/java">
+		<attributes>
+			<attribute name="gradle_scope" value="main"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry output="bin/main" kind="src" path="src/main/resources">
+		<attributes>
+			<attribute name="gradle_scope" value="main"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry output="bin/testsuite" kind="src" path="testsuite/test/java">
+		<attributes>
+			<attribute name="gradle_scope" value="testsuite"/>
+			<attribute name="gradle_used_by_scope" value="testsuite"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry output="bin/testsuite" kind="src" path="testsuite/test/resources">
+		<attributes>
+			<attribute name="gradle_scope" value="testsuite"/>
+			<attribute name="gradle_used_by_scope" value="testsuite"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="bin/default"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-9/"/>
 	<classpathentry kind="src" path="/assert"/>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.8.2/4693b08b8d9abe152417b9564bb7a68d82630180/log4j-core-2.8.2-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.8.2/979fc0cf8460302e4ffbfe38c1b66a99450b0bb7/log4j-core-2.8.2.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.10.0/a2041b29bc3e761fba750c0df933cd48f76f5b3a/log4j-core-2.10.0-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.10.0/c90b597163cd28ab6d9687edd53db601b6ea75a1/log4j-core-2.10.0.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.8.2/f3b644811d7abd624ff868b6818de93f7754e7f4/log4j-core-2.8.2-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.10.0/80fe7984598a35e35ca90a5ea55e5226bdda77bb/log4j-core-2.10.0-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.8.2/459702eacc545a5478627fe879cec6e004c00f3a/log4j-api-2.8.2-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.8.2/e590eeb783348ce8ddef205b82127f9084d82bf3/log4j-api-2.8.2.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.10.0/fd42afa6acbfb3801accec744106ee28b9342567/log4j-api-2.10.0-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.10.0/fec5797a55b786184a537abd39c3fa1449d752d6/log4j-api-2.10.0.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.8.2/78fd48b4d27bb9195b2be59ac369c780308ca3a4/log4j-api-2.8.2-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.10.0/da9e01199c1fb708030dc910a2d4908957a523e0/log4j-api-2.10.0-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/22.0/55edc69e4fc937f4e58e577bb144b824c0ec7c55/guava-22.0-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/22.0/3564ef3803de51fb0530a8377ec6100b33b0d073/guava-22.0.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/24.0-jre/4530f6a317a2d55e8903874896537dcf39717b7/guava-24.0-jre-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/24.0-jre/41ac1e74d6b4e1ea1f027139cffeb536c732a81/guava-24.0-jre.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/22.0/4c379e845406e8cbdea17d5da808679250f54d10/guava-22.0-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/24.0-jre/803e07d75e6f11288e5d4cedc98a744f229b9e84/guava-24.0-jre-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.15.Final/3c50032e398e216560ac75940f65496b0b202c92/netty-handler-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.15.Final/43cec9cfc1e80ea281bc1cb060958b1bb543d60c/netty-handler-4.1.15.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.20.Final/5a3380b7821a733dd294e30d9bc98116f17d102e/netty-handler-4.1.20.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.20.Final/e8e548c1a032adb40d9ea785b0bccccc2df54e13/netty-handler-4.1.20.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.15.Final/f86fdc2b83d23fb300520f2ffda0d0cc9146a002/netty-handler-4.1.15.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.20.Final/2cd0427061b1280df672d3ee1ccb2aeb97638ec4/netty-handler-4.1.20.Final-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.code.findbugs/jsr305/1.3.9/40719ea6961c0cb6afaeb6a921eaa1f6afd4cfdf/jsr305-1.3.9.jar"/>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.0.18/220c1232fa6d13b427c10ccc1243a87f5f501d31/error_prone_annotations-2.0.18-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.0.18/5f65affce1684999e2f4024983835efc3504012e/error_prone_annotations-2.0.18.jar">
+	<classpathentry kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.code.findbugs/jsr305/1.3.9/40719ea6961c0cb6afaeb6a921eaa1f6afd4cfdf/jsr305-1.3.9.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.0.18/b83913bf63b4b89001fd5ab82e8167ca33c12e7c/error_prone_annotations-2.0.18-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/dcd31de68a90e41e336f6b7afce0d39285c433d7/j2objc-annotations-1.1-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/976d8d30bebc251db406f2bdb3eb01962b5685b3/j2objc-annotations-1.1.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-compat-qual/2.0.0/eb7f7d588d0aef07a2c89178053c2a9e4613947f/checker-compat-qual-2.0.0-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-compat-qual/2.0.0/fc89b03860d11d6213d0154a62bcd1c2f69b9efa/checker-compat-qual-2.0.0.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/2e1e0c8db5be95ec85d19d456186f8989ea263fa/j2objc-annotations-1.1-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-compat-qual/2.0.0/74e101e1a06fb4744b298ec4067b73695b6f294e/checker-compat-qual-2.0.0-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.3/990fe1fd48078a2befecdfcebcad8e6e1bd195a0/error_prone_annotations-2.1.3-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.3/39b109f2cd352b2d71b52a3b5a1a9850e1dc304b/error_prone_annotations-2.1.3.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.3/28ea6f81741992c53c5f8030995604345606dd9d/error_prone_annotations-2.1.3-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/1efdf5b737b02f9b72ebdec4f72c37ec411302ff/j2objc-annotations-1.1-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/ed28ded51a8b1c6b112568def5f4b455e6809019/j2objc-annotations-1.1.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/5d415cbe46a293283658196abdb9e6d06dc68ccf/j2objc-annotations-1.1-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.codehaus.mojo/animal-sniffer-annotations/1.14/886474da3f761d39fcbb723d97ecc5089e731f42/animal-sniffer-annotations-1.14-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.codehaus.mojo/animal-sniffer-annotations/1.14/775b7e22fb10026eed3f86e8dc556dfafe35f2d5/animal-sniffer-annotations-1.14.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.codehaus.mojo/animal-sniffer-annotations/1.14/d90e19c7bc3a594aac2307bcfe9f2362ec4108ea/animal-sniffer-annotations-1.14-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.15.Final/2ac10a559671570fd9c7cc21dffa8f856307d148/netty-codec-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.15.Final/15cef796196b4027911d5de8a3f0d333842896d1/netty-codec-4.1.15.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.20.Final/49705b0eb35ce696988af323f678a1937f94f4a2/netty-codec-4.1.20.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.20.Final/285cec1c043c84d571ae286d87a809d72917eea7/netty-codec-4.1.20.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.15.Final/99033fb93cb75dff28fd7bad15b241301276cb89/netty-codec-4.1.15.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.20.Final/64458f8114308f801d7d3709600e9638dc2d8fc8/netty-codec-4.1.20.Final-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.15.Final/927decaeb1388f94a462c65a127999aa2fa8fd4a/netty-transport-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.15.Final/46e3f244f26422b3cfb5ffc5c2d9984b7725ed89/netty-transport-4.1.15.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.20.Final/7a02ff7f2cb6d3aed63c07e4a018005ec3ccf3ff/netty-transport-4.1.20.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.20.Final/77c8a5294261758dbca7b7928b2ebc02658f2feb/netty-transport-4.1.20.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.15.Final/54c2d1d9dcf4a1fb23d8a1ad4f71eb5d1ff88a99/netty-transport-4.1.15.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport/4.1.20.Final/fba3333d6b122a1b3a4b79660c8874ceb31a7278/netty-transport-4.1.20.Final-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.15.Final/151bdb55a25d776ff2a4a16578016c0270047f8a/netty-buffer-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.15.Final/f7edf6488292b4de584ce16acc64f611d76fe4e7/netty-buffer-4.1.15.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.20.Final/e247a593a2b2865a94ac8619f3a8cda248785aea/netty-buffer-4.1.20.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.20.Final/e277a521cda3997c322e6c761aa09bc9b1eaa43a/netty-buffer-4.1.20.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.15.Final/f45a8e8954396d806ec4f6db2c21591be8ad9cc0/netty-buffer-4.1.15.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.20.Final/ab53e8a2216e67e0a6ea20cfc2bfc4ec02b0608e/netty-buffer-4.1.20.Final-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.15.Final/b4f2ed6aefd37cdd7cdddd5e3b535aeff6c43c58/netty-resolver-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.15.Final/89565523e45aa99af2aa263900a75eb8836b3a47/netty-resolver-4.1.15.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.20.Final/b4e8b6f89f2f4e6b6c2493beee64765495275348/netty-resolver-4.1.20.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.20.Final/27aad5a68e183a0215b5d66b3bfd47a315ec4ca7/netty-resolver-4.1.20.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.15.Final/20d3890a2fb371c999867c73b10dfdb6795ee5ee/netty-resolver-4.1.15.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.20.Final/f36f6e09ad55a517db129c2b24058312fabf81b3/netty-resolver-4.1.20.Final-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.15.Final/22b11f11753abb1f104d8aaf7cc420fd54f15efe/netty-common-4.1.15.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.15.Final/d6144d4a6e0395ad762d41409ed663cc7b227e83/netty-common-4.1.15.Final.jar">
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.20.Final/1ba7cae228b5fcb6111a94ad8ee8113b3ac4bdc8/netty-common-4.1.20.Final-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.20.Final/705196810d01600478731b52817739dbeaa9df61/netty-common-4.1.20.Final.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.15.Final/4cc86769ea585156e455cf825a9560557f328ba5/netty-common-4.1.15.Final-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.20.Final/9571d143e19963193cf199f23e7c0a281374fade/netty-common-4.1.20.Final-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="main,test,testsuite"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.13.1/a2b77dfee647263d2c1010215441bfa3e28c4b9c/testng-6.13.1-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.13.1/2495393a0b4b7d7a4b49ea1f8516376f70f482c/testng-6.13.1.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.13.1/650be4af41d397eb818393068e03c595576cf1b9/testng-6.13.1-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="test,testsuite"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.72/7ef123d5dfb6f839b41265648ff1be34982d50f8/jcommander-1.72-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.72/6375e521c1e11d6563d4f25a07ce124ccf8cd171/jcommander-1.72.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.72/b04f3ee8f5e43fa3b162981b50bb72fe1acabb33/jcommander-1.72-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="test,testsuite"/>
 		</attributes>
 	</classpathentry>
 </classpath>

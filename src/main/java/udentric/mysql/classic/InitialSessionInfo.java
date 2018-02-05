@@ -36,7 +36,6 @@ import io.netty.util.concurrent.Promise;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -153,7 +152,7 @@ public class InitialSessionInfo {
 
 	private Dictum decodeInitialHandshake(
 		ByteBuf src, ChannelHandlerContext ctx, ChannelPromise chp
-	) throws SQLException {
+	) {
 		int seqNum = Packet.getSeqNum(src);
 		src.skipBytes(Packet.HEADER_SIZE);
 
@@ -235,7 +234,7 @@ public class InitialSessionInfo {
 	private Dictum selectAuthCommand(
 		String authPluginName, int seqNum,
 		ChannelHandlerContext ctx, ChannelPromise chp
-	) throws SQLException {
+	)  {
 		ByteBuf attrBuf = null;
 		String schema = "";
 
