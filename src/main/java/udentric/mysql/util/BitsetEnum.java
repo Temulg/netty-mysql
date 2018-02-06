@@ -27,8 +27,91 @@
 
 package udentric.mysql.util;
 
-public interface BitsetEnum<BitsetType> {
-	public boolean get(BitsetType caps);
+import java.util.function.BiConsumer;
 
-	public BitsetType mask();
+public interface BitsetEnum<BitsetType> {
+	boolean get(BitsetType caps);
+
+	BitsetType mask();
+
+	int bitPos();
+
+	String name();
+
+	String description();
+
+	static <T extends BitsetEnum<?>> void forEachSetBit(
+		long bits, T[] values, BiConsumer<Integer, BitsetEnum<?>> cons
+	) {
+		int cPos = 0;
+		int ccPos = 0;
+
+		while (bits != 0) {
+			BitsetEnum<?> val = null;
+			if (cPos < values.length) {
+				val = values[cPos];
+				while (val.bitPos() < ccPos) {
+					cPos++;
+					if (cPos < values.length) {
+						val = values[cPos];
+					} else {
+						val = null;
+						break;
+					}
+				}
+			}
+
+			if (1 == (bits & 1)) {
+				if (val != null && val.bitPos() == ccPos) {
+					cons.accept(ccPos, val);
+				} else {
+					cons.accept(ccPos, null);
+				}
+			}
+
+			bits = (short)(bits >>> 1);
+			ccPos++;
+		}
+	}
+
+	static <T extends BitsetEnum<?>> String describeLong(
+		long bits, T[] values
+	) {
+		StringBuilder sb = new StringBuilder();
+		forEachSetBit(bits, values, (pos, val) -> {
+			if (val != null) {
+				sb.append("bit ").append(pos).append(
+					" set: "
+				).append(val.name()).append(
+					" ("
+				).append(
+					val.description()
+				).append(")\n");
+			} else {
+				sb.append("bit ").append(
+					pos
+				).append(" set, but not defined\n");
+			}
+		});
+		return sb.toString();
+	}
+
+	static <T extends BitsetEnum<?>> String describeShort(
+		long bits, T[] values
+	) {
+		StringBuilder sb = new StringBuilder();
+		forEachSetBit(bits, values, (pos, val) -> {
+			if (sb.length() > 0)
+				sb.append(", ");
+
+			if (val != null) {
+				sb.append(pos).append('(');
+				sb.append(val.name()).append(')');
+			} else {
+				sb.append(pos).append('(');
+				sb.append('*').append(')');
+			}
+		});
+		return sb.toString();
+	}
 }

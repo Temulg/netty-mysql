@@ -35,9 +35,9 @@ public enum CursorType implements BitsetEnum<Integer> {
 	UPDATE(2, "update cursor"),
 	SCROLLABLE(4, "");
 
-	private CursorType(int bitPos_, String desc_) {
+	private CursorType(int bitPos_, String description_) {
 		bitPos = bitPos_;
-		desc = desc_;
+		description = description_;
 	}
 
 	@Override
@@ -50,47 +50,16 @@ public enum CursorType implements BitsetEnum<Integer> {
 		return 1 << bitPos;
 	}
 
-	public static String describe(Integer bits) {
-		StringBuilder sb = new StringBuilder();
-		CursorType[] scs = CursorType.values();
-		int cPos = 0;
-		int ccPos = 0;
+	@Override
+	public int bitPos() {
+		return bitPos;
+	}
 
-		while (bits != 0) {
-			CursorType sc = null;
-			if (cPos < scs.length) {
-				sc = scs[cPos];
-				while (sc.bitPos < ccPos) {
-					cPos++;
-					if (cPos < scs.length) {
-						sc = scs[cPos];
-					} else {
-						sc = null;
-						break;
-					}
-				}
-			}
-
-			if (1 == (bits & 1)) {
-				if (sc != null && sc.bitPos == ccPos) {
-					sb.append("bit ").append(ccPos).append(
-						" set: "
-					).append(sc.name()).append(
-						" ("
-					).append(sc.desc).append(")\n");
-				} else {
-					sb.append("bit ").append(
-						ccPos
-					).append(" set, but not defined\n");
-				}
-			}
-
-			bits = bits >>> 1;
-			ccPos++;
-		}
-		return sb.toString();
+	@Override
+	public String description() {
+		return description;
 	}
 
 	private final int bitPos;
-	private final String desc;
+	private final String description;
 }

@@ -70,9 +70,9 @@ public enum ClientCapability implements BitsetEnum<Long> {
 	MARIADB_COM_MULTI(33, ""),
 	MARIADB_STMT_BULK_OPERATIONS(34, "support of array binding");
 
-	private ClientCapability(int bitPos_, String desc_) {
+	private ClientCapability(int bitPos_, String description_) {
 		bitPos = bitPos_;
-		desc = desc_;
+		description = description_;
 	}
 
 	@Override
@@ -85,47 +85,16 @@ public enum ClientCapability implements BitsetEnum<Long> {
 		return 1L << bitPos;
 	}
 
-	public static String describe(Long caps) {
-		StringBuilder sb = new StringBuilder();
-		ClientCapability[] scs = ClientCapability.values();
-		int cPos = 0;
-		int ccPos = 0;
+	@Override
+	public int bitPos() {
+		return bitPos;
+	}
 
-		while (caps != 0) {
-			ClientCapability sc = null;
-			if (cPos < scs.length) {
-				sc = scs[cPos];
-				while (sc.bitPos < ccPos) {
-					cPos++;
-					if (cPos < scs.length) {
-						sc = scs[cPos];
-					} else {
-						sc = null;
-						break;
-					}
-				}
-			}
-
-			if (1 == (caps & 1)) {
-				if (sc != null && sc.bitPos == ccPos) {
-					sb.append("bit ").append(ccPos).append(
-						" set: "
-					).append(sc.name()).append(
-						" ("
-					).append(sc.desc).append(")\n");
-				} else {
-					sb.append("bit ").append(
-						ccPos
-					).append(" set, but not defined\n");
-				}
-			}
-
-			caps >>>= 1;
-			ccPos++;
-		}
-		return sb.toString();
+	@Override
+	public String description() {
+		return description;
 	}
 
 	private final int bitPos;
-	private final String desc;
+	private final String description;
 }

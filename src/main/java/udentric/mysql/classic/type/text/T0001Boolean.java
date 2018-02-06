@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,52 +25,17 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic;
+package udentric.mysql.classic.type.text;
 
-import udentric.mysql.util.BitsetEnum;
+import udentric.mysql.classic.type.TypeId;
 
-public enum ServerStatus implements BitsetEnum<Short> {
-	IN_TRANS(0, ""),
-	AUTOCOMMIT(1, "server in auto_commit mode"),
-	MORE_RESULTS_EXISTS(3, "multi query - next query exists"),
-	QUERY_NO_GOOD_INDEX_USED(4, ""),
-	QUERY_NO_INDEX_USED(5, ""),
-	CURSOR_EXISTS(6, ""),
-	LAST_ROW_SENT(7, ""),
-	DB_DROPPED(8, "a database was dropped"),
-	NO_BACKSLASH_ESCAPES(9, ""),
-	METADATA_CHANGED(10, ""),
-	QUERY_WAS_SLOW(11, ""),
-	PS_OUT_PARAMS(12, ""),
-	IN_TRANS_READONLY(13, ""),
-	SESSION_STATE_CHANGED (14, ""),
-	ANSI_QUOTES(15, "");
-
-	private ServerStatus(int bitPos_, String description_) {
-		bitPos = bitPos_;
-		description = description_;
+class T0001Boolean extends AnyNullable<Boolean> {
+	T0001Boolean() {
+		super(TypeId.TINY);
 	}
 
 	@Override
-	public boolean get(Short bits) {
-		return ((bits >>> bitPos) & 1) == 1;
+	protected Boolean assignFromString(Boolean dst, String value) {
+		return Byte.parseByte(value) != 0;
 	}
-
-	@Override
-	public Short mask() {
-		return (short)(1 << bitPos);
-	}
-
-	@Override
-	public int bitPos() {
-		return bitPos;
-	}
-
-	@Override
-	public String description() {
-		return description;
-	}
-
-	private final int bitPos;
-	private final String description;
 }

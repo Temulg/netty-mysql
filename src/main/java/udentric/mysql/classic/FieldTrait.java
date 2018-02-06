@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -29,24 +29,24 @@ package udentric.mysql.classic;
 
 import udentric.mysql.util.BitsetEnum;
 
-public enum ServerStatus implements BitsetEnum<Short> {
-	IN_TRANS(0, ""),
-	AUTOCOMMIT(1, "server in auto_commit mode"),
-	MORE_RESULTS_EXISTS(3, "multi query - next query exists"),
-	QUERY_NO_GOOD_INDEX_USED(4, ""),
-	QUERY_NO_INDEX_USED(5, ""),
-	CURSOR_EXISTS(6, ""),
-	LAST_ROW_SENT(7, ""),
-	DB_DROPPED(8, "a database was dropped"),
-	NO_BACKSLASH_ESCAPES(9, ""),
-	METADATA_CHANGED(10, ""),
-	QUERY_WAS_SLOW(11, ""),
-	PS_OUT_PARAMS(12, ""),
-	IN_TRANS_READONLY(13, ""),
-	SESSION_STATE_CHANGED (14, ""),
-	ANSI_QUOTES(15, "");
+public enum FieldTrait implements BitsetEnum<Short> {
+	NOT_NULL(0, "field can't be NULL"),
+	PRIMARY_KEY(1, "field is part of a primary key"),
+	UNIQUE_KEY(2, "field is part of a unique key"),
+	MULTIPLE_KEY(3, "field is part of a key"),
+	BLOB(4, "field is a blob"),
+	UNSIGNED(5, "field is unsigned"),
+	ZEROFILL(6, "field is zerofill"),
+	BINARY(7, "field is binary"),
+	ENUM(8, "field is an enum"),
+	AUTO_INCREMENT(9, "field is a autoincrement field"),
+	TIMESTAMP(10, "field is a timestamp"),
+	SET(11, "field is a set"),
+	NO_DEFAULT_VALUE(12, "field doesn't have default value"),
+	ON_UPDATE_NOW(13, "field is set to NOW on UPDATE"),
+	NUM(15, "field is num");
 
-	private ServerStatus(int bitPos_, String description_) {
+	private FieldTrait(int bitPos_, String description_) {
 		bitPos = bitPos_;
 		description = description_;
 	}
