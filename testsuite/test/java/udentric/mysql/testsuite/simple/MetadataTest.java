@@ -27,6 +27,10 @@
 
 package udentric.mysql.testsuite.simple;
 
+import java.util.HashSet;
+
+import com.google.common.collect.ObjectArrays;
+
 import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
@@ -42,6 +46,7 @@ import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.SimpleColumnValueMapper;
 import udentric.mysql.classic.dicta.ExecuteStatement;
 import udentric.mysql.classic.dicta.Query;
+import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.testsuite.TestCase;
 import udentric.test.Assert;
 import udentric.test.Tester;
@@ -50,7 +55,7 @@ public class MetadataTest extends TestCase {
 	public MetadataTest() {
 		super(Logger.getLogger(MetadataTest.class));
 	}
-
+/*
 	private void createTestTables() throws Exception {
 		createTable(
 			"parent",
@@ -624,7 +629,7 @@ public class MetadataTest extends TestCase {
 	
 				@Override
 				public void acceptFailure(Throwable cause) {
-					Assert.fail("query failed", cause);	
+					Assert.fail("query failed", cause);
 				}
 			
 				@Override
@@ -639,98 +644,208 @@ public class MetadataTest extends TestCase {
 		Tester.endAsync(1);
 	}
 
+	@Test
+	public void getPrimaryKeysUsingInfoShcema() throws Exception {
+		createTable("t1", "(c1 int(1) primary key)");
+
+		PreparedStatement pstmt = MetadataQueries.primaryKeys(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("TABLE_NAME"),
+						"t1"
+					);
+					Assert.assertEquals(
+						row.getValue("COLUMN_NAME"),
+						"c1"
+					);
+					resultPos++;
+				}
+			
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "t1"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+
+
+	@Test
+	public void getIndexInfoUsingInfoSchema() throws Exception {
+		createTable("t1", "(c1 int(1))");
+		SyncCommands.executeUpdate(
+			channel(), "CREATE INDEX index1 ON t1 (c1)"
+		);
+
+		PreparedStatement pstmt = MetadataQueries.indexInfo(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("TABLE_NAME"),
+						"t1"
+					);
+					Assert.assertEquals(
+						row.getValue("COLUMN_NAME"),
+						"c1"
+					);
+					Assert.assertEquals(
+						(long)row.getValue("NON_UNIQUE"),
+						1
+					);
+					Assert.assertEquals(
+						row.getValue("INDEX_NAME"),
+						"index1"
+					);
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "t1"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+*/
+	@Test
+	public void getColumnsUsingInfoSchema() throws Exception {
+		createTable("t1", "(c1 char(1))");
+
+		PreparedStatement pstmt = MetadataQueries.columns(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("TABLE_NAME"),
+						"t1"
+					);
+					Assert.assertEquals(
+						row.getValue("COLUMN_NAME"),
+						"c1"
+					);
+					Assert.assertEquals(
+						(int)row.getValue("DATA_TYPE"),
+						TypeId.STRING.id
+					);
+					Assert.assertEquals(
+						(int)row.getValue("COLUMN_SIZE"),
+						1
+					);
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "t1"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+
+	@Test
+	public void getTablesUsingInfoSchema() throws Exception {
+		createTable("`t1-1`", "(c1 char(1))");
+		createTable("`t1-2`", "(c1 char(1))");
+		createTable("`t2`", "(c1 char(1))");
+		HashSet<String> tableNames = new HashSet<>();
+		tableNames.add("t1-1");
+		tableNames.add("t1-2");
+
+		PreparedStatement pstmt = MetadataQueries.tables(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer(){
+				@Override
+				public void acceptRow(DataRow row) {
+					String name = row.getValue(
+						"TABLE_NAME"
+					);
+					tableNames.remove(name);
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+			
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertTrue(tableNames.isEmpty());
+					Assert.done();
+				}
+			}, ObjectArrays.concat(
+				new String[] {"testsuite", "t1-_"},
+				MetadataQueries.TABLE_TYPES, Object.class
+			)
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
 
 /*
-    public void testGetPrimaryKeysUsingInfoShcema() throws Exception {
-        createTable("t1", "(c1 int(1) primary key)");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getPrimaryKeys(null, null, "t1");
-            this.rs.next();
-            assertEquals("t1", this.rs.getString("TABLE_NAME"));
-            assertEquals("c1", this.rs.getString("COLUMN_NAME"));
-        } finally {
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
-
-    public void testGetIndexInfoUsingInfoSchema() throws Exception {
-        createTable("t1", "(c1 int(1))");
-        this.stmt.executeUpdate("CREATE INDEX index1 ON t1 (c1)");
-
-        Connection conn1 = null;
-
-        try {
-            conn1 = getConnectionWithProps("useInformationSchema=true");
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getIndexInfo(conn1.getCatalog(), null, "t1", false, true);
-            this.rs.next();
-            assertEquals("t1", this.rs.getString("TABLE_NAME"));
-            assertEquals("c1", this.rs.getString("COLUMN_NAME"));
-            assertEquals("1", this.rs.getString("NON_UNIQUE"));
-            assertEquals("index1", this.rs.getString("INDEX_NAME"));
-        } finally {
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
-
-    public void testGetColumnsUsingInfoSchema() throws Exception {
-        createTable("t1", "(c1 char(1))");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        props.setProperty(PropertyDefinitions.PNAME_nullNamePatternMatchesAll, "true");
-        props.setProperty(PropertyDefinitions.PNAME_nullCatalogMeansCurrent, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getColumns(null, null, "t1", null);
-            this.rs.next();
-            assertEquals("t1", this.rs.getString("TABLE_NAME"));
-            assertEquals("c1", this.rs.getString("COLUMN_NAME"));
-            assertEquals("CHAR", this.rs.getString("TYPE_NAME"));
-            assertEquals("1", this.rs.getString("COLUMN_SIZE"));
-        } finally {
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
-
-    public void testGetTablesUsingInfoSchema() throws Exception {
-        createTable("`t1-1`", "(c1 char(1))");
-        createTable("`t1-2`", "(c1 char(1))");
-        createTable("`t2`", "(c1 char(1))");
-        Set<String> tableNames = new HashSet<>();
-        tableNames.add("t1-1");
-        tableNames.add("t1-2");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            // pattern matching for table name
-            this.rs = metaData.getTables(this.dbName, null, "t1-_", null);
-            while (this.rs.next()) {
-                assertTrue(tableNames.remove(this.rs.getString("TABLE_NAME")));
-            }
-            assertTrue(tableNames.isEmpty());
-        } finally {
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
-
     public void testGetColumnPrivilegesUsingInfoSchema() throws Exception {
 
         if (!runTestIfSysPropDefined(PropertyDefinitions.SYSP_testsuite_cantGrant)) {

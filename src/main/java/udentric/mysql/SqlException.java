@@ -28,12 +28,20 @@ package udentric.mysql;
 
 public class SqlException extends RuntimeException {
 	public SqlException(String reason_, String state_, int code_) {
+		super(String.format(
+			"server error: [%s] %s (%d)",
+			state_, reason_, code_
+		)); 
 		reason = reason_;
 		state = state_;
 		code = code_;
 	}
 
 	public SqlException(String reason_, String state_) {
+		super(String.format(
+			"server error: [%s] %s",
+			state_, reason_
+		)); 
 		reason = reason_;
 		state = state_;
 		code = 0;

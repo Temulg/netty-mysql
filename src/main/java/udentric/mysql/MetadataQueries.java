@@ -42,6 +42,10 @@ public class MetadataQueries {
 		return getMap(ch).get(QueryType.TABLES, ch);
 	}
 
+	public static Future<PreparedStatement> columns(Channel ch) {
+		return getMap(ch).get(QueryType.COLUMNS, ch);
+	}
+
 	public static Future<PreparedStatement> primaryKeys(Channel ch) {
 		return getMap(ch).get(QueryType.PRIMARY_KEYS, ch);
 	}
@@ -57,6 +61,19 @@ public class MetadataQueries {
 	public static Future<PreparedStatement> crossReference(Channel ch) {
 		return getMap(ch).get(QueryType.CROSS_REFERENCE, ch);
 	}
+
+	public static Future<PreparedStatement> indexInfo(Channel ch) {
+		return getMap(ch).get(QueryType.INDEX_INFO, ch);
+	}
+
+	public static Future<PreparedStatement> indexInfoUnique(Channel ch) {
+		return getMap(ch).get(QueryType.INDEX_INFO_UNIQUE, ch);
+	}
+
+	public static final String[] TABLE_TYPES = {
+		"LOCAL TEMPORARY", "SYSTEM TABLE", "SYSTEM VIEW",
+		"TABLE", "VIEW"
+	};
 
 	private static QueryMap getMap(Channel ch) {
 		Attribute<QueryMap> attr = ch.attr(METADATA_QUERY_MAP);
@@ -209,9 +226,66 @@ public class MetadataQueries {
 				+ "ORDER BY A.TABLE_SCHEMA, A.TABLE_NAME, "
 				+ "A.ORDINAL_POSITION";
 			}
+		}, INDEX_INFO {
+			@Override
+			String query() {
+				return "SELECT TABLE_SCHEMA AS TABLE_CAT, "
+				+ "TABLE_NAME, NON_UNIQUE, "
+				+ "TABLE_SCHEMA AS INDEX_QUALIFIER, "
+				+ "INDEX_NAME, SEQ_IN_INDEX AS ORDINAL_POSITION, "
+				+ "COLUMN_NAME, COLLATION AS ASC_OR_DESC, "
+				+ "CARDINALITY FROM INFORMATION_SCHEMA.STATISTICS "
+				+ "WHERE TABLE_SCHEMA LIKE ? "
+				+ "AND TABLE_NAME LIKE ? "
+				+ "ORDER BY NON_UNIQUE, INDEX_NAME, "
+				+ "SEQ_IN_INDEX";
+			}
+		}, INDEX_INFO_UNIQUE {
+			@Override
+			String query() {
+				return "SELECT TABLE_SCHEMA AS TABLE_CAT, "
+				+ "TABLE_NAME, NON_UNIQUE, "
+				+ "TABLE_SCHEMA AS INDEX_QUALIFIER, "
+				+ "INDEX_NAME, SEQ_IN_INDEX AS ORDINAL_POSITION, "
+				+ "COLUMN_NAME, COLLATION AS ASC_OR_DESC, "
+				+ "CARDINALITY FROM INFORMATION_SCHEMA.STATISTICS "
+				+ "WHERE TABLE_SCHEMA LIKE ? "
+				+ "AND TABLE_NAME LIKE ? AND NON_UNIQUE = 0 "
+				+ "ORDER BY NON_UNIQUE, INDEX_NAME, "
+				+ "SEQ_IN_INDEX";
+			}
+		}, COLUMNS {
+			@Override
+			String query() {
+				return "SELECT TABLE_SCHEMA AS TABLE_CAT, "
+				+ "TABLE_NAME, COLUMN_NAME, DATA_TYPE, "
+				+ "CASE WHEN LCASE(DATA_TYPE)='date' THEN 10 "
+				+ "WHEN LCASE(DATA_TYPE)='time' THEN 8 "
+				+ "WHEN LCASE(DATA_TYPE)='datetime' THEN 19 "
+				+ "WHEN LCASE(DATA_TYPE)='timestamp' THEN 19 "
+				+ "WHEN CHARACTER_MAXIMUM_LENGTH IS NULL "
+				+ "THEN NUMERIC_PRECISION "
+				+ "WHEN CHARACTER_MAXIMUM_LENGTH > "
+				+ Integer.MAX_VALUE + " THEN " + Integer.MAX_VALUE
+				+ " ELSE CHARACTER_MAXIMUM_LENGTH END AS COLUMN_SIZE, "
+				+ "NUMERIC_SCALE AS DECIMAL_DIGITS, "
+				+ "COLUMN_COMMENT AS REMARKS, "
+				+ "COLUMN_DEFAULT AS COLUMN_DEF, "
+				+ "CHARACTER_OCTET_LENGTH AS CHAR_OCTET_LENGTH, "
+				+ "ORDINAL_POSITION, IS_NULLABLE, "
+				+ "IF (EXTRA LIKE '%auto_increment%','YES','NO') AS IS_AUTOINCREMENT, "
+				+ "IF (EXTRA LIKE '%GENERATED%','YES','NO') AS IS_GENERATEDCOLUMN "
+				+ "FROM INFORMATION_SCHEMA.COLUMNS WHERE "
+				+ "TABLE_SCHEMA LIKE ? "
+				+ "AND TABLE_NAME LIKE ? "
+				+ "AND COLUMN_NAME LIKE ? "
+				+ "ORDER BY TABLE_SCHEMA, TABLE_NAME, "
+				+ "ORDINAL_POSITION";
+			}
 		};
 
 		abstract String query();
+
 		private static final String KEY_QUERY_COMMON
 		= "SELECT A.REFERENCED_TABLE_SCHEMA AS PKTABLE_CAT, "
 		+ "A.REFERENCED_TABLE_NAME AS PKTABLE_NAME, "
