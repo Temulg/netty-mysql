@@ -27,6 +27,7 @@
 
 package udentric.mysql.testsuite.simple;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 
 import com.google.common.collect.ObjectArrays;
@@ -46,7 +47,6 @@ import udentric.mysql.classic.ResultSetConsumer;
 import udentric.mysql.classic.SimpleColumnValueMapper;
 import udentric.mysql.classic.dicta.ExecuteStatement;
 import udentric.mysql.classic.dicta.Query;
-import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.testsuite.TestCase;
 import udentric.test.Assert;
 import udentric.test.Tester;
@@ -55,7 +55,7 @@ public class MetadataTest extends TestCase {
 	public MetadataTest() {
 		super(Logger.getLogger(MetadataTest.class));
 	}
-/*
+
 	private void createTestTables() throws Exception {
 		createTable(
 			"parent",
@@ -745,7 +745,7 @@ public class MetadataTest extends TestCase {
 
 		Tester.endAsync(1);
 	}
-*/
+
 	@Test
 	public void getColumnsUsingInfoSchema() throws Exception {
 		createTable("t1", "(c1 char(1))");
@@ -768,12 +768,12 @@ public class MetadataTest extends TestCase {
 						"c1"
 					);
 					Assert.assertEquals(
-						(int)row.getValue("DATA_TYPE"),
-						TypeId.STRING.id
+						row.getValue("DATA_TYPE"),
+						"char"
 					);
 					Assert.assertEquals(
-						(int)row.getValue("COLUMN_SIZE"),
-						1
+						(BigDecimal)row.getValue("COLUMN_SIZE"),
+						BigDecimal.ONE
 					);
 					resultPos++;
 				}
@@ -798,7 +798,7 @@ public class MetadataTest extends TestCase {
 
 		Tester.endAsync(1);
 	}
-
+/*
 	@Test
 	public void getTablesUsingInfoSchema() throws Exception {
 		createTable("`t1-1`", "(c1 char(1))");
@@ -845,7 +845,6 @@ public class MetadataTest extends TestCase {
 		Tester.endAsync(1);
 	}
 
-/*
     public void testGetColumnPrivilegesUsingInfoSchema() throws Exception {
 
         if (!runTestIfSysPropDefined(PropertyDefinitions.SYSP_testsuite_cantGrant)) {

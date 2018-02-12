@@ -278,7 +278,6 @@ public class MetadataQueries {
 				+ "FROM INFORMATION_SCHEMA.COLUMNS WHERE "
 				+ "TABLE_SCHEMA LIKE ? "
 				+ "AND TABLE_NAME LIKE ? "
-				+ "AND COLUMN_NAME LIKE ? "
 				+ "ORDER BY TABLE_SCHEMA, TABLE_NAME, "
 				+ "ORDINAL_POSITION";
 			}

@@ -25,51 +25,20 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.type.binary;
+package udentric.mysql.classic.type.text;
 
-import java.util.BitSet;
-
-import com.google.common.primitives.Bytes;
-
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.type.AdapterState;
+import java.math.BigDecimal;
 import udentric.mysql.classic.type.TypeId;
-import udentric.mysql.classic.type.ValueAdapter;
 
-class T0016BitSet implements ValueAdapter<BitSet> {
-	@Override
-	public TypeId typeId() {
-		return arrayAdapter.typeId();
+class T0246BigDecimal extends AnyNullable<BigDecimal> {
+	T0246BigDecimal() {
+		super(TypeId.NEWDECIMAL);
 	}
 
 	@Override
-	public void encodeValue(
-		ByteBuf dst, BitSet value, AdapterState state,
-		int bufSoftLimit, FieldImpl fld
+	protected BigDecimal assignFromString(
+		BigDecimal dst, String value
 	) {
-		byte b[] = value.toByteArray();
-		Bytes.reverse(b);
-		arrayAdapter.encodeValue(dst, b, state, bufSoftLimit, fld);
+		return new BigDecimal(value);
 	}
-
-	@Override
-	public BitSet decodeValue(
-		BitSet dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		byte[] b = arrayAdapter.decodeValue(null, src, state, fld);
-
-		if (b == null)
-			return null;
-
-		Bytes.reverse(b);
-		BitSet bs = BitSet.valueOf(b);
-
-		if ((b.length << 3) == fld.length)
-			return bs;
-		else
-			return bs.get(0, fld.length);
-	}
-
-	private final AnyByteArray arrayAdapter = new AnyByteArray(TypeId.BIT);
 }

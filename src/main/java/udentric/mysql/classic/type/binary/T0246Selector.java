@@ -27,49 +27,37 @@
 
 package udentric.mysql.classic.type.binary;
 
-import java.util.BitSet;
+import java.math.BigDecimal;
 
-import com.google.common.primitives.Bytes;
-
-import io.netty.buffer.ByteBuf;
-import udentric.mysql.classic.FieldImpl;
-import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TypeId;
+import com.google.common.collect.ImmutableMap;
+import udentric.mysql.classic.type.AdapterSelector;
 import udentric.mysql.classic.type.ValueAdapter;
+import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.binary.AnyString;
 
-class T0016BitSet implements ValueAdapter<BitSet> {
+public class T0246Selector extends AdapterSelector {
 	@Override
-	public TypeId typeId() {
-		return arrayAdapter.typeId();
+	@SuppressWarnings("unchecked")
+	public <T> ValueAdapter<T> get(Class<T> cls) {
+		return (ValueAdapter<T>)(
+			cls != null ? ADAPTERS.get(cls) : defaultAdapter
+		);
 	}
 
 	@Override
-	public void encodeValue(
-		ByteBuf dst, BitSet value, AdapterState state,
-		int bufSoftLimit, FieldImpl fld
-	) {
-		byte b[] = value.toByteArray();
-		Bytes.reverse(b);
-		arrayAdapter.encodeValue(dst, b, state, bufSoftLimit, fld);
+	@SuppressWarnings("unchecked")
+	public <T> ValueAdapter<T> find(Class<T> cls) {
+		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	@Override
-	public BitSet decodeValue(
-		BitSet dst, ByteBuf src, AdapterState state, FieldImpl fld
-	) {
-		byte[] b = arrayAdapter.decodeValue(null, src, state, fld);
-
-		if (b == null)
-			return null;
-
-		Bytes.reverse(b);
-		BitSet bs = BitSet.valueOf(b);
-
-		if ((b.length << 3) == fld.length)
-			return bs;
-		else
-			return bs.get(0, fld.length);
-	}
-
-	private final AnyByteArray arrayAdapter = new AnyByteArray(TypeId.BIT);
+	private final ValueAdapter<?> defaultAdapter = new T0246BigDecimal();
+	private final ImmutableMap<
+		Class<?>, ValueAdapter<?>
+	> ADAPTERS = ImmutableMap.<
+		Class<?>, ValueAdapter<?>
+	>builder().put(
+		BigDecimal.class, defaultAdapter
+	).put(
+		String.class, new AnyString(TypeId.NEWDECIMAL)
+	).build();
 }

@@ -28,6 +28,6 @@
 package udentric.mysql.classic.type.text;
 
 public class T0252Selector
-extends udentric.mysql.classic.type.binary.T0253Selector {
+extends udentric.mysql.classic.type.binary.T0252Selector {
 
 }
