@@ -65,7 +65,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		dst.writeShortLE(si.encoding.mysqlId);
 		dst.writeZero(22);
 
-		dst.writeBytes(cfg.getOrDefault(Config.Key.user, "").getBytes(
+		dst.writeBytes(cfg.getOrDefault(Config.Key.USER, "").getBytes(
 			si.charset()
 		));
 		dst.writeByte(0);
@@ -79,7 +79,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		) {
 			dst.writeByte(20);
 			Scramble411.encode(dst, cfg.getOrDefault(
-				Config.Key.password, ""
+				Config.Key.PASSWORD, ""
 			).getBytes(si.charset()), si.secret);
 		} else
 			dst.writeByte(0);
@@ -158,13 +158,18 @@ public class MysqlNativePasswordAuth implements Dictum {
 			src.readBytes(pluginData);
 		}
 
-		Channels.discardActiveDictum(
-			ctx.channel(),
-			Packet.makeError(
-				ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
-				authPluginName
-			)
-		);
+		switch (authPluginName) {
+		case "sha256_password":
+			
+		default:
+			Channels.discardActiveDictum(
+				ctx.channel(),
+				Packet.makeError(
+					ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
+					authPluginName
+				)
+			);
+		}
 	}
 
 	public void handleFailure(Throwable cause) {

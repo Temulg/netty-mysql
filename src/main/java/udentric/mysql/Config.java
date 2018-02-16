@@ -27,13 +27,21 @@
 
 package udentric.mysql;
 
-import java.util.Collections;
-import java.util.EnumMap;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
-import java.util.Optional;
+import java.util.EnumMap;
 import java.util.Properties;
+import java.util.Collections;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.io.BaseEncoding;
+import com.google.common.io.ByteStreams;
+import udentric.mysql.util.Throwables;
 
 public class Config {
 	public static class Builder {
@@ -69,30 +77,31 @@ public class Config {
 			: Collections.emptyMap();
 
 		for (Key key: Key.values()) {
-			key.sysProp.ifPresent(prop -> {
+			String name = key.property();
+			if (!name.isEmpty()) {
 				Object val = key.accessor.fromString(
-					props.getProperty(prop)
+					props.getProperty(name)
 				);
 				if (val != null)
 					cfg.values.put(key, val);
-			});
+			}
 
 			if (!useSysEnv)
 				continue;
 
-			key.envVar.ifPresent(var -> {
+			name = key.envVar();
+			if (!name.isEmpty()) {
 				Object val = key.accessor.fromString(
-					env.get(var)
+					env.get(name)
 				);
 				if (val != null)
 					cfg.values.put(key, val);
-			});
+			}
 		}
 
 		return cfg;
 	}
 
-	
 	private Config(EnumMap<Key, Object> values_) {
 		values = values_;
 	}
@@ -120,7 +129,10 @@ public class Config {
 			EnumMap<Key, Object> values,
 			Key key, Object defValue
 		) {
-			return values.getOrDefault(key, defValue);
+			if (values.containsKey(key))
+				return values.get(key);
+			else
+				return key.update(values, defValue);
 		}
 
 		abstract Object fromString(String val);
@@ -142,6 +154,21 @@ public class Config {
 				return ((Number)val).intValue() > 0;
 			else if (val instanceof CharSequence)
 				return Boolean.parseBoolean(val.toString());
+			else
+				return null;
+		}
+	};
+
+	private static final Value BYTE_ARRAY_VALUE = new Value() {
+		@Override
+		Object fromString(String val) {
+			return BaseEncoding.base16().decode(val);
+		}
+
+		@Override
+		Object fromObject(Object val) {
+			if (val instanceof byte[])
+				return val;
 			else
 				return null;
 		}
@@ -178,24 +205,113 @@ public class Config {
 		}
 	};
 
+	private static final Value URL_VALUE = new Value() {
+		@Override
+		Object fromString(String val) {
+			try {
+				return new URL(val);
+			} catch (MalformedURLException e) {}
+
+			Path p = Paths.get(val).toAbsolutePath();
+			try {
+				return new URL(
+					"file", null, p.toString()
+				);
+			} catch (MalformedURLException e) {
+				throw Throwables.propagate(e);
+			}
+		}
+
+		@Override
+		Object fromObject(Object val) {
+			if (val instanceof URL)
+				return val;
+			else
+				return null;
+		}
+	};
+
 	public enum Key {
 		PROTOCOL(STRING_VALUE),
 		PATH(STRING_VALUE),
 		TYPE(STRING_VALUE),
-		HOST(STRING_VALUE, "udentric.mysql.host", "MYSQL_HOST"),
-		TCP_PORT(
-			INTEGER_VALUE, "udentric.mysql.tcp_port",
-			"MYSQL_TCP_PORT"
-		),
-		UNIX_PORT(
-			STRING_VALUE, "udentric.mysql.unix_port",
-			"MYSQL_UNIX_PORT"
-		),
+		HOST(STRING_VALUE) {
+			@Override
+			String property() {
+				return "udentric.mysql.host";
+			}
+
+			@Override
+			String envVar() {
+				return "MYSQL_HOST";
+			}
+		},
+		TCP_PORT(INTEGER_VALUE) {
+			@Override
+			String property() {
+				return "udentric.mysql.tcp_port";
+			}
+
+			@Override
+			String envVar() {
+				return "MYSQL_TCP_PORT";
+			}
+		},
+		UNIX_PORT(STRING_VALUE) {
+			@Override
+			String property() {
+				return "udentric.mysql.unix_port";
+			}
+
+			@Override
+			String envVar() {
+				return "MYSQL_UNIX_PORT";
+			}
+		},
 		DBNAME(STRING_VALUE),
 		ADDRESS(STRING_VALUE),
 		PRIORITY(STRING_VALUE),
-		user(STRING_VALUE, "udentric.mysql.user", "USER"),
-		password(STRING_VALUE, "udentric.mysql.password", "MYSQL_PWD"),
+		USER(STRING_VALUE) {
+			@Override
+			String property() {
+				return "udentric.mysql.user";
+			}
+
+			@Override
+			String envVar() {
+				return "USER";
+			}
+		},
+		PASSWORD(STRING_VALUE) {
+			@Override
+			String property() {
+				return "udentric.mysql.password";
+			}
+
+			@Override
+			String envVar() {
+				return "MYSQL_PWD";
+			}
+		},
+		SERVER_PUBLIC_KEY_URL(URL_VALUE),
+		SERVER_PUBLIC_KEY(BYTE_ARRAY_VALUE) {
+			@Override
+			Object update(
+				EnumMap<Key, Object> values, Object defValue
+			) {
+				URL u = (URL)values.get(SERVER_PUBLIC_KEY_URL);
+				if (u == null)
+					return defValue;
+
+				try (InputStream s = u.openStream()) {
+					byte[] b = ByteStreams.toByteArray(s);
+					values.put(SERVER_PUBLIC_KEY, b);
+					return b;
+				} catch (IOException e) {
+					return defValue;
+				}
+			}
+		},
 		interactiveClient(BOOLEAN_VALUE),
 		maintainTimeStats(BOOLEAN_VALUE),
 		paranoid(BOOLEAN_VALUE),
@@ -203,21 +319,23 @@ public class Config {
 		maxPacketSize(INTEGER_VALUE),
 		characterEncoding(STRING_VALUE);
 
-		private Key(Value accessor_) {
+		Key(Value accessor_) {
 			accessor = accessor_;
-			envVar = Optional.empty();
-			sysProp = Optional.empty();
 		}
 
-		private Key(Value accessor_, String sysProp_, String envVar_) {
-			accessor = accessor_;
-			sysProp = Optional.ofNullable(sysProp_);
-			envVar = Optional.ofNullable(envVar_);
+		String property() {
+			return "";
+		}
+
+		String envVar() {
+			return "";
+		}
+
+		Object update(EnumMap<Key, Object> values, Object defValue) {
+			return defValue;
 		}
 
 		private final Value accessor;
-		private final Optional<String> sysProp;
-		private final Optional<String> envVar;
 	}
 
 	private final EnumMap<Key, Object> values;

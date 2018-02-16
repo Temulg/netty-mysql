@@ -252,7 +252,7 @@ public class InitialSessionInfo {
 					clientCaps &= ~ClientCapability.CONNECT_WITH_DB.mask();
 			}
 
-			if (config.containsKey(Config.Key.password)) {
+			if (config.containsKey(Config.Key.PASSWORD)) {
 				clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
 				if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
 					serverCaps
