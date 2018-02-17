@@ -70,6 +70,14 @@ public class MetadataQueries {
 		return getMap(ch).get(QueryType.INDEX_INFO_UNIQUE, ch);
 	}
 
+	public static Future<PreparedStatement> columnPrivileges(Channel ch) {
+		return getMap(ch).get(QueryType.COLUMN_PRIVILEGES, ch);
+	}
+
+	public static Future<PreparedStatement> procedures(Channel ch) {
+		return getMap(ch).get(QueryType.PROCEDURES, ch);
+	}
+
 	public static final String[] TABLE_TYPES = {
 		"LOCAL TEMPORARY", "SYSTEM TABLE", "SYSTEM VIEW",
 		"TABLE", "VIEW"
@@ -280,6 +288,31 @@ public class MetadataQueries {
 				+ "AND TABLE_NAME LIKE ? "
 				+ "ORDER BY TABLE_SCHEMA, TABLE_NAME, "
 				+ "ORDINAL_POSITION";
+			}
+		}, COLUMN_PRIVILEGES {
+			@Override
+			String query() {
+				return "SELECT TABLE_SCHEMA AS TABLE_CAT, "
+				+ "TABLE_NAME, COLUMN_NAME, GRANTEE, "
+				+ "PRIVILEGE_TYPE AS PRIVILEGE, "
+				+ "IS_GRANTABLE FROM INFORMATION_SCHEMA.COLUMN_PRIVILEGES "
+				+ "WHERE TABLE_SCHEMA LIKE ? "
+				+ "AND TABLE_NAME = ? AND COLUMN_NAME LIKE ? "
+				+ "ORDER BY COLUMN_NAME, PRIVILEGE_TYPE";
+			}
+		}, PROCEDURES {
+			@Override
+			String query() {
+				return "SELECT ROUTINE_SCHEMA AS PROCEDURE_CAT, "
+				+ "ROUTINE_NAME AS PROCEDURE_NAME, "
+				+ "ROUTINE_COMMENT AS REMARKS, "
+				+ "ROUTINE_TYPE AS PROCEDURE_TYPE, "
+				+ "ROUTINE_NAME AS SPECIFIC_NAME "
+				+ "FROM INFORMATION_SCHEMA.ROUTINES "
+				+ "WHERE ROUTINE_SCHEMA LIKE ? "
+				+ "AND ROUTINE_NAME LIKE ? "
+				+ "ORDER BY ROUTINE_SCHEMA, ROUTINE_NAME, "
+				+ "ROUTINE_TYPE";
 			}
 		};
 

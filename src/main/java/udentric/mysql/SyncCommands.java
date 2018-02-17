@@ -27,6 +27,8 @@
 
 package udentric.mysql;
 
+import java.util.List;
+
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import udentric.mysql.util.Throwables;
@@ -74,11 +76,31 @@ public class SyncCommands {
 	public static ServerAck executeUpdate(
 		Channel ch, PreparedStatement pstmt, Object... args
 	) {
-		Future<ServerAck> sf = null;;
+		Future<ServerAck> sf = null;
 
 		try {
 			sf = Commands.with(ch).executeUpdate(
 				pstmt, args
+			).await();
+		} catch (InterruptedException e) {
+			Throwables.propagate(e);
+		}
+
+		if (sf.isSuccess())
+			return sf.getNow();
+		else {
+			throw Throwables.propagate(sf.cause());
+		}
+	}
+
+	public static List<?> selectColumn(
+		Channel ch, String sql, int colNum
+	) {
+		Future<List<?>> sf = null;
+
+		try {
+			sf = Commands.with(ch).selectColumn(
+				sql, colNum
 			).await();
 		} catch (InterruptedException e) {
 			Throwables.propagate(e);

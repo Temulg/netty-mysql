@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -27,8 +27,8 @@
 
 package udentric.mysql.classic.dicta;
 
-
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
@@ -42,14 +42,19 @@ import udentric.mysql.util.Scramble411;
 
 public class MysqlNativePasswordAuth implements Dictum {
 	public MysqlNativePasswordAuth(
-		InitialSessionInfo si_, int seqNum_, ChannelPromise chp_,
-		String schema_, ByteBuf attrBuf_
+		InitialSessionInfo si_, int seqNum_, ChannelPromise chp_
 	) {
 		si = si_;
 		seqNum = seqNum_;
 		chp = chp_;
-		schema = schema_;
-		attrBuf = attrBuf_;
+		if (si.config.containsKey(Config.Key.PASSWORD)) {
+			si.clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
+			if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
+				si.serverCaps
+			))
+				si.clientCaps
+				|= ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.mask();
+		}
 	}
 
 	@Override
@@ -84,8 +89,9 @@ public class MysqlNativePasswordAuth implements Dictum {
 		} else
 			dst.writeByte(0);
 
-		if (!schema.isEmpty()) {
-			dst.writeBytes(schema.getBytes(si.charset()));
+		if (!si.schema.isEmpty()) {
+			dst.writeBytes(si.schema.getBytes(si.charset()));
+			dst.writeByte(0);
 		}
 
 		dst.writeBytes(AUTH_PLUGIN_NAME.getBytes(
@@ -93,10 +99,13 @@ public class MysqlNativePasswordAuth implements Dictum {
 		));
 		dst.writeByte(0);
 
-		if (attrBuf != null) {
-			Packet.writeIntLenenc(dst, attrBuf.readableBytes());
-			dst.writeBytes(attrBuf);
-			attrBuf.release();
+		if (si.attrBuf != null) {
+			Packet.writeIntLenenc(
+				dst, si.attrBuf.readableBytes()
+			);
+			dst.writeBytes(si.attrBuf);
+			si.attrBuf.release();
+			si.attrBuf= null;
 		}
 		return false;
 	}
@@ -158,17 +167,20 @@ public class MysqlNativePasswordAuth implements Dictum {
 			src.readBytes(pluginData);
 		}
 
+		Channel ch = ctx.channel();
+
 		switch (authPluginName) {
 		case "sha256_password":
-			
+			si.secret = pluginData;
+			Channels.discardActiveDictum(ch);
+			ch.writeAndFlush(
+				new Sha256PasswordAuth(si, lastSeqNum++, chp)
+			).addListener(Channels::defaultSendListener);
 		default:
-			Channels.discardActiveDictum(
-				ctx.channel(),
-				Packet.makeError(
-					ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
-					authPluginName
-				)
-			);
+			Channels.discardActiveDictum(ch, Packet.makeError(
+				ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
+				authPluginName
+			));
 		}
 	}
 
@@ -185,7 +197,5 @@ public class MysqlNativePasswordAuth implements Dictum {
 
 	private final InitialSessionInfo si;
 	private final int seqNum;
-	private final String schema;
-	private final ByteBuf attrBuf;
 	private ChannelPromise chp;
 }

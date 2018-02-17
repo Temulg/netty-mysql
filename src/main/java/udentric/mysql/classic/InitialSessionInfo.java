@@ -141,10 +141,7 @@ public class InitialSessionInfo {
 			Channels.discardActiveDictum(ch);
 			ch.writeAndFlush(
 				decodeInitialHandshake(src, ctx, chp)
-			).addListener(chf -> {
-				if (!chf.isSuccess())
-					chp.setFailure(chf.cause());
-			});
+			).addListener(Channels::defaultSendListener);
 		} catch (Exception e) {
 			chp.setFailure(e);
 		}
@@ -226,6 +223,18 @@ public class InitialSessionInfo {
 			src.readBytes(secret, oldLen, s2Len);
 		}
 
+		if (ClientCapability.CONNECT_ATTRS.get(clientCaps)) {
+			attrBuf = encodeAttrs(ctx);
+		}
+
+		if (ClientCapability.CONNECT_WITH_DB.get(clientCaps)) {
+			schema = config.getOrDefault(
+				Config.Key.DBNAME, ""
+			);
+			if (schema.isEmpty())
+				clientCaps &= ~ClientCapability.CONNECT_WITH_DB.mask();
+		}
+
 		return selectAuthCommand(
 			authPluginName, seqNum, ctx, chp
 		);
@@ -235,36 +244,12 @@ public class InitialSessionInfo {
 		String authPluginName, int seqNum,
 		ChannelHandlerContext ctx, ChannelPromise chp
 	)  {
-		ByteBuf attrBuf = null;
-		String schema = "";
-
 		switch (authPluginName) {
 		case "mysql_native_password":
-			if (ClientCapability.CONNECT_ATTRS.get(clientCaps)) {
-				attrBuf = encodeAttrs(ctx);
-			}
-
-			if (ClientCapability.CONNECT_WITH_DB.get(clientCaps)) {
-				schema = config.getOrDefault(
-					Config.Key.DBNAME, ""
-				);
-				if (schema.isEmpty())
-					clientCaps &= ~ClientCapability.CONNECT_WITH_DB.mask();
-			}
-
-			if (config.containsKey(Config.Key.PASSWORD)) {
-				clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
-				if (ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.get(
-					serverCaps
-				))
-					clientCaps
-					|= ClientCapability.PLUGIN_AUTH_LENENC_CLIENT_DATA.mask();
-			}
-
 			++seqNum;
 
 			return new MysqlNativePasswordAuth(
-				this, seqNum, chp, schema, attrBuf
+				this, seqNum, chp
 			);
 		default:
 			throw Packet.makeError(
@@ -290,6 +275,7 @@ public class InitialSessionInfo {
 	private void updateClientCapabilities() {
 		clientCaps = ClientCapability.LONG_PASSWORD.mask()
 			| ClientCapability.LONG_FLAG.mask()
+			| ClientCapability.CONNECT_WITH_DB.mask()
 			| ClientCapability.LOCAL_FILES.mask()
 			| ClientCapability.PROTOCOL_41.mask()
 			| ClientCapability.TRANSACTIONS.mask()
@@ -317,4 +303,6 @@ public class InitialSessionInfo {
 	public int srvConnId;
 	public int packetSize;
 	public byte[] secret;
+	public ByteBuf attrBuf;
+	public String schema = "";
 }

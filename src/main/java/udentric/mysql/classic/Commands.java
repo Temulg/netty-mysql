@@ -27,11 +27,15 @@
 
 package udentric.mysql.classic;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
 import udentric.mysql.ServerAck;
+import udentric.mysql.DataRow;
 import udentric.mysql.PreparedStatement;
 import udentric.mysql.classic.dicta.PrepareStatement;
 import udentric.mysql.classic.dicta.ExecuteStatement;
@@ -47,7 +51,7 @@ class Commands implements udentric.mysql.Commands {
 		Promise<
 			udentric.mysql.ServerAck
 		> sp = Channels.newServerPromise(ch);
-		ch.writeAndFlush(new Query(sql, new ResultSetConsumer(){
+		ch.writeAndFlush(new Query(sql, new ResultSetConsumer() {
 			@Override
 			public void acceptFailure(Throwable cause) {
 				sp.setFailure(cause);
@@ -85,7 +89,7 @@ class Commands implements udentric.mysql.Commands {
 			udentric.mysql.ServerAck
 		> sp = Channels.newServerPromise(ch);
 		ch.writeAndFlush(new ExecuteStatement(
-			pstmt, new ResultSetConsumer(){
+			pstmt, new ResultSetConsumer() {
 				@Override
 				public void acceptFailure(Throwable cause) {
 					sp.setFailure(cause);
@@ -101,6 +105,36 @@ class Commands implements udentric.mysql.Commands {
 			},
 			args
 		)).addListener(Channels::defaultSendListener);
+		return sp;
+	}
+
+	@Override
+	public Future<List<?>> selectColumn(String sql, int colNum) {
+		Promise<List<?>> sp = new DefaultPromise<List<?>>(
+			ch.eventLoop()
+		);
+
+		ch.writeAndFlush(new Query(sql, new ResultSetConsumer() {
+			@Override
+			public void acceptRow(DataRow row) {
+				result.add(row.getValue(colNum));
+			}
+
+			@Override
+			public void acceptFailure(Throwable cause) {
+				sp.setFailure(cause);
+			}
+	
+			@Override
+			public void acceptAck(
+				ServerAck ack, boolean terminal
+			) {
+				if (terminal)
+					sp.setSuccess(result);
+			}
+
+			final ArrayList<?> result = new ArrayList<>();
+		})).addListener(Channels::defaultSendListener);
 		return sp;
 	}
 

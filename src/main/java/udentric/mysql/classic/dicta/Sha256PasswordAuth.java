@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 - 2018 Alex Dubov <oakad@yahoo.com>
+ * Copyright (c) 2018 Alex Dubov <oakad@yahoo.com>
  *
  * This file is made available under the GNU General Public License
  * version 2 (the "License"); you may not use this file except in compliance
@@ -25,32 +25,48 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql;
+package udentric.mysql.classic.dicta;
 
-import java.util.List;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import udentric.mysql.classic.InitialSessionInfo;
 
-import io.netty.channel.Channel;
-import io.netty.util.AttributeKey;
-import io.netty.util.concurrent.Future;
-
-public interface Commands {
-	Future<PreparedStatement> prepareStatement(String sql);
-
-	Future<ServerAck> executeUpdate(String sql);
-
-	Future<ServerAck> executeUpdate(
-		PreparedStatement pstmt, Object... args
-	);
-
-	Future<List<?>> selectColumn(String sql, int colNum);
-
-	public static Commands with(Channel ch) {
-		return ch.attr(COMMAND_ADAPTER).get();
+public class Sha256PasswordAuth implements Dictum {
+	public Sha256PasswordAuth(
+		InitialSessionInfo si_, int seqNum_, ChannelPromise chp_
+	) {
+		si = si_;
+		seqNum = seqNum_;
+		chp = chp_;
 	}
 
-	public static final AttributeKey<
-		Commands
-	> COMMAND_ADAPTER = AttributeKey.valueOf(
-		"udentric.mysql.Commands"
-	);
+
+	@Override
+	public boolean emitClientMessage(
+		ByteBuf dst, ChannelHandlerContext ctx
+	) {
+		return false;
+	}
+
+	@Override
+	public void acceptServerMessage(
+		ByteBuf src, ChannelHandlerContext ctx
+	) {
+	}
+
+	public void handleFailure(Throwable cause) {
+		chp.setFailure(cause);
+	}
+
+	@Override
+	public int getSeqNum() {
+		return seqNum;
+	}
+
+	public static String AUTH_PLUGIN_NAME = "sha256_password";
+
+	private final InitialSessionInfo si;
+	private final int seqNum;
+	private ChannelPromise chp;
 }

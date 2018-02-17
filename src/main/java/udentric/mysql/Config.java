@@ -112,6 +112,10 @@ public class Config {
 	}
 
 	public boolean containsKey(Key key) {
+		if (values.containsKey(key))
+			return true;
+
+		key.update(values, null);
 		return values.containsKey(key);
 	}
 

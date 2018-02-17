@@ -798,7 +798,7 @@ public class MetadataTest extends TestCase {
 
 		Tester.endAsync(1);
 	}
-/*
+
 	@Test
 	public void getTablesUsingInfoSchema() throws Exception {
 		createTable("`t1-1`", "(c1 char(1))");
@@ -845,232 +845,497 @@ public class MetadataTest extends TestCase {
 		Tester.endAsync(1);
 	}
 
-    public void testGetColumnPrivilegesUsingInfoSchema() throws Exception {
+	@Test
+	public void getColumnPrivilegesUsingInfoSchema() throws Exception {
+		createTable("t1", "(c1 int)");
+		String[] userAtHost = ((String)SyncCommands.selectColumn(
+			channel(), "SELECT CURRENT_USER()", 0
+		).get(0)).split("@");
+		String userAtHostQuoted = String.format(
+			"'%s'@'%s'", userAtHost[0], userAtHost[1]
+		);
 
-        if (!runTestIfSysPropDefined(PropertyDefinitions.SYSP_testsuite_cantGrant)) {
-            Properties props = new Properties();
+		SyncCommands.executeUpdate(
+			channel(),
+			"GRANT UPDATE (c1) ON t1 TO " + userAtHostQuoted
+		);
 
-            props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-            props.setProperty(PropertyDefinitions.PNAME_nullNamePatternMatchesAll, "true");
-            props.setProperty(PropertyDefinitions.PNAME_nullCatalogMeansCurrent, "true");
-            Connection conn1 = null;
-            Statement stmt1 = null;
-            String userHostQuoted = null;
+		try {
+			PreparedStatement pstmt = MetadataQueries.columnPrivileges(
+				channel()
+			).get();
 
-            boolean grantFailed = true;
+			Tester.beginAsync();
+			channel().writeAndFlush(new ExecuteStatement(
+				pstmt, new ResultSetConsumer() {
+					@Override
+					public void acceptRow(DataRow row) {
+						Assert.assertEquals(
+							row.getValue(
+								"TABLE_NAME"
+							), "t1"
+						);
+						Assert.assertEquals(
+							row.getValue(
+								"COLUMN_NAME"
+							), "c1"
+						);
+						Assert.assertEquals(
+							row.getValue(
+								"GRANTEE"
+							), userAtHostQuoted
+						);
+						Assert.assertEquals(
+							row.getValue(
+								"PRIVILEGE"
+							), "UPDATE"
+						);
+						resultPos++;
+					}
+    
+					@Override
+					public void acceptFailure(Throwable cause) {
+						Assert.fail("query failed", cause);
+					}
 
-            try {
-                conn1 = getConnectionWithProps(props);
-                stmt1 = conn1.createStatement();
-                createTable("t1", "(c1 int)");
-                this.rs = stmt1.executeQuery("SELECT CURRENT_USER()");
-                this.rs.next();
-                String user = this.rs.getString(1);
-                List<String> userHost = StringUtils.split(user, "@", false);
-                if (userHost.size() < 2) {
-                    fail("This test requires a JDBC URL with a user, and won't work with the anonymous user. "
-                            + "You can skip this test by setting the system property " + PropertyDefinitions.SYSP_testsuite_cantGrant);
-                }
-                userHostQuoted = "'" + userHost.get(0) + "'@'" + userHost.get(1) + "'";
+					@Override
+					public void acceptAck(
+						ServerAck ack, boolean terminal
+					) {
+						Assert.assertTrue(terminal);
+						Assert.assertEquals(resultPos, 1);
+						Assert.done();
+					}
 
-                try {
-                    stmt1.executeUpdate("GRANT update (c1) on t1 to " + userHostQuoted);
+					int resultPos;
+				}, "testsuite", "t1", "%"
+			)).addListener(Channels::defaultSendListener);
 
-                    grantFailed = false;
+			Tester.endAsync(1);
+		} finally {
+			SyncCommands.executeUpdate(
+				channel(),
+				"REVOKE UPDATE (c1) ON t1 FROM "
+				+ userAtHostQuoted
+			);
+		}
+	}
 
-                } catch (SQLException sqlEx) {
-                    fail("This testcase needs to be run with a URL that allows the user to issue GRANTs "
-                            + " in the current database. You can skip this test by setting the system property \""
-                            + PropertyDefinitions.SYSP_testsuite_cantGrant + "\".");
-                }
+	@Test
+	public void getProceduresUsingInfoSchema() throws Exception {
+		createProcedure("sp1", "()\n BEGIN\nSELECT 1;end\n");
 
-                if (!grantFailed) {
-                    DatabaseMetaData metaData = conn1.getMetaData();
-                    this.rs = metaData.getColumnPrivileges(null, null, "t1", null);
-                    this.rs.next();
-                    assertEquals("t1", this.rs.getString("TABLE_NAME"));
-                    assertEquals("c1", this.rs.getString("COLUMN_NAME"));
-                    assertEquals(userHostQuoted, this.rs.getString("GRANTEE"));
-                    assertEquals("UPDATE", this.rs.getString("PRIVILEGE"));
-                }
-            } finally {
-                if (stmt1 != null) {
+		PreparedStatement pstmt = MetadataQueries.procedures(
+			channel()
+		).get();
 
-                    if (!grantFailed) {
-                        stmt1.executeUpdate("REVOKE UPDATE (c1) ON t1 FROM " + userHostQuoted);
-                    }
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("PROCEDURE_NAME"),
+						"sp1"
+					);
+					Assert.assertEquals(
+						row.getValue("PROCEDURE_TYPE"),
+						"PROCEDURE"
+					);
+					resultPos++;
+				}
 
-                    stmt1.close();
-                }
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
 
-                if (conn1 != null) {
-                    conn1.close();
-                }
-            }
-        }
-    }
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
 
-    public void testGetProceduresUsingInfoSchema() throws Exception {
-        createProcedure("sp1", "()\n BEGIN\nSELECT 1;end\n");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getProcedures(null, null, "sp1");
-            this.rs.next();
-            assertEquals("sp1", this.rs.getString("PROCEDURE_NAME"));
-            assertEquals("1", this.rs.getString("PROCEDURE_TYPE"));
-        } finally {
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
+				int resultPos;
+			}, "testsuite", "sp1"
+		)).addListener(Channels::defaultSendListener);
 
-    public void testGetCrossReferenceUsingInfoSchema() throws Exception {
-        this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-        this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
-        this.stmt.executeUpdate("CREATE TABLE parent(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
-        this.stmt.executeUpdate(
-                "CREATE TABLE child(id INT, parent_id INT, " + "FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE SET NULL) ENGINE=INNODB");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getCrossReference(null, null, "parent", null, null, "child");
-            this.rs.next();
-            assertEquals("parent", this.rs.getString("PKTABLE_NAME"));
-            assertEquals("id", this.rs.getString("PKCOLUMN_NAME"));
-            assertEquals("child", this.rs.getString("FKTABLE_NAME"));
-            assertEquals("parent_id", this.rs.getString("FKCOLUMN_NAME"));
-        } finally {
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-            this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
+		Tester.endAsync(1);
+	}
 
-    public void testGetExportedKeysUsingInfoSchema() throws Exception {
-        this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-        this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
-        this.stmt.executeUpdate("CREATE TABLE parent(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
-        this.stmt.executeUpdate(
-                "CREATE TABLE child(id INT, parent_id INT, " + "FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE SET NULL) ENGINE=INNODB");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getExportedKeys(null, null, "parent");
-            this.rs.next();
-            assertEquals("parent", this.rs.getString("PKTABLE_NAME"));
-            assertEquals("id", this.rs.getString("PKCOLUMN_NAME"));
-            assertEquals("child", this.rs.getString("FKTABLE_NAME"));
-            assertEquals("parent_id", this.rs.getString("FKCOLUMN_NAME"));
-        } finally {
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-            this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
+	@Test
+	public void getCrossReferenceUsingInfoSchema() throws Exception {
+		createTable(
+			"parent", "(id INT NOT NULL, PRIMARY KEY (id))",
+			"InnoDB"
+		);
+		createTable(
+			"child",
+			"(id INT, parent_id INT, FOREIGN KEY (parent_id) "
+			+ "REFERENCES parent(id) ON DELETE SET NULL)",
+			"InnoDB"
+		);
 
-    public void testGetImportedKeysUsingInfoSchema() throws Exception {
-        this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-        this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
-        this.stmt.executeUpdate("CREATE TABLE parent(id INT NOT NULL, PRIMARY KEY (id)) ENGINE=INNODB");
-        this.stmt.executeUpdate(
-                "CREATE TABLE child(id INT, parent_id INT, " + "FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE SET NULL) ENGINE=INNODB");
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, "true");
-        Connection conn1 = null;
-        try {
-            conn1 = getConnectionWithProps(props);
-            DatabaseMetaData metaData = conn1.getMetaData();
-            this.rs = metaData.getImportedKeys(null, null, "child");
-            this.rs.next();
-            assertEquals("parent", this.rs.getString("PKTABLE_NAME"));
-            assertEquals("id", this.rs.getString("PKCOLUMN_NAME"));
-            assertEquals("child", this.rs.getString("FKTABLE_NAME"));
-            assertEquals("parent_id", this.rs.getString("FKCOLUMN_NAME"));
-        } finally {
-            this.stmt.executeUpdate("DROP TABLE IF EXISTS child");
-            this.stmt.executeUpdate("DROP TABLE If EXISTS parent");
-            if (conn1 != null) {
-                conn1.close();
-            }
-        }
-    }
+		PreparedStatement pstmt = MetadataQueries.crossReference(
+			channel()
+		).get();
 
-    public void testGeneratedColumns() throws Exception {
-        if (!versionMeetsMinimum(5, 7, 6)) {
-            return;
-        }
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("PKTABLE_NAME"),
+						"parent"
+					);
+					Assert.assertEquals(
+						row.getValue("PKCOLUMN_NAME"),
+						"id"
+					);
+					Assert.assertEquals(
+						row.getValue("FKTABLE_NAME"),
+						"child"
+					);
+					Assert.assertEquals(
+						row.getValue("FKCOLUMN_NAME"),
+						"parent_id"
+					);
 
-        // Test GENERATED columns syntax.
-        createTable("pythagorean_triple",
-                "(side_a DOUBLE NULL, side_b DOUBLE NULL, "
-                        + "side_c_vir DOUBLE AS (SQRT(side_a * side_a + side_b * side_b)) VIRTUAL UNIQUE KEY COMMENT 'hypotenuse - virtual', "
-                        + "side_c_sto DOUBLE GENERATED ALWAYS AS (SQRT(POW(side_a, 2) + POW(side_b, 2))) STORED UNIQUE KEY COMMENT 'hypotenuse - stored' NOT NULL "
-                        + "PRIMARY KEY)");
+					resultPos++;
+				}
 
-        // Test data for generated columns.
-        assertEquals(1, this.stmt.executeUpdate("INSERT INTO pythagorean_triple (side_a, side_b) VALUES (3, 4)"));
-        this.rs = this.stmt.executeQuery("SELECT * FROM pythagorean_triple");
-        assertTrue(this.rs.next());
-        assertEquals(3d, this.rs.getDouble(1));
-        assertEquals(4d, this.rs.getDouble(2));
-        assertEquals(5d, this.rs.getDouble(3));
-        assertEquals(5d, this.rs.getDouble(4));
-        assertEquals(3d, this.rs.getDouble("side_a"));
-        assertEquals(4d, this.rs.getDouble("side_b"));
-        assertEquals(5d, this.rs.getDouble("side_c_sto"));
-        assertEquals(5d, this.rs.getDouble("side_c_vir"));
-        assertFalse(this.rs.next());
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
 
-        Properties props = new Properties();
-        props.setProperty(PropertyDefinitions.PNAME_nullCatalogMeansCurrent, "true");
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
 
-        for (String useIS : new String[] { "false", "true" }) {
-            Connection testConn = null;
-            props.setProperty(PropertyDefinitions.PNAME_useInformationSchema, useIS);
+				int resultPos;
+			}, "testsuite", "parent", "testsuite", "child"
+		)).addListener(Channels::defaultSendListener);
 
-            testConn = getConnectionWithProps(props);
-            DatabaseMetaData dbmd = testConn.getMetaData();
+		Tester.endAsync(1);
+	}
 
-            String test = "Case [" + props.toString() + "]";
+	@Test
+	public void getExportedKeysUsingInfoSchema() throws Exception {
+		createTable(
+			"parent",
+			"(id INT NOT NULL, PRIMARY KEY (id))",
+			"InnoDB"
+		);
+		createTable(
+			"child",
+			"(id INT, parent_id INT, FOREIGN KEY (parent_id) "
+			+ "REFERENCES parent(id) ON DELETE SET NULL)",
+			"InnoDB"
+		);
 
-            // Test columns metadata.
-            this.rs = dbmd.getColumns(null, null, "pythagorean_triple", "%");
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_a", this.rs.getString("COLUMN_NAME"));
-            assertEquals(test, "YES", this.rs.getString("IS_NULLABLE"));
-            assertEquals(test, "NO", this.rs.getString("IS_AUTOINCREMENT"));
-            assertEquals(test, "NO", this.rs.getString("IS_GENERATEDCOLUMN"));
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_b", this.rs.getString("COLUMN_NAME"));
-            assertEquals(test, "YES", this.rs.getString("IS_NULLABLE"));
-            assertEquals(test, "NO", this.rs.getString("IS_AUTOINCREMENT"));
-            assertEquals(test, "NO", this.rs.getString("IS_GENERATEDCOLUMN"));
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_c_vir", this.rs.getString("COLUMN_NAME"));
-            assertEquals(test, "YES", this.rs.getString("IS_NULLABLE"));
-            assertEquals(test, "NO", this.rs.getString("IS_AUTOINCREMENT"));
-            assertEquals(test, "YES", this.rs.getString("IS_GENERATEDCOLUMN"));
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_c_sto", this.rs.getString("COLUMN_NAME"));
-            assertEquals(test, "NO", this.rs.getString("IS_NULLABLE"));
-            assertEquals(test, "NO", this.rs.getString("IS_AUTOINCREMENT"));
-            assertEquals(test, "YES", this.rs.getString("IS_GENERATEDCOLUMN"));
-            assertFalse(test, this.rs.next());
+		PreparedStatement pstmt = MetadataQueries.exportedKeys(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("PKTABLE_NAME"),
+						"parent"
+					);
+					Assert.assertEquals(
+						row.getValue("PKCOLUMN_NAME"),
+						"id"
+					);
+					Assert.assertEquals(
+						row.getValue("FKTABLE_NAME"),
+						"child"
+					);
+					Assert.assertEquals(
+						row.getValue("FKCOLUMN_NAME"),
+						"parent_id"
+					);
+
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "parent"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+
+	@Test
+	public void getImportedKeysUsingInfoSchema() throws Exception {
+		createTable(
+			"parent", "(id INT NOT NULL, PRIMARY KEY (id))",
+			"InnoDB"
+		);
+		createTable(
+			"child",
+			"(id INT, parent_id INT, FOREIGN KEY (parent_id) "
+			+ "REFERENCES parent(id) ON DELETE SET NULL)",
+			"InnoDB"
+		);
+
+		PreparedStatement pstmt = MetadataQueries.importedKeys(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("PKTABLE_NAME"),
+						"parent"
+					);
+					Assert.assertEquals(
+						row.getValue("PKCOLUMN_NAME"),
+						"id"
+					);
+					Assert.assertEquals(
+						row.getValue("FKTABLE_NAME"),
+						"child"
+					);
+					Assert.assertEquals(
+						row.getValue("FKCOLUMN_NAME"),
+						"parent_id"
+					);
+
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "child"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
+/*
+	@Test
+	public void generatedColumns() throws Exception {
+		createTable(
+			"pythagorean_triple",
+			"(side_a DOUBLE NULL, side_b DOUBLE NULL, "
+			+ "side_c_vir DOUBLE AS "
+			+ "(SQRT(side_a * side_a + side_b * side_b)) "
+			+ "VIRTUAL UNIQUE KEY COMMENT 'hypotenuse - virtual', "
+			+ "side_c_sto DOUBLE GENERATED ALWAYS AS "
+			+ "(SQRT(POW(side_a, 2) + POW(side_b, 2))) STORED "
+			+ "UNIQUE KEY COMMENT 'hypotenuse - stored' NOT NULL "
+			+ "PRIMARY KEY)"
+		);
+
+		ServerAck ack = SyncCommands.executeUpdate(
+			channel(),
+			"INSERT INTO pythagorean_triple (side_a, side_b) "
+			+ "VALUES (3, 4)"
+		);
+		Assert.assertEquals(ack.affectedRows(), 1);
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new Query(
+			"SELECT * FROM pythagorean_triple",
+			new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue(0), 3.0
+					);
+					Assert.assertEquals(
+						row.getValue(1), 4.0
+					);
+					Assert.assertEquals(
+						row.getValue(2), 5.0
+					);
+					Assert.assertEquals(
+						row.getValue(3), 5.0
+					);
+					Assert.assertEquals(
+						row.getValue("side_a"), 3.0
+					);
+					Assert.assertEquals(
+						row.getValue("side_b"), 4.0
+					);
+					Assert.assertEquals(
+						row.getValue("side_c_sto"), 5.0
+					);
+					Assert.assertEquals(
+						row.getValue("side_c_vir"), 5.0
+					);
+
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+
+		PreparedStatement pstmt = MetadataQueries.columns(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(
+							row.getValue("COLUMN_NAME"),
+							"side_a"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_NULLABLE"),
+							"YES"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_AUTOINCREMENT"),
+							"NO"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_GENERATEDCOLUMN"),
+							"NO"
+						);
+						break;
+					case 1:
+						Assert.assertEquals(
+							row.getValue("COLUMN_NAME"),
+							"side_b"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_NULLABLE"),
+							"YES"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_AUTOINCREMENT"),
+							"NO"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_GENERATEDCOLUMN"),
+							"NO"
+						);
+						break;
+					case 2:
+						Assert.assertEquals(
+							row.getValue("COLUMN_NAME"),
+							"side_c_vir"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_NULLABLE"),
+							"YES"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_AUTOINCREMENT"),
+							"NO"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_GENERATEDCOLUMN"),
+							"YES"
+						);
+						break;
+					case 3:
+						Assert.assertEquals(
+							row.getValue("COLUMN_NAME"),
+							"side_c_sto"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_NULLABLE"),
+							"NO"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_AUTOINCREMENT"),
+							"NO"
+						);
+						Assert.assertEquals(
+							row.getValue("IS_GENERATEDCOLUMN"),
+							"YES"
+						);
+						break;
+					}
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 4);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "pythagorean_triple", "%"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
 
             // Test primary keys metadata.
             this.rs = dbmd.getPrimaryKeys(null, null, "pythagorean_triple");
@@ -1092,8 +1357,6 @@ public class MetadataTest extends TestCase {
             assertEquals(test, "side_c_vir", this.rs.getString("COLUMN_NAME"));
             assertFalse(test, this.rs.next());
 
-            testConn.close();
-        }
-    }
+	}
 */
 }
