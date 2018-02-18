@@ -25,45 +25,17 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.dicta;
+package udentric.mysql.classic.type.text;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import udentric.mysql.classic.InitialSessionInfo;
+import udentric.mysql.classic.type.TypeId;
 
-public class Sha256PasswordAuth implements Dictum {
-	public Sha256PasswordAuth(
-		InitialSessionInfo si_, ChannelPromise chp_
-	) {
-		si = si_;
-		chp = chp_;
+class T0005Double extends AnyNullable<Double> {
+	T0005Double() {
+		super(TypeId.DOUBLE);
 	}
 
 	@Override
-	public boolean emitClientMessage(
-		ByteBuf dst, ChannelHandlerContext ctx
-	) {
-		return false;
+	protected Double assignFromString(Double dst, String value) {
+		return Double.parseDouble(value);
 	}
-
-	@Override
-	public void acceptServerMessage(
-		ByteBuf src, ChannelHandlerContext ctx
-	) {
-	}
-
-	public void handleFailure(Throwable cause) {
-		chp.setFailure(cause);
-	}
-
-	@Override
-	public int getSeqNum() {
-		return si.seqNum;
-	}
-
-	public static String AUTH_PLUGIN_NAME = "sha256_password";
-
-	private final InitialSessionInfo si;
-	private ChannelPromise chp;
 }

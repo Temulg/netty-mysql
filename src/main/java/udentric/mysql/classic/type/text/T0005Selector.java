@@ -25,45 +25,37 @@
  * <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
  */
 
-package udentric.mysql.classic.dicta;
+package udentric.mysql.classic.type.text;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import udentric.mysql.classic.InitialSessionInfo;
+import com.google.common.collect.ImmutableMap;
+import udentric.mysql.classic.type.AdapterSelector;
+import udentric.mysql.classic.type.ValueAdapter;
+import udentric.mysql.classic.type.TypeId;
+import udentric.mysql.classic.type.binary.AnyString;
 
-public class Sha256PasswordAuth implements Dictum {
-	public Sha256PasswordAuth(
-		InitialSessionInfo si_, ChannelPromise chp_
-	) {
-		si = si_;
-		chp = chp_;
+public class T0005Selector extends AdapterSelector {
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> ValueAdapter<T> get(Class<T> cls) {
+		return (ValueAdapter<T>)(
+			cls != null ? ADAPTERS.get(cls) : defaultAdapter
+		);
 	}
 
 	@Override
-	public boolean emitClientMessage(
-		ByteBuf dst, ChannelHandlerContext ctx
-	) {
-		return false;
+	@SuppressWarnings("unchecked")
+	public <T> ValueAdapter<T> find(Class<T> cls) {
+		return (ValueAdapter<T>)findAdapter(cls, ADAPTERS);
 	}
 
-	@Override
-	public void acceptServerMessage(
-		ByteBuf src, ChannelHandlerContext ctx
-	) {
-	}
-
-	public void handleFailure(Throwable cause) {
-		chp.setFailure(cause);
-	}
-
-	@Override
-	public int getSeqNum() {
-		return si.seqNum;
-	}
-
-	public static String AUTH_PLUGIN_NAME = "sha256_password";
-
-	private final InitialSessionInfo si;
-	private ChannelPromise chp;
+	private final ValueAdapter<?> defaultAdapter = new T0005Double();
+	private final ImmutableMap<
+		Class<?>, ValueAdapter<?>
+	> ADAPTERS = ImmutableMap.<
+		Class<?>, ValueAdapter<?>
+	>builder().put(
+		Double.class, defaultAdapter
+	).put(
+		String.class, new AnyString(TypeId.DOUBLE)
+	).build();
 }

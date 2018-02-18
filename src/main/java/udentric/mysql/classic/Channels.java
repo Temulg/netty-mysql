@@ -178,17 +178,17 @@ public class Channels {
 	public static final AttributeKey<
 		SessionInfo
 	> SESSION_INFO = AttributeKey.valueOf(
-		"udentric.mysql.classic.SessionInfo"
+		"udentric.mysql.classic.SESSION_INFO"
 	);
 	public static final AttributeKey<
 		InitialSessionInfo
 	> INITIAL_SESSION_INFO = AttributeKey.valueOf(
-		"udentric.mysql.classic.InitialSessionInfo"
+		"udentric.mysql.classic.INITIAL_SESSION_INFO"
 	);
 	public static final AttributeKey<
 		Dictum
 	> ACTIVE_DICTUM = AttributeKey.valueOf(
-		"udentric.mysql.classic.dicta.Dictum"
+		"udentric.mysql.classic.DICTUM"
 	);
 
 	static final OutboundMessageHandler OUTBOUND_MESSAGE_HANDLER

@@ -42,10 +42,9 @@ import udentric.mysql.util.Scramble411;
 
 public class MysqlNativePasswordAuth implements Dictum {
 	public MysqlNativePasswordAuth(
-		InitialSessionInfo si_, int seqNum_, ChannelPromise chp_
+		InitialSessionInfo si_, ChannelPromise chp_
 	) {
 		si = si_;
-		seqNum = seqNum_;
 		chp = chp_;
 		if (si.config.containsKey(Config.Key.PASSWORD)) {
 			si.clientCaps |= ClientCapability.SECURE_CONNECTION.mask();
@@ -107,6 +106,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			si.attrBuf.release();
 			si.attrBuf= null;
 		}
+
 		return false;
 	}
 
@@ -114,7 +114,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 	public void acceptServerMessage(
 		ByteBuf src, ChannelHandlerContext ctx
 	) {
-		int lastSeqNum = Packet.getSeqNum(src);
+		si.seqNum = Packet.getSeqNum(src) + 1;
 		src.skipBytes(Packet.HEADER_SIZE);
 
 		int type = Packet.readInt1(src);
@@ -130,7 +130,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			}
 			break;
 		case Packet.EOF:
-			authSwitch(src, ctx, lastSeqNum);
+			authSwitch(src, ctx);
 			break;
 		case Packet.ERR:
 			Channels.discardActiveDictum(
@@ -151,9 +151,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 		}
 	}
 
-	private void authSwitch(
-		ByteBuf src, ChannelHandlerContext ctx, int lastSeqNum
-	) {
+	private void authSwitch(ByteBuf src, ChannelHandlerContext ctx) {
 		String authPluginName;
 		byte[] pluginData = null;
 
@@ -174,7 +172,7 @@ public class MysqlNativePasswordAuth implements Dictum {
 			si.secret = pluginData;
 			Channels.discardActiveDictum(ch);
 			ch.writeAndFlush(
-				new Sha256PasswordAuth(si, lastSeqNum++, chp)
+				new Sha256PasswordAuth(si, chp)
 			).addListener(Channels::defaultSendListener);
 		default:
 			Channels.discardActiveDictum(ch, Packet.makeError(
@@ -190,12 +188,11 @@ public class MysqlNativePasswordAuth implements Dictum {
 
 	@Override
 	public int getSeqNum() {
-		return seqNum;
+		return si.seqNum;
 	}
 
 	public static String AUTH_PLUGIN_NAME = "mysql_native_password";
 
 	private final InitialSessionInfo si;
-	private final int seqNum;
 	private ChannelPromise chp;
 }

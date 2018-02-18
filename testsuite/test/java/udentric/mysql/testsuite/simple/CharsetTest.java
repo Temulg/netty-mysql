@@ -52,7 +52,7 @@ public class CharsetTest extends TestCase {
 	@Test
 	public void cp932Backport() throws Exception {
 		Channel ch = makeChannel(bld -> bld.withValue(
-			Config.Key.characterEncoding, "cp932"
+			Config.Key.CHARACTER_ENCODING, "cp932"
 		));
 
 		ch.close().await();
@@ -72,7 +72,7 @@ public class CharsetTest extends TestCase {
 		Tester.beginAsync();
 
 		Channel ch = makeChannel(bld -> bld.withValue(
-			Config.Key.characterEncoding, "eucjpms"
+			Config.Key.CHARACTER_ENCODING, "eucjpms"
 		));
 
 		SyncCommands.executeUpdate(
@@ -168,7 +168,7 @@ public class CharsetTest extends TestCase {
 		String javaCharset, String mysqlCharset, char[] testData
 	) throws Exception {
 		Channel ch_0 = makeChannel(bld -> bld.withValue(
-			Config.Key.characterEncoding, mysqlCharset
+			Config.Key.CHARACTER_ENCODING, mysqlCharset
 		));
 
 		Channel ch_1 = makeChannel();

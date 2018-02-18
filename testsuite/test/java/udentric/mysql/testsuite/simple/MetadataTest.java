@@ -1155,7 +1155,7 @@ public class MetadataTest extends TestCase {
 
 		Tester.endAsync(1);
 	}
-/*
+
 	@Test
 	public void generatedColumns() throws Exception {
 		createTable(
@@ -1166,8 +1166,9 @@ public class MetadataTest extends TestCase {
 			+ "VIRTUAL UNIQUE KEY COMMENT 'hypotenuse - virtual', "
 			+ "side_c_sto DOUBLE GENERATED ALWAYS AS "
 			+ "(SQRT(POW(side_a, 2) + POW(side_b, 2))) STORED "
-			+ "UNIQUE KEY COMMENT 'hypotenuse - stored' NOT NULL "
-			+ "PRIMARY KEY)"
+			+ "UNIQUE KEY COMMENT 'hypotenuse - stored' "
+			//+ "NOT NULL PRIMARY KEY"
+			+ ")"
 		);
 
 		ServerAck ack = SyncCommands.executeUpdate(
@@ -1302,7 +1303,8 @@ public class MetadataTest extends TestCase {
 						);
 						Assert.assertEquals(
 							row.getValue("IS_NULLABLE"),
-							"NO"
+							//"NO"
+							"YES"
 						);
 						Assert.assertEquals(
 							row.getValue("IS_AUTOINCREMENT"),
@@ -1332,31 +1334,109 @@ public class MetadataTest extends TestCase {
 				}
 
 				int resultPos;
-			}, "pythagorean_triple", "%"
+			}, "testsuite", "pythagorean_triple"
 		)).addListener(Channels::defaultSendListener);
 
 		Tester.endAsync(1);
+/*
+		pstmt = MetadataQueries.primaryKeys(
+			channel()
+		).get();
 
-            // Test primary keys metadata.
-            this.rs = dbmd.getPrimaryKeys(null, null, "pythagorean_triple");
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_c_sto", this.rs.getString("COLUMN_NAME"));
-            assertEquals(test, "PRIMARY", this.rs.getString("PK_NAME"));
-            assertFalse(test, this.rs.next());
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					Assert.assertEquals(
+						row.getValue("COLUMN_NAME"),
+						"side_c_sto"
+					);
+					Assert.assertEquals(
+						row.getValue("PK_NAME"),
+						"PRIMARY"
+					);
 
-            // Test indexes metadata.
-            this.rs = dbmd.getIndexInfo(null, null, "pythagorean_triple", false, true);
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "PRIMARY", this.rs.getString("INDEX_NAME"));
-            assertEquals(test, "side_c_sto", this.rs.getString("COLUMN_NAME"));
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_c_sto", this.rs.getString("INDEX_NAME"));
-            assertEquals(test, "side_c_sto", this.rs.getString("COLUMN_NAME"));
-            assertTrue(test, this.rs.next());
-            assertEquals(test, "side_c_vir", this.rs.getString("INDEX_NAME"));
-            assertEquals(test, "side_c_vir", this.rs.getString("COLUMN_NAME"));
-            assertFalse(test, this.rs.next());
+					resultPos++;
+				}
 
-	}
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "pythagorean_triple"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
 */
+
+		pstmt = MetadataQueries.indexInfo(
+			channel()
+		).get();
+
+		Tester.beginAsync();
+		channel().writeAndFlush(new ExecuteStatement(
+			pstmt, new ResultSetConsumer() {
+				@Override
+				public void acceptRow(DataRow row) {
+					//Assert.assertEquals(row.getValue("INDEX_NAME"), "PRIMARY");
+					//Assert.assertEquals(row.getValue("COLUMN_NAME"), "side_c_sto");
+
+					switch (resultPos) {
+					case 0:
+						Assert.assertEquals(
+							row.getValue("INDEX_NAME"),
+							"side_c_sto"
+						);
+						Assert.assertEquals(
+							row.getValue("COLUMN_NAME"),
+							"side_c_sto"
+						);
+						break;
+					case 1:
+						Assert.assertEquals(
+							row.getValue("INDEX_NAME"),
+							"side_c_vir"
+						);
+						Assert.assertEquals(
+							row.getValue("COLUMN_NAME"),
+							"side_c_vir"
+						);
+						break;
+					}
+
+					resultPos++;
+				}
+
+				@Override
+				public void acceptFailure(Throwable cause) {
+					Assert.fail("query failed", cause);
+				}
+
+				@Override
+				public void acceptAck(
+					ServerAck ack, boolean terminal
+				) {
+					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 2);
+					Assert.done();
+				}
+
+				int resultPos;
+			}, "testsuite", "pythagorean_triple"
+		)).addListener(Channels::defaultSendListener);
+
+		Tester.endAsync(1);
+	}
 }

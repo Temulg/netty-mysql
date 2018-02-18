@@ -236,9 +236,6 @@ public class Config {
 	};
 
 	public enum Key {
-		PROTOCOL(STRING_VALUE),
-		PATH(STRING_VALUE),
-		TYPE(STRING_VALUE),
 		HOST(STRING_VALUE) {
 			@Override
 			String property() {
@@ -273,8 +270,6 @@ public class Config {
 			}
 		},
 		DBNAME(STRING_VALUE),
-		ADDRESS(STRING_VALUE),
-		PRIORITY(STRING_VALUE),
 		USER(STRING_VALUE) {
 			@Override
 			String property() {
@@ -297,6 +292,9 @@ public class Config {
 				return "MYSQL_PWD";
 			}
 		},
+		ENABLE_SSL(BOOLEAN_VALUE),
+		CHARACTER_ENCODING(STRING_VALUE),
+		MAX_PACKET_SIZE(INTEGER_VALUE),
 		SERVER_PUBLIC_KEY_URL(URL_VALUE),
 		SERVER_PUBLIC_KEY(BYTE_ARRAY_VALUE) {
 			@Override
@@ -315,13 +313,7 @@ public class Config {
 					return defValue;
 				}
 			}
-		},
-		interactiveClient(BOOLEAN_VALUE),
-		maintainTimeStats(BOOLEAN_VALUE),
-		paranoid(BOOLEAN_VALUE),
-		localSocketAddress(STRING_VALUE),
-		maxPacketSize(INTEGER_VALUE),
-		characterEncoding(STRING_VALUE);
+		};
 
 		Key(Value accessor_) {
 			accessor = accessor_;

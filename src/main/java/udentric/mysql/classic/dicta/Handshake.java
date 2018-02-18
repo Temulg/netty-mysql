@@ -49,7 +49,11 @@ public class Handshake implements Dictum {
 	public void acceptServerMessage(
 		ByteBuf src, ChannelHandlerContext ctx
 	) {
-		si.processInitialHandshake(src, ctx, chp);
+		try {
+			si.processInitialHandshake(src, ctx, chp);
+		} catch (Exception e) {
+			handleFailure(e);
+		}
 	}
 
 	@Override

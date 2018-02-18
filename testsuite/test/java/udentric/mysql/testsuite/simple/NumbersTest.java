@@ -84,6 +84,7 @@ public class NumbersTest extends TestCase {
 						(long)row.getValue(2),
 						TEST_BIGINT_VALUE
 					);
+					resultPos++;
 				}
 
 				@Override
@@ -100,8 +101,11 @@ public class NumbersTest extends TestCase {
 					ServerAck ack, boolean terminal
 				) {
 					Assert.assertTrue(terminal);
+					Assert.assertEquals(resultPos, 1);
 					Assert.done();
 				}
+
+				int resultPos;
 			}
 		)).addListener(Channels::defaultSendListener);
 

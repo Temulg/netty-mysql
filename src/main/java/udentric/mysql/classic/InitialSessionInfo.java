@@ -29,15 +29,22 @@ package udentric.mysql.classic;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.util.concurrent.Promise;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
+
+import javax.net.ssl.SSLException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,6 +57,7 @@ import udentric.mysql.ServerVersion;
 import udentric.mysql.classic.dicta.Dictum;
 import udentric.mysql.classic.dicta.InitDb;
 import udentric.mysql.classic.dicta.MysqlNativePasswordAuth;
+import udentric.mysql.classic.dicta.SslHandshake;
 
 
 public class InitialSessionInfo {
@@ -60,7 +68,7 @@ public class InitialSessionInfo {
 		connAttributes = connAttributes_;
 		encoding = selectEncoding();
 		packetSize = config.getOrDefault(
-			Config.Key.maxPacketSize, 0xffffff
+			Config.Key.MAX_PACKET_SIZE, 0xffffff
 		);
 	}
 
@@ -70,7 +78,7 @@ public class InitialSessionInfo {
 
 	private Encoding selectEncoding() {
 		String csetName = config.getOrDefault(
-			Config.Key.characterEncoding, null
+			Config.Key.CHARACTER_ENCODING, null
 		);
 
 		if (csetName == null)
@@ -137,20 +145,48 @@ public class InitialSessionInfo {
 		ByteBuf src, ChannelHandlerContext ctx, ChannelPromise chp
 	) {
 		Channel ch = ctx.channel();
-		try {
-			Channels.discardActiveDictum(ch);
+		Channels.discardActiveDictum(ch);
+		Dictum authDictum = decodeInitialHandshake(src, ctx, chp);
+
+		if (!ClientCapability.SSL.get(clientCaps)) {	
 			ch.writeAndFlush(
-				decodeInitialHandshake(src, ctx, chp)
+				authDictum
 			).addListener(Channels::defaultSendListener);
+			return;
+		} else try {
+			initSslContext();
 		} catch (Exception e) {
 			chp.setFailure(e);
+			return;
 		}
+
+		ch.writeAndFlush(
+			new SslHandshake(this, chp)
+		).addListener(chf_ -> {
+			ChannelFuture chf = (ChannelFuture)chf_;
+
+			if (!chf.isSuccess())
+				Channels.discardActiveDictum(
+					chf.channel(), chf.cause()
+				);
+			else
+				Channels.discardActiveDictum(chf.channel());
+
+			seqNum++;
+
+			chf.channel().pipeline().addFirst(
+				sslContext.newHandler(chf.channel().alloc())
+			);
+			chf.channel().writeAndFlush(
+				authDictum
+			).addListener(Channels::defaultSendListener);
+		});
 	}
 
 	private Dictum decodeInitialHandshake(
 		ByteBuf src, ChannelHandlerContext ctx, ChannelPromise chp
 	) {
-		int seqNum = Packet.getSeqNum(src);
+		seqNum = Packet.getSeqNum(src) + 1;
 		src.skipBytes(Packet.HEADER_SIZE);
 
 		int protoVers = Packet.readInt1(src);
@@ -160,9 +196,6 @@ public class InitialSessionInfo {
 				+ Integer.toString(protoVers)
 			);
 		}
-
-		String authPluginName
-		= MysqlNativePasswordAuth.AUTH_PLUGIN_NAME;
 
 		version = new ServerVersion(Packet.readStringNT(
 			src, StandardCharsets.UTF_8
@@ -180,18 +213,14 @@ public class InitialSessionInfo {
 		src.skipBytes(1);
 
 		if (!src.isReadable()) {
-			return selectAuthCommand(
-				authPluginName, seqNum, ctx, chp
-			);
+			return selectAuthCommand(ctx, chp);
 		}
 
 		serverCaps = Packet.readLong2(src);
 
 		if (!src.isReadable()) {
 			updateClientCapabilities();
-			return selectAuthCommand(
-				authPluginName, seqNum, ctx, chp
-			);
+			return selectAuthCommand(ctx, chp);
 		}
 
 		Encoding serverEncoding = Encoding.forId(Packet.readInt1(src));
@@ -235,22 +264,15 @@ public class InitialSessionInfo {
 				clientCaps &= ~ClientCapability.CONNECT_WITH_DB.mask();
 		}
 
-		return selectAuthCommand(
-			authPluginName, seqNum, ctx, chp
-		);
+		return selectAuthCommand(ctx, chp);
 	}
 
 	private Dictum selectAuthCommand(
-		String authPluginName, int seqNum,
 		ChannelHandlerContext ctx, ChannelPromise chp
 	)  {
 		switch (authPluginName) {
 		case "mysql_native_password":
-			++seqNum;
-
-			return new MysqlNativePasswordAuth(
-				this, seqNum, chp
-			);
+			return new MysqlNativePasswordAuth(this, chp);
 		default:
 			throw Packet.makeError(
 				ErrorNumbers.ER_NOT_SUPPORTED_AUTH_MODE,
@@ -286,7 +308,16 @@ public class InitialSessionInfo {
 			| ClientCapability.CONNECT_ATTRS.mask()
 			| ClientCapability.DEPRECATE_EOF.mask();
 
+		if (config.getOrDefault(Config.Key.ENABLE_SSL, true))
+			clientCaps |= ClientCapability.SSL.mask();
+
 		clientCaps &= serverCaps;
+	}
+
+	private void initSslContext() throws SSLException {
+		sslContext = SslContextBuilder.forClient().trustManager(
+			InsecureTrustManagerFactory.INSTANCE
+		).build();
 	}
 
 	public static final Logger LOGGER = LogManager.getLogger(
@@ -296,6 +327,7 @@ public class InitialSessionInfo {
 	public final Config config;
 	private final Map<String, String> connAttributes;
 	private boolean preferLocalEncoding = false;
+	private SslContext sslContext;
 	public ServerVersion version;
 	public Encoding encoding;
 	public long serverCaps;
@@ -305,4 +337,6 @@ public class InitialSessionInfo {
 	public byte[] secret;
 	public ByteBuf attrBuf;
 	public String schema = "";
+	public int seqNum;
+	public String authPluginName = MysqlNativePasswordAuth.AUTH_PLUGIN_NAME;
 }

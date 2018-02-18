@@ -32,8 +32,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import udentric.mysql.classic.InitialSessionInfo;
 
-public class Sha256PasswordAuth implements Dictum {
-	public Sha256PasswordAuth(
+public class SslHandshake implements Dictum {
+	public SslHandshake(
 		InitialSessionInfo si_, ChannelPromise chp_
 	) {
 		si = si_;
@@ -44,6 +44,14 @@ public class Sha256PasswordAuth implements Dictum {
 	public boolean emitClientMessage(
 		ByteBuf dst, ChannelHandlerContext ctx
 	) {
+		dst.writeIntLE(
+			(int)(si.clientCaps & 0xffffffff)
+		);
+
+		dst.writeIntLE(si.packetSize);
+		dst.writeShortLE(si.encoding.mysqlId);
+		dst.writeZero(22);
+
 		return false;
 	}
 
@@ -61,8 +69,6 @@ public class Sha256PasswordAuth implements Dictum {
 	public int getSeqNum() {
 		return si.seqNum;
 	}
-
-	public static String AUTH_PLUGIN_NAME = "sha256_password";
 
 	private final InitialSessionInfo si;
 	private ChannelPromise chp;
