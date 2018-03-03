@@ -3,19 +3,25 @@ plugins {
 	id 'eclipse'
 }
 
+group 'udentric'
+version '1.0'
+
 repositories {
 	mavenLocal()
 	mavenCentral()
+	maven {
+		url 'https://repo.udentric.net/maven'
+	}
 }
 
 dependencies {
 	compile 'org.apache.logging.log4j:log4j-api:2.10.0'
 	compile 'org.apache.logging.log4j:log4j-core:2.10.0'
 	compile 'com.google.guava:guava:24.0-jre'
-	compile 'io.netty:netty-handler:4.1.20.Final'
+	compile 'io.netty:netty-handler:4.1.22.Final'
 
 	testCompile 'org.testng:testng:6.13.1'
-	testCompile project(':service:assert')
+	testCompile 'udentric:assert:1.0'
 }
 
 eclipse {
@@ -42,6 +48,14 @@ compileJava {
 	options.encoding = 'UTF-8'
 }
 
+task sourceJar(type: Jar) {
+	from sourceSets.main.allJava
+}
+
+task docJar(type: Jar, dependsOn: javadoc) {
+	from javadoc.destinationDir
+}
+
 tasks.withType(Test) {task ->
 	project.properties.each{k, v ->
 		if (k.startsWith("udentric.")) {
@@ -55,11 +69,6 @@ task testsuiteRun(type: Test, dependsOn: 'cleanTestsuiteRun') {
 	testLogging.showStandardStreams = true
 	setTestClassesDirs sourceSets.testsuite.output
 	classpath = sourceSets.testsuite.runtimeClasspath
-
-	filter {
-		includeTestsMatching '*MetadataTest'
-	}
-
 }
 
 task run(type: JavaExec) {
