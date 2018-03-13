@@ -28,12 +28,12 @@
 package udentric.mysql.classic;
 
 public class SimpleColumnValueMapper implements ColumnValueMapper {
-	public SimpleColumnValueMapper(Class... cls) {
+	public SimpleColumnValueMapper(Class<?>... cls) {
 		classes = cls;
 	}
 
 	@Override
-	public void initRowTypes(Class[] colTypes) {
+	public void initRowTypes(Class<?>[] colTypes) {
 		int count = classes.length;
 		if (count > colTypes.length)
 			count = colTypes.length;
@@ -41,5 +41,5 @@ public class SimpleColumnValueMapper implements ColumnValueMapper {
 		System.arraycopy(classes, 0, colTypes, 0, count);
 	}
 
-	private final Class[] classes;
+	private final Class<?>[] classes;
 }

@@ -49,7 +49,12 @@ public class SqlException extends RuntimeException {
 
 	static final long serialVersionUID = 0xa4a2f866d25e465aL;
 
+	@SuppressWarnings("unused")
 	private final String reason;
+
+	@SuppressWarnings("unused")
 	private final String state;
+
+	@SuppressWarnings("unused")
 	private final int code;
 }

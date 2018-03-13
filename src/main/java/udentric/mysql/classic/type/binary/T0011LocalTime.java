@@ -29,7 +29,6 @@ package udentric.mysql.classic.type.binary;
 
 import io.netty.buffer.ByteBuf;
 import java.time.LocalTime;
-import java.util.concurrent.TimeUnit;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.TimeUtils;

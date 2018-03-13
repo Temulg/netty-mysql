@@ -35,7 +35,6 @@ import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.ValueAdapter;
 
 public class TextDataRow implements DataRow {
-	@SuppressWarnings("unchecked")
 	public static TextDataRow init(
 		TextDataRow current, FieldSetImpl columns,
 		ColumnValueMapper mapper
@@ -90,7 +89,7 @@ public class TextDataRow implements DataRow {
 		mapper.initRowValues(colValues);
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void decodeValue(
 		int col, ByteBuf src, AdapterState state, FieldSetImpl columns
 	) {
@@ -117,7 +116,7 @@ public class TextDataRow implements DataRow {
 	}
 
 	private FieldSetImpl columns;
-	private final Class[] colTypes;
+	private final Class<?>[] colTypes;
 	private final Object[] colValues;
-	private final ValueAdapter[] adapters;
+	private final ValueAdapter<?>[] adapters;
 }

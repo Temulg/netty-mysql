@@ -35,7 +35,6 @@ import udentric.mysql.classic.type.AdapterState;
 import udentric.mysql.classic.type.ValueAdapter;
 
 public class BinaryDataRow implements DataRow {
-	@SuppressWarnings("unchecked") 
 	public static BinaryDataRow init(
 		BinaryDataRow current, FieldSetImpl columns,
 		ColumnValueMapper mapper
@@ -107,7 +106,7 @@ public class BinaryDataRow implements DataRow {
 		}
 	}
 
-	@SuppressWarnings("unchecked") 
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void decodeValue(
 		int col, ByteBuf src, AdapterState state, FieldSetImpl columns
 	) {
@@ -135,8 +134,8 @@ public class BinaryDataRow implements DataRow {
 	}
 
 	private FieldSetImpl columns;
-	private final Class[] colTypes;
+	private final Class<?>[] colTypes;
 	private final Object[] colValues;
-	private final ValueAdapter[] adapters;
+	private final ValueAdapter<?>[] adapters;
 	private final byte[] nullBitmap;
 }

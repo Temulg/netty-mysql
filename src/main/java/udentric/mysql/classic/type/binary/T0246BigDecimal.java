@@ -30,10 +30,8 @@ package udentric.mysql.classic.type.binary;
 import io.netty.buffer.ByteBuf;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import udentric.mysql.classic.FieldImpl;
 import udentric.mysql.classic.type.AdapterState;
-import udentric.mysql.classic.type.TimeUtils;
 import udentric.mysql.classic.type.TypeId;
 import udentric.mysql.classic.type.ValueAdapter;
 

@@ -30,7 +30,6 @@ package udentric.mysql.testsuite;
 import io.netty.bootstrap.Bootstrap;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.function.Function;
 
 import org.testng.ITestContext;

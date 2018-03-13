@@ -28,25 +28,25 @@
 package udentric.mysql.classic;
 
 public interface ColumnValueMapper {
-	default void initRowTypes(Class[] colTypes) {
+	default void initRowTypes(Class<?>[] colTypes) {
 	}
 
 	default void initRowValues(Object[] colValues) {
 	}
 
 	public static class Simple implements ColumnValueMapper {
-		public Simple(Class[] colTypes_) {
+		public Simple(Class<?>[] colTypes_) {
 			colTypes = colTypes_;
 		}
 
 		@Override
-		public void initRowTypes(Class[] colTypes_) {
+		public void initRowTypes(Class<?>[] colTypes_) {
 			System.arraycopy(
 				colTypes, 0, colTypes_, 0, colTypes.length
 			);
 		}
 
-		private final Class[] colTypes;
+		private final Class<?>[] colTypes;
 	}
 
 	public static ColumnValueMapper makeSimple(Class<?>... colTypes) {

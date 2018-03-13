@@ -60,9 +60,9 @@ public class AdapterState {
 		return done;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void reset() {
-		release.accept(state);
+		((Consumer)release).accept(state);
 		state = null;
 		release = AdapterState::defaultStateRelease;
 		done = false;
@@ -72,7 +72,7 @@ public class AdapterState {
 	}
 
 	private Object state;
-	private Consumer release = AdapterState::defaultStateRelease;
+	private Consumer<?> release = AdapterState::defaultStateRelease;
 	private boolean done;
 	public final ByteBufAllocator alloc;
 }

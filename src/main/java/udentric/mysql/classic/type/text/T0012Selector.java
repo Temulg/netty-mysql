@@ -28,7 +28,6 @@
 package udentric.mysql.classic.type.text;
 
 import com.google.common.collect.ImmutableMap;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import udentric.mysql.classic.type.AdapterSelector;
 import udentric.mysql.classic.type.ValueAdapter;

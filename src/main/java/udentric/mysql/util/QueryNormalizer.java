@@ -29,7 +29,6 @@ package udentric.mysql.util;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -211,6 +210,7 @@ public class QueryNormalizer extends QueryTokenizer {
 		DateTimeFormatter.ISO_LOCAL_TIME
 	).appendLiteral('\'').toFormatter(Locale.US);
 
+	@SuppressWarnings("unused")
 	private static final DateTimeFormatter MYSQL_DATE_TIME
 	= new DateTimeFormatterBuilder().appendLiteral('\'').append(
 		DateTimeFormatter.ISO_LOCAL_DATE
@@ -222,6 +222,7 @@ public class QueryNormalizer extends QueryTokenizer {
 		ChronoField.SECOND_OF_MINUTE, 2
 	).appendLiteral('\'').toFormatter(Locale.US);
 
+	@SuppressWarnings("unused")
 	private static final DateTimeFormatter MYSQL_DATE_TIME_FRAC
 	= new DateTimeFormatterBuilder().appendLiteral('\'').append(
 		DateTimeFormatter.ISO_LOCAL_DATE
@@ -271,6 +272,7 @@ public class QueryNormalizer extends QueryTokenizer {
 		return "CONCAT(" + expr + ")";
 	}).build();
 
+	@SuppressWarnings("unused")
 	private final TimeZone defaultTimeZone;
 	private final boolean serverSupportsFractionalSecond;
 }

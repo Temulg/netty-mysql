@@ -97,6 +97,7 @@ public class Statement implements udentric.mysql.PreparedStatement {
 		return columns;
 	}
 
+	@SuppressWarnings("unused")
 	private final String sql;
 	private final int srvId;
 	private final Channel ch;

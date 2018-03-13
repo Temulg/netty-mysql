@@ -35,7 +35,6 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.util.concurrent.Promise;
 

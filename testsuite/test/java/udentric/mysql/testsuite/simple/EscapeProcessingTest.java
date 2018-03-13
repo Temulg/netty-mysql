@@ -27,13 +27,9 @@
 
 package udentric.mysql.testsuite.simple;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.testng.annotations.Test;
 import org.testng.log4testng.Logger;
 
 import udentric.mysql.testsuite.TestCase;
-import udentric.test.Assert;
 
 public class EscapeProcessingTest extends TestCase {
 	public EscapeProcessingTest() {
